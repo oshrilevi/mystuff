@@ -24,7 +24,7 @@ struct ItemDetailView: View {
                     detailRow("Name", item.name)
                     detailRow("Description", item.description.isEmpty ? "—" : item.description)
                     detailRow("Category", categoryName)
-                    detailRow("Price", item.price.isEmpty ? "—" : item.price)
+                    detailRow("Price", Item.priceInNIS(item.price))
                     detailRow("Purchase date", item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
                     detailRow("Condition", item.condition.isEmpty ? "—" : item.condition)
                 }

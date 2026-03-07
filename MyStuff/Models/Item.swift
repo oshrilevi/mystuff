@@ -38,6 +38,13 @@ struct Item: Identifiable, Equatable {
 
     static let conditionPresets = ["New", "Like new", "Good", "Fair", "Poor"]
 
+    /// Returns price string formatted for display in NIS (e.g. "₪ 99.00" or "—" if empty).
+    static func priceInNIS(_ price: String) -> String {
+        let trimmed = price.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "—" }
+        return "₪ \(trimmed)"
+    }
+
     static let columnOrder = [
         "id", "name", "description", "categoryId", "price", "purchaseDate", "condition",
         "createdAt", "updatedAt", "photoIds"

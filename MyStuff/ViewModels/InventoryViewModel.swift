@@ -99,9 +99,9 @@ final class InventoryViewModel: ObservableObject {
         }
     }
 
-    func updateItem(_ item: Item, newImageData: [Data] = []) async {
+    func updateItem(_ item: Item, newImageData: [Data] = [], replaceExistingPhotos: Bool = false) async {
         guard let sid = spreadsheetId, let fid = driveFolderId else { return }
-        var photoIds = item.photoIds
+        var photoIds: [String] = replaceExistingPhotos ? [] : item.photoIds
         for (i, data) in newImageData.enumerated() {
             let name = "\(item.id)_\(UUID().uuidString.prefix(8)).jpg"
             if let id = try? await drive.uploadImage(data: data, mimeType: "image/jpeg", filename: name, parentFolderId: fid) {
@@ -138,7 +138,8 @@ final class InventoryViewModel: ObservableObject {
     }
 
     private func parseItemRow(_ row: [String]) -> Item? {
-        guard row.count >= 10 else { return nil }
+        // Sheets API may omit trailing empty cells, so require only 9 columns (photoIds optional)
+        guard row.count >= 9 else { return nil }
         let photoIds = row.count > 9 && !row[9].isEmpty ? row[9].split(separator: ",").map(String.init) : []
         return Item(
             id: row[0],
