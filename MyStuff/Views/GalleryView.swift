@@ -155,7 +155,11 @@ struct GalleryView: View {
                                             sectionSearchText: Binding(
                                                 get: { sectionSearchTexts[section.id] ?? "" },
                                                 set: { sectionSearchTexts[section.id] = $0 }
-                                            )
+                                            ),
+                                            onAddItem: {
+                                                inventory.lastNewItemCategoryId = section.id
+                                                showAddItem = true
+                                            }
                                         )
                                     }
                                 }
@@ -313,6 +317,7 @@ struct CategorySectionHeader: View {
     let itemCount: Int
     let totalValue: Double
     @Binding var sectionSearchText: String
+    var onAddItem: (() -> Void)? = nil
 
     private var formattedValue: String {
         if totalValue == 0 { return "₪ 0" }
@@ -334,6 +339,16 @@ struct CategorySectionHeader: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
+            if let onAddItem {
+                Button {
+                    onAddItem()
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+            }
             TextField("Filter in \(name)", text: $sectionSearchText)
                 .textFieldStyle(.roundedBorder)
                 .frame(minWidth: 100, maxWidth: 180)
