@@ -88,6 +88,10 @@ struct RootView: View {
             } else if let session = session {
                 MainTabView()
                     .environmentObject(session)
+                    .task(id: session.appState.spreadsheetId) {
+                        guard session.appState.spreadsheetId != nil else { return }
+                        await session.categories.load()
+                    }
             }
         }
         .animation(.easeInOut, value: authService.isSignedIn)

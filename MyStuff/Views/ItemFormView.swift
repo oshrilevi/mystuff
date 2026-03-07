@@ -21,6 +21,7 @@ struct ItemFormView: View {
     @State private var price = ""
     @State private var purchaseDate = ""
     @State private var condition = ""
+    @State private var quantity = 1
     #if os(iOS)
     @State private var selectedPhotos: [PhotosPickerItem] = []
     #elseif os(macOS)
@@ -82,6 +83,10 @@ struct ItemFormView: View {
                             ForEach(Item.conditionPresets, id: \.self) { Text($0).tag($0) }
                         }
                         .pickerStyle(.menu)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
+                        Stepper("\(quantity)", value: $quantity, in: 1...999)
                     }
                 }
                 Section("Photos") {
@@ -174,6 +179,7 @@ struct ItemFormView: View {
             price = item.price
             purchaseDate = item.purchaseDate
             condition = item.condition
+            quantity = item.quantity
         }
     }
 
@@ -200,6 +206,7 @@ struct ItemFormView: View {
             updated.price = price
             updated.purchaseDate = purchaseDate
             updated.condition = condition
+            updated.quantity = quantity
             let replacePhotos = removedPhoto || !imageData.isEmpty
             await inventory.updateItem(updated, newImageData: imageData, replaceExistingPhotos: replacePhotos)
         } else {
@@ -209,7 +216,8 @@ struct ItemFormView: View {
                 categoryId: categoryId,
                 price: price,
                 purchaseDate: purchaseDate,
-                condition: condition
+                condition: condition,
+                quantity: quantity
             )
             await inventory.addItem(newItem, imageData: imageData)
         }

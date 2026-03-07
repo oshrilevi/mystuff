@@ -131,16 +131,30 @@ final class InventoryViewModel: ObservableObject {
     private func itemToRow(_ item: Item) -> [String] {
         [
             item.id, item.name, item.description, item.categoryId,
-            item.price, item.purchaseDate, item.condition,
+            item.price, item.purchaseDate, item.condition, String(item.quantity),
             item.createdAt, item.updatedAt,
             item.photoIds.joined(separator: ",")
         ]
     }
 
     private func parseItemRow(_ row: [String]) -> Item? {
-        // Sheets API may omit trailing empty cells, so require only 9 columns (photoIds optional)
+        // Sheets API may omit trailing empty cells. Support both old (10 cols) and new (11 cols with quantity).
         guard row.count >= 9 else { return nil }
-        let photoIds = row.count > 9 && !row[9].isEmpty ? row[9].split(separator: ",").map(String.init) : []
+        let quantity: Int
+        let createdAt: String
+        let updatedAt: String
+        let photoIds: [String]
+        if row.count >= 11 {
+            quantity = Int(row[7].trimmingCharacters(in: .whitespaces)) ?? 1
+            createdAt = row.count > 8 ? row[8] : ""
+            updatedAt = row.count > 9 ? row[9] : ""
+            photoIds = row.count > 10 && !row[10].isEmpty ? row[10].split(separator: ",").map(String.init) : []
+        } else {
+            quantity = 1
+            createdAt = row.count > 7 ? row[7] : ""
+            updatedAt = row.count > 8 ? row[8] : ""
+            photoIds = row.count > 9 && !row[9].isEmpty ? row[9].split(separator: ",").map(String.init) : []
+        }
         return Item(
             id: row[0],
             name: row.count > 1 ? row[1] : "",
@@ -149,8 +163,9 @@ final class InventoryViewModel: ObservableObject {
             price: row.count > 4 ? row[4] : "",
             purchaseDate: row.count > 5 ? row[5] : "",
             condition: row.count > 6 ? row[6] : "",
-            createdAt: row.count > 7 ? row[7] : "",
-            updatedAt: row.count > 8 ? row[8] : "",
+            quantity: max(1, quantity),
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             photoIds: photoIds
         )
     }

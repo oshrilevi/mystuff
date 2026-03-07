@@ -31,7 +31,7 @@ final class SheetsService {
         guard let id = json?["spreadsheetId"] as? String else { throw SheetsError.invalidResponse }
         try await appendRows(spreadsheetId: id, sheetName: "Categories", values: [["id", "name", "order"]])
         try await appendRows(spreadsheetId: id, sheetName: "Items", values: [[
-            "id", "name", "description", "categoryId", "price", "purchaseDate", "condition",
+            "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
             "createdAt", "updatedAt", "photoIds"
         ]])
         return (id, "https://docs.google.com/spreadsheets/d/\(id)")

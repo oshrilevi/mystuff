@@ -28,30 +28,43 @@ struct GalleryView: View {
     private var inventory: InventoryViewModel { session.inventory }
     private var categories: [Category] { session.categories.categories }
 
+    /// Total worth (price × quantity) of items in the current filtered view.
+    private var totalWorth: Double {
+        inventory.filteredItems.reduce(0) { sum, item in
+            let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
+            return sum + p * Double(item.quantity)
+        }
+    }
+
     var body: some View {
         NavigationStack {
-            Group {
-                if inventory.isLoading, inventory.items.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        if let err = inventory.errorMessage {
-                            Text(err)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                                .padding(8)
-                        }
-                        LazyVGrid(columns: gridColumns, spacing: 16) {
-                            ForEach(inventory.filteredItems) { item in
-                                ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-                                    .onTapGesture { selectedItem = item }
+            VStack(spacing: 0) {
+                Group {
+                    if inventory.isLoading, inventory.items.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            if let err = inventory.errorMessage {
+                                Text(err)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                                    .padding(8)
                             }
+                            LazyVGrid(columns: gridColumns, spacing: 16) {
+                                ForEach(inventory.filteredItems) { item in
+                                    ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+                                        .onTapGesture { selectedItem = item }
+                                }
+                            }
+                            .padding()
                         }
-                        .padding()
+                        .refreshable { await inventory.refresh() }
                     }
-                    .refreshable { await inventory.refresh() }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                StatusBar(totalWorth: totalWorth, itemCount: inventory.filteredItems.count)
             }
             .searchable(text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }), prompt: "Search items")
             .navigationTitle("Items")
@@ -147,12 +160,47 @@ struct ItemCard: View {
                 .font(titleFont)
                 .fontWeight(.medium)
                 .lineLimit(1)
-            if !item.price.isEmpty {
-                Text(Item.priceInNIS(item.price))
-                    .font(priceFont)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                if !item.price.isEmpty {
+                    Text(Item.priceInNIS(item.price))
+                        .font(priceFont)
+                        .foregroundStyle(.secondary)
+                }
+                if item.quantity > 1 {
+                    Text("× \(item.quantity)")
+                        .font(priceFont)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct StatusBar: View {
+    let totalWorth: Double
+    let itemCount: Int
+
+    private var formattedWorth: String {
+        if totalWorth == 0 { return "₪ 0" }
+        return String(format: "₪ %.2f", totalWorth)
+    }
+
+    var body: some View {
+        HStack {
+            Text("\(itemCount) item(s)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text("Total worth: \(formattedWorth)")
+                .font(.caption)
+                .fontWeight(.medium)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.bar)
+        #if os(iOS)
+        .overlay(alignment: .top) { Divider() }
+        #endif
     }
 }

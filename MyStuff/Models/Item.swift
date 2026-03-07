@@ -8,6 +8,8 @@ struct Item: Identifiable, Equatable {
     var price: String
     var purchaseDate: String // ISO8601 or YYYY-MM-DD
     var condition: String
+    /// Number of copies of this item. Default is 1.
+    var quantity: Int
     var createdAt: String
     var updatedAt: String
     var photoIds: [String] // Drive file IDs
@@ -20,6 +22,7 @@ struct Item: Identifiable, Equatable {
         price: String = "",
         purchaseDate: String = "",
         condition: String = "",
+        quantity: Int = 1,
         createdAt: String = "",
         updatedAt: String = "",
         photoIds: [String] = []
@@ -31,6 +34,7 @@ struct Item: Identifiable, Equatable {
         self.price = price
         self.purchaseDate = purchaseDate
         self.condition = condition
+        self.quantity = max(1, quantity)
         self.createdAt = createdAt.isEmpty ? ISO8601DateFormatter().string(from: Date()) : createdAt
         self.updatedAt = updatedAt.isEmpty ? ISO8601DateFormatter().string(from: Date()) : updatedAt
         self.photoIds = photoIds
@@ -46,7 +50,7 @@ struct Item: Identifiable, Equatable {
     }
 
     static let columnOrder = [
-        "id", "name", "description", "categoryId", "price", "purchaseDate", "condition",
+        "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
         "createdAt", "updatedAt", "photoIds"
     ]
 }
