@@ -117,17 +117,44 @@ struct ItemFormView: View {
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("", text: $quantityText, prompt: Text("1"))
-                            .onChange(of: quantityText) { _, new in
-                                let parsed = Int(new.filter { $0.isNumber }) ?? 0
-                                quantity = min(999, max(1, parsed))
-                                if parsed != quantity {
-                                    quantityText = "\(quantity)"
+                        HStack(spacing: 12) {
+                            TextField("", text: $quantityText, prompt: Text("1"))
+                                .onChange(of: quantityText) { _, new in
+                                    let parsed = Int(new.filter { $0.isNumber }) ?? 0
+                                    quantity = min(999, max(1, parsed))
+                                    if parsed != quantity {
+                                        quantityText = "\(quantity)"
+                                    }
                                 }
+                                #if os(iOS)
+                                .keyboardType(.numberPad)
+                                #endif
+                            HStack(spacing: 4) {
+                                Button {
+                                    let next = min(999, quantity + 1)
+                                    quantity = next
+                                    quantityText = "\(next)"
+                                } label: {
+                                    Image(systemName: "chevron.up")
+                                        .font(.body.weight(.semibold))
+                                        .frame(minWidth: 36, minHeight: 36)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                Button {
+                                    let next = max(1, quantity - 1)
+                                    quantity = next
+                                    quantityText = "\(next)"
+                                } label: {
+                                    Image(systemName: "chevron.down")
+                                        .font(.body.weight(.semibold))
+                                        .frame(minWidth: 36, minHeight: 36)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
                             }
-                            #if os(iOS)
-                            .keyboardType(.numberPad)
-                            #endif
+                            .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Section("Web link") {
