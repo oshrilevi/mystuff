@@ -8,6 +8,7 @@ final class Session: ObservableObject {
     let appState: AppState
     let sheets: SheetsService
     let drive: DriveService
+    let pageMetadata: PageMetadataService
     let inventory: InventoryViewModel
     let categories: CategoriesViewModel
 
@@ -23,6 +24,7 @@ final class Session: ObservableObject {
         self.drive = DriveService(tokenProvider: { [weak authService] in
             try await authService?.getAccessToken() ?? ""
         })
+        self.pageMetadata = PageMetadataService()
         self.inventory = InventoryViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
         self.categories = CategoriesViewModel(sheets: self.sheets, appState: self.appState)
 

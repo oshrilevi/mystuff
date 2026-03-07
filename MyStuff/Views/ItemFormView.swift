@@ -19,9 +19,11 @@ struct ItemFormView: View {
     @State private var description = ""
     @State private var categoryId = ""
     @State private var price = ""
-    @State private var purchaseDate = ""
-    @State private var condition = ""
+    @State private var purchaseDateValue: Date = Date()
     @State private var quantity = 1
+    @State private var quantityText = "1"
+    @State private var webLink = ""
+    @State private var isExtracting = false
     #if os(iOS)
     @State private var selectedPhotos: [PhotosPickerItem] = []
     #elseif os(macOS)
@@ -34,6 +36,7 @@ struct ItemFormView: View {
 
     private var inventory: InventoryViewModel { session.inventory }
     private var drive: DriveService { session.drive }
+    private var pageMetadata: PageMetadataService { session.pageMetadata }
     private var categories: [Category] { session.categories.categories }
     private var isEdit: Bool { if case .edit = mode { true } else { false } }
     private var existingItem: Item? { if case .edit(let i) = mode { return i } else { return nil } }
@@ -45,19 +48,19 @@ struct ItemFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Details") {
+                Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Name").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("Name", text: $name)
+                        TextField("", text: $name, prompt: Text("Name"))
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Description").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("Description", text: $description, axis: .vertical)
+                        TextField("", text: $description, prompt: Text("Description"), axis: .vertical)
                             .lineLimit(3...6)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Category").font(.subheadline).foregroundStyle(.secondary)
-                        Picker("Category", selection: $categoryId) {
+                        Picker("", selection: $categoryId) {
                             Text("None").tag("")
                             ForEach(categories) { cat in
                                 Text(cat.name).tag(cat.id)
@@ -67,27 +70,54 @@ struct ItemFormView: View {
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Price (NIS)").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("Price", text: $price)
+                        TextField("", text: $price, prompt: Text("Price"))
                             #if os(iOS)
                             .keyboardType(.decimalPad)
                             #endif
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Purchase date (YYYY-MM-DD)").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("Purchase date", text: $purchaseDate)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Condition").font(.subheadline).foregroundStyle(.secondary)
-                        Picker("Condition", selection: $condition) {
-                            Text("").tag("")
-                            ForEach(Item.conditionPresets, id: \.self) { Text($0).tag($0) }
-                        }
-                        .pickerStyle(.menu)
+                        Text("Purchase Date").font(.subheadline).foregroundStyle(.secondary)
+                        DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
-                        Stepper("\(quantity)", value: $quantity, in: 1...999)
+                        TextField("", text: $quantityText, prompt: Text("1"))
+                            .onChange(of: quantityText) { _, new in
+                                let parsed = Int(new.filter { $0.isNumber }) ?? 0
+                                quantity = min(999, max(1, parsed))
+                                if parsed != quantity {
+                                    quantityText = "\(quantity)"
+                                }
+                            }
+                            #if os(iOS)
+                            .keyboardType(.numberPad)
+                            #endif
                     }
+                }
+                Section("Web link") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("URL").font(.subheadline).foregroundStyle(.secondary)
+                        TextField("", text: $webLink, prompt: Text("https://…"))
+                            #if os(iOS)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            #endif
+                    }
+                    Button {
+                        Task { await extractFromLink() }
+                    } label: {
+                        if isExtracting {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .scaleEffect(0.9)
+                                Text("Extracting…")
+                            }
+                        } else {
+                            Label("Extract from link", systemImage: "link.badge.plus")
+                        }
+                    }
+                    .disabled(webLink.trimmingCharacters(in: .whitespaces).isEmpty || isExtracting)
                 }
                 Section("Photos") {
                     if showCurrentPhoto, let fileId = existingItem?.photoIds.first {
@@ -157,6 +187,7 @@ struct ItemFormView: View {
                     Section { Text(err).foregroundStyle(.red) }
                 }
             }
+            .padding(20)
             .navigationTitle(isEdit ? "Edit item" : "New item")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -167,9 +198,21 @@ struct ItemFormView: View {
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
             }
-            .onAppear { fillForm() }
+            .onAppear {
+                fillForm()
+                if !isEdit, categoryId.isEmpty {
+                    categoryId = inventory.selectedCategoryId ?? ""
+                }
+            }
         }
     }
+
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone.current
+        return f
+    }()
 
     private func fillForm() {
         if let item = existingItem {
@@ -177,9 +220,29 @@ struct ItemFormView: View {
             description = item.description
             categoryId = item.categoryId
             price = item.price
-            purchaseDate = item.purchaseDate
-            condition = item.condition
+            purchaseDateValue = Self.dateFormatter.date(from: item.purchaseDate) ?? Date()
             quantity = item.quantity
+            quantityText = "\(item.quantity)"
+            webLink = item.webLink
+        }
+    }
+
+    private func extractFromLink() async {
+        let urlString = webLink.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: urlString), url.scheme == "https" || url.scheme == "http" else {
+            errorMessage = "Please enter a valid HTTP or HTTPS URL."
+            return
+        }
+        isExtracting = true
+        errorMessage = nil
+        defer { isExtracting = false }
+        do {
+            let metadata = try await pageMetadata.fetchMetadata(from: url)
+            if let t = metadata.title, !t.isEmpty { name = t }
+            if let d = metadata.description, !d.isEmpty { description = d }
+            if let p = metadata.price, !p.isEmpty { price = p }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -198,15 +261,18 @@ struct ItemFormView: View {
         isSaving = true
         errorMessage = nil
         defer { isSaving = false }
+        let link = webLink.trimmingCharacters(in: .whitespaces)
+        let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)
             updated.description = description
             updated.categoryId = categoryId
             updated.price = price
-            updated.purchaseDate = purchaseDate
-            updated.condition = condition
+            updated.purchaseDate = purchaseDateString
+            updated.condition = existing.condition
             updated.quantity = quantity
+            updated.webLink = link
             let replacePhotos = removedPhoto || !imageData.isEmpty
             await inventory.updateItem(updated, newImageData: imageData, replaceExistingPhotos: replacePhotos)
         } else {
@@ -215,9 +281,10 @@ struct ItemFormView: View {
                 description: description,
                 categoryId: categoryId,
                 price: price,
-                purchaseDate: purchaseDate,
-                condition: condition,
-                quantity: quantity
+                purchaseDate: purchaseDateString,
+                condition: "",
+                quantity: quantity,
+                webLink: link
             )
             await inventory.addItem(newItem, imageData: imageData)
         }

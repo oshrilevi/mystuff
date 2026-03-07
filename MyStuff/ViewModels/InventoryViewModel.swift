@@ -133,7 +133,8 @@ final class InventoryViewModel: ObservableObject {
             item.id, item.name, item.description, item.categoryId,
             item.price, item.purchaseDate, item.condition, String(item.quantity),
             item.createdAt, item.updatedAt,
-            item.photoIds.joined(separator: ",")
+            item.photoIds.joined(separator: ","),
+            item.webLink
         ]
     }
 
@@ -155,6 +156,7 @@ final class InventoryViewModel: ObservableObject {
             updatedAt = row.count > 8 ? row[8] : ""
             photoIds = row.count > 9 && !row[9].isEmpty ? row[9].split(separator: ",").map(String.init) : []
         }
+        let webLink = row.count > 11 ? row[11] : ""
         return Item(
             id: row[0],
             name: row.count > 1 ? row[1] : "",
@@ -166,7 +168,8 @@ final class InventoryViewModel: ObservableObject {
             quantity: max(1, quantity),
             createdAt: createdAt,
             updatedAt: updatedAt,
-            photoIds: photoIds
+            photoIds: photoIds,
+            webLink: webLink
         )
     }
 
