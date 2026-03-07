@@ -401,7 +401,6 @@ struct ItemHoverPopoverContent: View {
             LabeledRow(label: "Price", value: Item.priceInNIS(item.price))
             LabeledRow(label: "Quantity", value: "\(item.quantity)")
             LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
-            LabeledRow(label: "Condition", value: item.condition.isEmpty ? "—" : item.condition)
             if !item.tags.isEmpty {
                 LabeledRow(label: "Tags", value: item.tags.joined(separator: ", "))
             }

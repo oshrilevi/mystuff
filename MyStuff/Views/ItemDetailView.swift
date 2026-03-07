@@ -27,7 +27,6 @@ struct ItemDetailView: View {
                     detailRow("Price", Item.priceInNIS(item.price))
                     detailRow("Quantity", "\(item.quantity)")
                     detailRow("Purchase date", item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
-                    detailRow("Condition", item.condition.isEmpty ? "—" : item.condition)
                     if !item.tags.isEmpty {
                         detailRow("Tags", item.tags.joined(separator: ", "))
                     }
