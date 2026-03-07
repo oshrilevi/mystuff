@@ -7,6 +7,10 @@ final class InventoryViewModel: ObservableObject {
     @Published var categories: [Category] = []
     @Published var searchText = ""
     @Published var selectedCategoryId: String?
+    /// Last purchase date used when adding a new item; used as default when opening the add form.
+    @Published var lastNewItemPurchaseDate: Date?
+    /// Last category used when adding a new item; used as default when opening the add form.
+    @Published var lastNewItemCategoryId: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
 

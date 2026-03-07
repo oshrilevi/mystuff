@@ -33,6 +33,11 @@ struct ItemFormView: View {
     @State private var removedPhoto = false
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @FocusState private var focusedField: FocusField?
+
+    private enum FocusField {
+        case url
+    }
 
     private var inventory: InventoryViewModel { session.inventory }
     private var drive: DriveService { session.drive }
@@ -101,6 +106,7 @@ struct ItemFormView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("URL").font(.subheadline).foregroundStyle(.secondary)
                         TextField("", text: $webLink, prompt: Text("https://…"))
+                            .focused($focusedField, equals: .url)
                             #if os(iOS)
                             .keyboardType(.URL)
                             .textInputAutocapitalization(.never)
@@ -191,20 +197,42 @@ struct ItemFormView: View {
                 }
             }
             .padding(20)
-            .navigationTitle(isEdit ? "Edit item" : "New item")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(isEdit ? "Edit item" : "New item")
+                        .font(.headline)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+                    Group {
+                        if isSaving {
+                            HStack(spacing: 6) {
+                                ProgressView()
+                                    .scaleEffect(0.85)
+                                Text("Saving…")
+                                    .font(.body)
+                            }
+                        } else {
+                            Button("Save") { Task { await save() } }
+                        }
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
             }
             .onAppear {
                 fillForm()
-                if !isEdit, categoryId.isEmpty {
-                    categoryId = inventory.selectedCategoryId ?? ""
+                if !isEdit {
+                    categoryId = inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
+                    purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 350_000_000)
+                        focusedField = .url
+                    }
                 }
             }
         }
@@ -290,6 +318,10 @@ struct ItemFormView: View {
                 webLink: link
             )
             await inventory.addItem(newItem, imageData: imageData)
+            if inventory.errorMessage == nil {
+                inventory.lastNewItemPurchaseDate = purchaseDateValue
+                inventory.lastNewItemCategoryId = categoryId
+            }
         }
         if inventory.errorMessage == nil {
             dismiss()
