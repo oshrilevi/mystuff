@@ -34,6 +34,25 @@ struct CategorySection: Identifiable {
     let totalValue: Double
 }
 
+enum ItemSortOption: String, CaseIterable {
+    case name = "Name"
+    case price = "Price"
+    case purchaseDate = "Date"
+
+    var icon: String {
+        switch self {
+        case .name: return "textformat"
+        case .price: return "tag"
+        case .purchaseDate: return "calendar"
+        }
+    }
+}
+
+struct ItemSortOrder {
+    var option: ItemSortOption
+    var ascending: Bool
+}
+
 struct GalleryView: View {
     @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
@@ -42,6 +61,8 @@ struct GalleryView: View {
     @State private var showAddItem = false
     /// Per-category section search text (key = category section id); filters items within that section.
     @State private var sectionSearchTexts: [String: String] = [:]
+    /// Per-category sort (key = category section id). When viewing a single category, that category id is used.
+    @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
 
     private var thumbnailSize: ThumbnailSize {
         ThumbnailSize(rawValue: thumbnailSizeRaw) ?? .medium
@@ -102,6 +123,28 @@ struct GalleryView: View {
         return id.isEmpty
     }
 
+    private func sortOrder(forSectionId sectionId: String) -> ItemSortOrder {
+        sectionSortOrders[sectionId] ?? ItemSortOrder(option: .name, ascending: true)
+    }
+
+    private func sortedItems(_ items: [Item], sectionId: String) -> [Item] {
+        let order = sortOrder(forSectionId: sectionId)
+        return items.sorted { a, b in
+            let cmp: Bool
+            switch order.option {
+            case .name:
+                cmp = a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            case .price:
+                let pa = Double(a.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                let pb = Double(b.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                cmp = pa < pb
+            case .purchaseDate:
+                cmp = a.purchaseDate.compare(b.purchaseDate, options: .numeric) == .orderedAscending
+            }
+            return order.ascending ? cmp : !cmp
+        }
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -126,12 +169,13 @@ struct GalleryView: View {
                                             let q = searchText.lowercased()
                                             return $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
                                         }
-                                    let filteredTotal = filteredItems.reduce(0.0) { sum, item in
+                                    let sortedItemsForSection = sortedItems(filteredItems, sectionId: section.id)
+                                    let filteredTotal = sortedItemsForSection.reduce(0.0) { sum, item in
                                         let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                                         return sum + p * Double(item.quantity)
                                     }
                                     Section {
-                                        if filteredItems.isEmpty {
+                                        if sortedItemsForSection.isEmpty {
                                             Text("No items match your filter")
                                                 .font(.subheadline)
                                                 .foregroundStyle(.secondary)
@@ -139,7 +183,7 @@ struct GalleryView: View {
                                                 .padding(.vertical, 32)
                                         } else {
                                             LazyVGrid(columns: gridColumns, spacing: 16) {
-                                                ForEach(filteredItems) { item in
+                                                ForEach(sortedItemsForSection) { item in
                                                     ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
                                                         .onTapGesture { selectedItem = item }
                                                 }
@@ -150,11 +194,15 @@ struct GalleryView: View {
                                     } header: {
                                         CategorySectionHeader(
                                             name: section.name,
-                                            itemCount: filteredItems.count,
+                                            itemCount: sortedItemsForSection.count,
                                             totalValue: filteredTotal,
                                             sectionSearchText: Binding(
                                                 get: { sectionSearchTexts[section.id] ?? "" },
                                                 set: { sectionSearchTexts[section.id] = $0 }
+                                            ),
+                                            sortOrder: Binding(
+                                                get: { sortOrder(forSectionId: section.id) },
+                                                set: { sectionSortOrders[section.id] = $0 }
                                             ),
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
@@ -165,13 +213,32 @@ struct GalleryView: View {
                                 }
                                 .padding(.top, 8)
                             } else {
-                                LazyVGrid(columns: gridColumns, spacing: 16) {
-                                    ForEach(inventory.filteredItems) { item in
-                                        ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-                                            .onTapGesture { selectedItem = item }
+                                let singleCategoryId = inventory.selectedCategoryId ?? ""
+                                let singleCategorySorted = sortedItems(inventory.filteredItems, sectionId: singleCategoryId)
+                                VStack(spacing: 0) {
+                                    CategorySectionHeader(
+                                        name: currentCategoryName,
+                                        itemCount: singleCategorySorted.count,
+                                        totalValue: totalWorth,
+                                        sectionSearchText: .constant(""),
+                                        sortOrder: Binding(
+                                            get: { sortOrder(forSectionId: singleCategoryId) },
+                                            set: { sectionSortOrders[singleCategoryId] = $0 }
+                                        ),
+                                        onAddItem: {
+                                            inventory.lastNewItemCategoryId = singleCategoryId
+                                            showAddItem = true
+                                        },
+                                        showSearchField: false
+                                    )
+                                    LazyVGrid(columns: gridColumns, spacing: 16) {
+                                        ForEach(singleCategorySorted) { item in
+                                            ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+                                                .onTapGesture { selectedItem = item }
+                                        }
                                     }
+                                    .padding()
                                 }
-                                .padding()
                             }
                         }
                         .refreshable { await inventory.refresh() }
@@ -317,7 +384,9 @@ struct CategorySectionHeader: View {
     let itemCount: Int
     let totalValue: Double
     @Binding var sectionSearchText: String
+    @Binding var sortOrder: ItemSortOrder
     var onAddItem: (() -> Void)? = nil
+    var showSearchField: Bool = true
 
     private var formattedValue: String {
         if totalValue == 0 { return "₪ 0" }
@@ -339,6 +408,38 @@ struct CategorySectionHeader: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 8)
+            HStack(spacing: 4) {
+                Text("Sort:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ForEach(ItemSortOption.allCases, id: \.rawValue) { option in
+                    let isSelected = sortOrder.option == option
+                    Button {
+                        if isSelected {
+                            sortOrder.ascending.toggle()
+                        } else {
+                            sortOrder = ItemSortOrder(option: option, ascending: true)
+                        }
+                    } label: {
+                        HStack(spacing: 2) {
+                            Image(systemName: option.icon)
+                            Text(option.rawValue)
+                                .font(.caption2)
+                            if isSelected {
+                                Image(systemName: sortOrder.ascending ? "arrow.up" : "arrow.down")
+                                    .font(.caption2)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            Spacer(minLength: 8)
             if let onAddItem {
                 Button {
                     onAddItem()
@@ -349,12 +450,14 @@ struct CategorySectionHeader: View {
                 }
                 .buttonStyle(.plain)
             }
-            TextField("Filter in \(name)", text: $sectionSearchText)
-                .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 100, maxWidth: 180)
+            if showSearchField {
+                TextField("Filter in \(name)", text: $sectionSearchText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(minWidth: 100, maxWidth: 180)
                 #if os(iOS)
                 .focusEffectDisabled()
                 #endif
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
