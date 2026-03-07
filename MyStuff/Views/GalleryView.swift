@@ -27,6 +27,13 @@ enum ThumbnailSize: String, CaseIterable {
     }
 }
 
+struct CategorySection: Identifiable {
+    let id: String
+    let name: String
+    let items: [Item]
+    let totalValue: Double
+}
+
 struct GalleryView: View {
     @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
@@ -64,6 +71,35 @@ struct GalleryView: View {
         }
     }
 
+    /// When filter is "All", groups filtered items by category for subsectioned layout.
+    private var categorySections: [CategorySection] {
+        let list = inventory.filteredItems
+        let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
+        var sections: [CategorySection] = []
+        let sortedCats = categories.sorted { $0.order < $1.order }
+        for cat in sortedCats {
+            guard let items = byCategory[cat.id], !items.isEmpty else { continue }
+            let total = items.reduce(0.0) { sum, item in
+                let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                return sum + p * Double(item.quantity)
+            }
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
+        }
+        if let uncategorized = byCategory[""], !uncategorized.isEmpty {
+            let total = uncategorized.reduce(0.0) { sum, item in
+                let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                return sum + p * Double(item.quantity)
+            }
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
+        }
+        return sections
+    }
+
+    private var isShowingAllCategories: Bool {
+        guard let id = inventory.selectedCategoryId else { return true }
+        return id.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -79,13 +115,35 @@ struct GalleryView: View {
                                     .foregroundStyle(.red)
                                     .padding(8)
                             }
-                            LazyVGrid(columns: gridColumns, spacing: 16) {
-                                ForEach(inventory.filteredItems) { item in
-                                    ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-                                        .onTapGesture { selectedItem = item }
+                            if isShowingAllCategories && !categorySections.isEmpty {
+                                ForEach(categorySections) { section in
+                                    Section {
+                                        LazyVGrid(columns: gridColumns, spacing: 16) {
+                                            ForEach(section.items) { item in
+                                                ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+                                                    .onTapGesture { selectedItem = item }
+                                            }
+                                        }
+                                        .padding(.horizontal)
+                                        .padding(.bottom, 24)
+                                    } header: {
+                                        CategorySectionHeader(
+                                            name: section.name,
+                                            itemCount: section.items.count,
+                                            totalValue: section.totalValue
+                                        )
+                                    }
                                 }
+                                .padding(.top, 8)
+                            } else {
+                                LazyVGrid(columns: gridColumns, spacing: 16) {
+                                    ForEach(inventory.filteredItems) { item in
+                                        ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+                                            .onTapGesture { selectedItem = item }
+                                    }
+                                }
+                                .padding()
                             }
-                            .padding()
                         }
                         .refreshable { await inventory.refresh() }
                     }
@@ -222,6 +280,42 @@ struct ItemCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct CategorySectionHeader: View {
+    let name: String
+    let itemCount: Int
+    let totalValue: Double
+
+    private var formattedValue: String {
+        if totalValue == 0 { return "₪ 0" }
+        return String(format: "₪ %.2f", totalValue)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(name)
+                .font(.subheadline)
+                .fontWeight(.medium)
+            Text("\(itemCount) item(s)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("·")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Text("Total: \(formattedValue)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial)
+        #if os(iOS)
+        .overlay(alignment: .top) { Divider() }
+        #endif
     }
 }
 
