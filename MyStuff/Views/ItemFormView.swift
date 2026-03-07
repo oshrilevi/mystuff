@@ -23,6 +23,7 @@ struct ItemFormView: View {
     @State private var quantity = 1
     @State private var quantityText = "1"
     @State private var webLink = ""
+    @State private var tagsText = "" // Comma-separated tags
     @State private var isExtracting = false
     #if os(iOS)
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -155,6 +156,13 @@ struct ItemFormView: View {
                     }
                     .disabled(webLink.trimmingCharacters(in: .whitespaces).isEmpty || isExtracting)
                 }
+                Section("Tags") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Tags (comma-separated)").font(.subheadline).foregroundStyle(.secondary)
+                        TextField("", text: $tagsText, prompt: Text("e.g. Nikon, camera, lens"))
+                            .lineLimit(1...3)
+                    }
+                }
                 Section("Photos") {
                     if showCurrentPhoto, let fileId = existingItem?.photoIds.first {
                         VStack(alignment: .leading, spacing: 8) {
@@ -282,7 +290,14 @@ struct ItemFormView: View {
             quantity = item.quantity
             quantityText = "\(item.quantity)"
             webLink = item.webLink
+            tagsText = item.tags.joined(separator: ", ")
         }
+    }
+
+    private func parsedTags() -> [String] {
+        tagsText.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 
     private func extractFromLink() async {
@@ -299,6 +314,9 @@ struct ItemFormView: View {
             if let t = metadata.title, !t.isEmpty { name = t }
             if let d = metadata.description, !d.isEmpty { description = d }
             if let p = metadata.price, !p.isEmpty { price = p }
+            if !metadata.tags.isEmpty {
+                tagsText = metadata.tags.joined(separator: ", ")
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -321,6 +339,7 @@ struct ItemFormView: View {
         defer { isSaving = false }
         let link = webLink.trimmingCharacters(in: .whitespaces)
         let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
+        let tags = parsedTags()
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)
@@ -331,6 +350,7 @@ struct ItemFormView: View {
             updated.condition = existing.condition
             updated.quantity = quantity
             updated.webLink = link
+            updated.tags = tags
             let replacePhotos = removedPhoto || !imageData.isEmpty
             await inventory.updateItem(updated, newImageData: imageData, replaceExistingPhotos: replacePhotos)
         } else {
@@ -342,7 +362,8 @@ struct ItemFormView: View {
                 purchaseDate: purchaseDateString,
                 condition: "",
                 quantity: quantity,
-                webLink: link
+                webLink: link,
+                tags: tags
             )
             await inventory.addItem(newItem, imageData: imageData)
             if inventory.errorMessage == nil {

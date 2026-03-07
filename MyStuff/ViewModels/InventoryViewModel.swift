@@ -32,7 +32,9 @@ final class InventoryViewModel: ObservableObject {
         if !searchText.isEmpty {
             let q = searchText.lowercased()
             list = list.filter {
-                $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
+                $0.name.lowercased().contains(q)
+                    || $0.description.lowercased().contains(q)
+                    || $0.tags.contains { $0.lowercased().contains(q) }
             }
         }
         if let cid = selectedCategoryId, !cid.isEmpty {
@@ -138,7 +140,8 @@ final class InventoryViewModel: ObservableObject {
             item.price, item.purchaseDate, item.condition, String(item.quantity),
             item.createdAt, item.updatedAt,
             item.photoIds.joined(separator: ","),
-            item.webLink
+            item.webLink,
+            item.tags.joined(separator: ",")
         ]
     }
 
@@ -161,6 +164,9 @@ final class InventoryViewModel: ObservableObject {
             photoIds = row.count > 9 && !row[9].isEmpty ? row[9].split(separator: ",").map(String.init) : []
         }
         let webLink = row.count > 11 ? row[11] : ""
+        let tags: [String] = row.count > 12 && !row[12].isEmpty
+            ? row[12].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            : []
         return Item(
             id: row[0],
             name: row.count > 1 ? row[1] : "",
@@ -173,7 +179,8 @@ final class InventoryViewModel: ObservableObject {
             createdAt: createdAt,
             updatedAt: updatedAt,
             photoIds: photoIds,
-            webLink: webLink
+            webLink: webLink,
+            tags: tags
         )
     }
 

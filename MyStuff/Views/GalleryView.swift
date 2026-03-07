@@ -167,7 +167,9 @@ struct GalleryView: View {
                                         ? section.items
                                         : section.items.filter {
                                             let q = searchText.lowercased()
-                                            return $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
+                                            return $0.name.lowercased().contains(q)
+                                                || $0.description.lowercased().contains(q)
+                                                || $0.tags.contains { $0.lowercased().contains(q) }
                                         }
                                     let sortedItemsForSection = sortedItems(filteredItems, sectionId: section.id)
                                     let filteredTotal = sortedItemsForSection.reduce(0.0) { sum, item in
@@ -344,6 +346,9 @@ struct ItemHoverPopoverContent: View {
             LabeledRow(label: "Quantity", value: "\(item.quantity)")
             LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
             LabeledRow(label: "Condition", value: item.condition.isEmpty ? "—" : item.condition)
+            if !item.tags.isEmpty {
+                LabeledRow(label: "Tags", value: item.tags.joined(separator: ", "))
+            }
             if !item.webLink.isEmpty {
                 LabeledRow(label: "Link", value: item.webLink)
                     .lineLimit(1)

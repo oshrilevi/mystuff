@@ -14,6 +14,7 @@ struct Item: Identifiable, Equatable {
     var updatedAt: String
     var photoIds: [String] // Drive file IDs
     var webLink: String
+    var tags: [String]
 
     init(
         id: String = UUID().uuidString,
@@ -27,7 +28,8 @@ struct Item: Identifiable, Equatable {
         createdAt: String = "",
         updatedAt: String = "",
         photoIds: [String] = [],
-        webLink: String = ""
+        webLink: String = "",
+        tags: [String] = []
     ) {
         self.id = id
         self.name = name
@@ -41,6 +43,7 @@ struct Item: Identifiable, Equatable {
         self.updatedAt = updatedAt.isEmpty ? ISO8601DateFormatter().string(from: Date()) : updatedAt
         self.photoIds = photoIds
         self.webLink = webLink
+        self.tags = tags
     }
 
     static let conditionPresets = ["New", "Like new", "Good", "Fair", "Poor"]
@@ -54,6 +57,6 @@ struct Item: Identifiable, Equatable {
 
     static let columnOrder = [
         "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
-        "createdAt", "updatedAt", "photoIds", "webLink"
+        "createdAt", "updatedAt", "photoIds", "webLink", "tags"
     ]
 }

@@ -28,6 +28,9 @@ struct ItemDetailView: View {
                     detailRow("Quantity", "\(item.quantity)")
                     detailRow("Purchase date", item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
                     detailRow("Condition", item.condition.isEmpty ? "—" : item.condition)
+                    if !item.tags.isEmpty {
+                        detailRow("Tags", item.tags.joined(separator: ", "))
+                    }
                     if !item.webLink.isEmpty, let url = URL(string: item.webLink) {
                         Link("View link", destination: url)
                             .font(.body)

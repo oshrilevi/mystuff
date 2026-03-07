@@ -5,6 +5,8 @@ struct PageMetadata {
     var description: String?
     var imageURL: String?
     var price: String?
+    /// Keywords/tags from meta keywords, og:keywords, or JSON-LD.
+    var tags: [String]
 }
 
 enum PageMetadataError: LocalizedError {
@@ -45,39 +47,115 @@ final class PageMetadataService {
         }
 
         let html = String(data: data, encoding: .utf8) ?? ""
-        return parseMetadata(from: html)
+        return parseMetadata(from: html, url: url)
     }
 
-    private func parseMetadata(from html: String) -> PageMetadata {
+    private func parseMetadata(from html: String, url: URL) -> PageMetadata {
         var title: String?
         var description: String?
         var imageURL: String?
         var price: String?
+        var tags: [String] = []
 
         // Open Graph
         title = title ?? valueForMeta(html, property: "og:title")
         description = description ?? valueForMeta(html, property: "og:description")
         imageURL = imageURL ?? valueForMeta(html, property: "og:image")
         price = price ?? valueForMeta(html, property: "product:price:amount")
+        if let kw = valueForMeta(html, property: "og:keywords") {
+            tags.append(contentsOf: parseKeywordsString(kw))
+        }
 
-        // Fallback: standard meta name
+        // All article:tag (multiple meta tags; common on news and product pages)
+        tags.append(contentsOf: allValuesForMeta(html, property: "article:tag"))
+
+        // Standard meta name
         if title == nil { title = valueForMetaName(html, name: "title") }
         if description == nil { description = valueForMetaName(html, name: "description") }
+        if let kw = valueForMetaName(html, name: "keywords"), !kw.isEmpty {
+            tags.append(contentsOf: parseKeywordsString(kw))
+        }
+        if let newsKw = valueForMetaName(html, name: "news_keywords"), !newsKw.isEmpty {
+            tags.append(contentsOf: parseKeywordsString(newsKw))
+        }
 
-        // JSON-LD Product (simple scan for "name" and "offers" near "@type":"Product")
-        if title == nil || price == nil, let product = parseJSONLDProduct(from: html) {
+        // JSON-LD Product / Article
+        if let product = parseJSONLDProduct(from: html) {
             if title == nil { title = product.name }
             if description == nil { description = product.description }
             if imageURL == nil { imageURL = product.image }
             if price == nil { price = product.price }
+            if let productTags = product.keywords { tags.append(contentsOf: productTags) }
+            if let cat = product.category { tags.append(contentsOf: cat) }
+        }
+
+        tags = tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        tags = Array(Set(tags))
+
+        // Fallback: derive tags from title and URL when no meta tags found (many sites omit keywords)
+        if tags.isEmpty {
+            if let t = title ?? valueForMeta(html, property: "og:title") {
+                tags = meaningfulWords(from: t)
+            }
+            if tags.isEmpty, let pathTags = tagsFromURLPath(url) {
+                tags = pathTags
+            }
         }
 
         return PageMetadata(
             title: title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? title : nil,
             description: description?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? description : nil,
             imageURL: imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? imageURL : nil,
-            price: price?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? price : nil
+            price: price?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? price : nil,
+            tags: tags
         )
+    }
+
+    /// Splits a comma- or semicolon-separated keywords string into trimmed, non-empty strings.
+    private func parseKeywordsString(_ raw: String) -> [String] {
+        let separated = raw.split(separator: ",").flatMap { $0.split(separator: ";") }
+        return separated.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+
+    /// Returns all content values for meta tags with the given property (e.g. article:tag).
+    private func allValuesForMeta(_ html: String, property: String) -> [String] {
+        let contentFirst = #"<meta[^>]+content\s*=\s*["']([^"']+)["'][^>]+property\s*=\s*["']\#(property)["']"#
+        let propertyFirst = #"<meta[^>]+property\s*=\s*["']\#(property)["'][^>]+content\s*=\s*["']([^"']+)["']"#
+        var result: [String] = []
+        for pattern in [contentFirst, propertyFirst] {
+            result.append(contentsOf: allCaptures(html: html, pattern: pattern))
+        }
+        return result.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+
+    private func allCaptures(html: String, pattern: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators]) else { return [] }
+        let range = NSRange(html.startIndex..., in: html)
+        let matches = regex.matches(in: html, options: [], range: range)
+        return matches.compactMap { match -> String? in
+            guard match.numberOfRanges > 1, let captureRange = Range(match.range(at: 1), in: html) else { return nil }
+            return String(html[captureRange])
+        }
+    }
+
+    /// Heuristic: split title into words and keep likely meaningful ones (brands, product terms).
+    private func meaningfulWords(from title: String) -> [String] {
+        let stopWords: Set<String> = ["the", "a", "an", "and", "or", "for", "with", "in", "on", "at", "to", "of", "by", "is", "–", "-", "|"]
+        let words = title.split(separator: " ")
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .filter { $0.count > 1 && !stopWords.contains($0.lowercased()) }
+        return Array(Set(words.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }))
+    }
+
+    /// Extract tag-like segments from URL path (e.g. /products/nikon-z5/ -> ["nikon", "z5"]).
+    private func tagsFromURLPath(_ url: URL) -> [String]? {
+        let path = url.path
+        guard path.count > 1 else { return nil }
+        let segments = path.split(separator: "/").filter { !$0.isEmpty }
+        let meaningful = segments.flatMap { segment in
+            segment.split(separator: "-").map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.count > 1 }
+        }
+        return meaningful.isEmpty ? nil : Array(Set(meaningful))
     }
 
     private func valueForMeta(_ html: String, property: String) -> String? {
@@ -109,6 +187,8 @@ final class PageMetadataService {
         var description: String?
         var image: String?
         var price: String?
+        var keywords: [String]?
+        var category: [String]?
     }
 
     private func parseJSONLDProduct(from html: String) -> JSONLDProduct? {
@@ -152,7 +232,39 @@ final class PageMetadataService {
         let description = extractString(for: "description")
         let image = extractString(for: "image")
         let price = extractPrice(from: block)
-        if name == nil && description == nil && image == nil && price == nil { return nil }
-        return JSONLDProduct(name: name, description: description, image: image, price: price)
+        var keywords: [String]? = nil
+        if let kwArray = extractStringArray(for: "keywords", from: block) {
+            keywords = kwArray
+        } else if let kw = extractString(for: "keywords") {
+            keywords = parseKeywordsString(kw)
+        }
+        var category: [String]? = nil
+        if let catArray = extractStringArray(for: "category", from: block) {
+            category = catArray
+        } else if let cat = extractString(for: "category") {
+            category = [cat]
+        }
+        if name == nil && description == nil && image == nil && price == nil && keywords == nil && category == nil { return nil }
+        return JSONLDProduct(name: name, description: description, image: image, price: price, keywords: keywords, category: category)
+    }
+
+    /// Extract string array from JSON: "key": ["a", "b", "c"]
+    private func extractStringArray(for key: String, from block: String) -> [String]? {
+        // "keywords": ["a", "b", "c"] or "category": ["Electronics", "Cameras"]
+        let pattern = "\"\(key)\"\\s*:\\s*\\[([^\\]]+)\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return nil }
+        let range = NSRange(block.startIndex..., in: block)
+        guard let match = regex.firstMatch(in: block, options: [], range: range), match.numberOfRanges > 1,
+              let innerRange = Range(match.range(at: 1), in: block) else { return nil }
+        let inner = String(block[innerRange])
+        let quoted = #""([^"]+)""#
+        guard let innerRegex = try? NSRegularExpression(pattern: quoted) else { return nil }
+        let innerNS = NSRange(inner.startIndex..., in: inner)
+        let matches = innerRegex.matches(in: inner, options: [], range: innerNS)
+        let values = matches.compactMap { m -> String? in
+            guard m.numberOfRanges > 1, let r = Range(m.range(at: 1), in: inner) else { return nil }
+            return String(inner[r])
+        }
+        return values.isEmpty ? nil : values
     }
 }
