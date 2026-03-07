@@ -33,6 +33,7 @@ struct ItemFormView: View {
     @State private var removedPhoto = false
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showDatePicker = false
     @FocusState private var focusedField: FocusField?
 
     private enum FocusField {
@@ -85,7 +86,33 @@ struct ItemFormView: View {
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Purchase Date").font(.subheadline).foregroundStyle(.secondary)
-                        DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
+                        Button {
+                            showDatePicker = true
+                        } label: {
+                            HStack {
+                                Text(Self.dateFormatter.string(from: purchaseDateValue))
+                                Spacer()
+                                Image(systemName: "calendar")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .sheet(isPresented: $showDatePicker) {
+                            NavigationStack {
+                                DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
+                                    #if os(iOS)
+                                    .datePickerStyle(.graphical)
+                                    #endif
+                                    .padding()
+                                    .onChange(of: purchaseDateValue) { _, _ in
+                                        showDatePicker = false
+                                    }
+                                    .toolbar {
+                                        ToolbarItem(placement: .confirmationAction) {
+                                            Button("Done") { showDatePicker = false }
+                                        }
+                                    }
+                            }
+                        }
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
