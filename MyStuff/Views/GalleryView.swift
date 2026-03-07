@@ -25,7 +25,7 @@ struct GalleryView: View {
                         }
                         LazyVGrid(columns: gridColumns, spacing: 16) {
                             ForEach(inventory.filteredItems) { item in
-                                ItemCard(item: item, thumbnailURL: inventory.thumbnailURL(for: item))
+                                ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first)
                                     .onTapGesture { selectedItem = item }
                             }
                         }
@@ -75,7 +75,8 @@ struct GalleryView: View {
 
 struct ItemCard: View {
     let item: Item
-    let thumbnailURL: URL?
+    let drive: DriveService
+    let photoId: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -83,17 +84,11 @@ struct ItemCard: View {
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.gray.opacity(0.2))
                     .aspectRatio(1, contentMode: .fit)
-                if let url = thumbnailURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image): image.resizable().scaledToFill()
-                        case .failure: Image(systemName: "photo").font(.largeTitle)
-                        default: ProgressView()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
-                    .cornerRadius(12)
+                if let fileId = photoId {
+                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fill)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        .cornerRadius(12)
                 } else {
                     Image(systemName: "photo")
                         .font(.largeTitle)

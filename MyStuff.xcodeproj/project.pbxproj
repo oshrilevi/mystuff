@@ -20,6 +20,7 @@
 		B0010000000000000000000B /* CategoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000B /* CategoriesView.swift */; };
 		B0010000000000000000000C /* GalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000C /* GalleryView.swift */; };
 		B0010000000000000000000D /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000D /* ItemDetailView.swift */; };
+		B00100000000000000000012 /* DriveImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000015 /* DriveImageView.swift */; };
 		B0010000000000000000000E /* ItemFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000E /* ItemFormView.swift */; };
 		B0010000000000000000000F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000F /* MainTabView.swift */; };
 		B00100000000000000000010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000010 /* RootView.swift */; };
@@ -43,6 +44,7 @@
 		F0010000000000000000000B /* CategoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesView.swift; sourceTree = "<group>"; };
 		F0010000000000000000000C /* GalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryView.swift; sourceTree = "<group>"; };
 		F0010000000000000000000D /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
+		F00100000000000000000015 /* DriveImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveImageView.swift; sourceTree = "<group>"; };
 		F0010000000000000000000E /* ItemFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemFormView.swift; sourceTree = "<group>"; };
 		F0010000000000000000000F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		F00100000000000000000010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				F0010000000000000000000B /* CategoriesView.swift */,
+				F00100000000000000000015 /* DriveImageView.swift */,
 				F0010000000000000000000C /* GalleryView.swift */,
 				F0010000000000000000000D /* ItemDetailView.swift */,
 				F0010000000000000000000E /* ItemFormView.swift */,
@@ -223,6 +226,7 @@
 				B0010000000000000000000B /* CategoriesView.swift in Sources */,
 				B0010000000000000000000C /* GalleryView.swift in Sources */,
 				B0010000000000000000000D /* ItemDetailView.swift in Sources */,
+				B00100000000000000000012 /* DriveImageView.swift in Sources */,
 				B0010000000000000000000E /* ItemFormView.swift in Sources */,
 				B0010000000000000000000F /* MainTabView.swift in Sources */,
 				B00100000000000000000010 /* RootView.swift in Sources */,

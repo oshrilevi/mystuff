@@ -68,6 +68,18 @@ final class DriveService {
         URL(string: "https://drive.google.com/thumbnail?id=\(fileId)&sz=w400")
     }
 
+    /// Fetches image bytes with auth (required for Drive; public thumbnail URL does not work unauthenticated).
+    func fetchImageData(fileId: String) async throws -> Data {
+        let token = try await tokenProvider()
+        var request = URLRequest(url: URL(string: baseURL + "/files/\(fileId)?alt=media")!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw DriveError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
+        }
+        return data
+    }
+
     func downloadURL(fileId: String) -> String {
         "https://www.googleapis.com/drive/v3/files/\(fileId)?alt=media"
     }

@@ -15,17 +15,11 @@ struct ItemDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    if let url = item.photoIds.first.flatMap({ session.drive.thumbnailURL(fileId: $0) }) {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .success(let image): image.resizable().scaledToFit()
-                            case .failure: Image(systemName: "photo").font(.largeTitle)
-                            default: ProgressView()
-                            }
-                        }
-                        .frame(maxHeight: 280)
-                        .clipped()
-                        .cornerRadius(12)
+                    if let fileId = item.photoIds.first {
+                        DriveImageView(drive: session.drive, fileId: fileId, contentMode: .fit)
+                            .frame(maxHeight: 280)
+                            .clipped()
+                            .cornerRadius(12)
                     }
                     detailRow("Name", item.name)
                     detailRow("Description", item.description.isEmpty ? "—" : item.description)
