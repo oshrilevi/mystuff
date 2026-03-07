@@ -40,6 +40,8 @@ struct GalleryView: View {
     @AppStorage("thumbnailSize") private var thumbnailSizeRaw: String = ThumbnailSize.medium.rawValue
     @State private var selectedItem: Item?
     @State private var showAddItem = false
+    /// Per-category section search text (key = category section id); filters items within that section.
+    @State private var sectionSearchTexts: [String: String] = [:]
 
     private var thumbnailSize: ThumbnailSize {
         ThumbnailSize(rawValue: thumbnailSizeRaw) ?? .medium
@@ -117,20 +119,43 @@ struct GalleryView: View {
                             }
                             if isShowingAllCategories && !categorySections.isEmpty {
                                 ForEach(categorySections) { section in
-                                    Section {
-                                        LazyVGrid(columns: gridColumns, spacing: 16) {
-                                            ForEach(section.items) { item in
-                                                ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-                                                    .onTapGesture { selectedItem = item }
-                                            }
+                                    let searchText = sectionSearchTexts[section.id] ?? ""
+                                    let filteredItems = searchText.isEmpty
+                                        ? section.items
+                                        : section.items.filter {
+                                            let q = searchText.lowercased()
+                                            return $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
                                         }
-                                        .padding(.horizontal)
-                                        .padding(.bottom, 24)
+                                    let filteredTotal = filteredItems.reduce(0.0) { sum, item in
+                                        let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                                        return sum + p * Double(item.quantity)
+                                    }
+                                    Section {
+                                        if filteredItems.isEmpty {
+                                            Text("No items match your filter")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 32)
+                                        } else {
+                                            LazyVGrid(columns: gridColumns, spacing: 16) {
+                                                ForEach(filteredItems) { item in
+                                                    ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+                                                        .onTapGesture { selectedItem = item }
+                                                }
+                                            }
+                                            .padding(.horizontal)
+                                            .padding(.bottom, 24)
+                                        }
                                     } header: {
                                         CategorySectionHeader(
                                             name: section.name,
-                                            itemCount: section.items.count,
-                                            totalValue: section.totalValue
+                                            itemCount: filteredItems.count,
+                                            totalValue: filteredTotal,
+                                            sectionSearchText: Binding(
+                                                get: { sectionSearchTexts[section.id] ?? "" },
+                                                set: { sectionSearchTexts[section.id] = $0 }
+                                            )
                                         )
                                     }
                                 }
@@ -287,6 +312,7 @@ struct CategorySectionHeader: View {
     let name: String
     let itemCount: Int
     let totalValue: Double
+    @Binding var sectionSearchText: String
 
     private var formattedValue: String {
         if totalValue == 0 { return "₪ 0" }
@@ -307,7 +333,13 @@ struct CategorySectionHeader: View {
             Text("Total: \(formattedValue)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Spacer()
+            Spacer(minLength: 8)
+            TextField("Filter in \(name)", text: $sectionSearchText)
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: 100, maxWidth: 180)
+                #if os(iOS)
+                .focusEffectDisabled()
+                #endif
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
