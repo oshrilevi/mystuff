@@ -5,8 +5,14 @@ struct CategoriesView: View {
     @EnvironmentObject var authService: GoogleAuthService
     @State private var newCategoryName = ""
     @State private var showAdd = false
+    @State private var editingCategory: Category?
+    @State private var editCategoryName = ""
 
     private var categoriesVM: CategoriesViewModel { session.categories }
+
+    private var sortedCategories: [Category] {
+        categoriesVM.categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,8 +27,11 @@ struct CategoriesView: View {
                                 Text(err).foregroundStyle(.red)
                             }
                         }
-                        ForEach(categoriesVM.categories) { cat in
+                        ForEach(sortedCategories) { cat in
                             Text(cat.name)
+                                .contentShape(Rectangle())
+                                .onTapGesture { beginEdit(cat) }
+                                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
                         }
                         .onDelete(perform: deleteCategories)
                     }
@@ -31,16 +40,19 @@ struct CategoriesView: View {
             }
             .navigationTitle("Categories")
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showAdd = true } label: { Image(systemName: "plus") }
-                }
                 #if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
-                    UserAvatarMenuView()
+                    HStack(spacing: 12) {
+                        Button { showAdd = true } label: { Image(systemName: "plus") }
+                        UserAvatarMenuView()
+                    }
                 }
                 #else
                 ToolbarItem(placement: .primaryAction) {
-                    UserAvatarMenuView()
+                    HStack(spacing: 12) {
+                        Button { showAdd = true } label: { Image(systemName: "plus") }
+                        UserAvatarMenuView()
+                    }
                 }
                 #endif
             }
@@ -57,11 +69,29 @@ struct CategoriesView: View {
             } message: {
                 Text("Enter category name")
             }
+            .alert("Edit category", isPresented: Binding(get: { editingCategory != nil }, set: { if !$0 { editingCategory = nil } })) {
+                TextField("Name", text: $editCategoryName)
+                Button("Cancel", role: .cancel) { editingCategory = nil }
+                Button("Save") {
+                    if let cat = editingCategory, !editCategoryName.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Task { await categoriesVM.updateCategory(id: cat.id, name: editCategoryName.trimmingCharacters(in: .whitespaces)) }
+                    }
+                    editingCategory = nil
+                }
+            } message: {
+                Text("Enter category name")
+            }
             .task { await categoriesVM.load() }
         }
     }
 
+    private func beginEdit(_ cat: Category) {
+        editingCategory = cat
+        editCategoryName = cat.name
+    }
+
     private func deleteCategories(at offsets: IndexSet) {
-        Task { await categoriesVM.deleteCategory(at: offsets) }
+        let ids = offsets.map { sortedCategories[$0].id }
+        Task { await categoriesVM.deleteCategory(ids: ids) }
     }
 }

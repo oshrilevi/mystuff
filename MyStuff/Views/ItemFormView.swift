@@ -38,6 +38,9 @@ struct ItemFormView: View {
     private var drive: DriveService { session.drive }
     private var pageMetadata: PageMetadataService { session.pageMetadata }
     private var categories: [Category] { session.categories.categories }
+    private var sortedCategories: [Category] {
+        categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
     private var isEdit: Bool { if case .edit = mode { true } else { false } }
     private var existingItem: Item? { if case .edit(let i) = mode { return i } else { return nil } }
 
@@ -62,7 +65,7 @@ struct ItemFormView: View {
                         Text("Category").font(.subheadline).foregroundStyle(.secondary)
                         Picker("", selection: $categoryId) {
                             Text("None").tag("")
-                            ForEach(categories) { cat in
+                            ForEach(sortedCategories) { cat in
                                 Text(cat.name).tag(cat.id)
                             }
                         }

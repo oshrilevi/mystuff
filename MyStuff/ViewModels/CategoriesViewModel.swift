@@ -59,10 +59,29 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func deleteCategory(at offsets: IndexSet) async {
+    func updateCategory(id: String, name: String) async {
         guard let sid = spreadsheetId else { return }
+        guard let index = categories.firstIndex(where: { $0.id == id }) else { return }
         var updated = categories
-        updated.remove(atOffsets: offsets)
+        updated[index].name = name
+        do {
+            try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
+            let header = [["id", "name", "order"]]
+            try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)"] }
+            if !rows.isEmpty {
+                try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
+            }
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteCategory(ids: [String]) async {
+        guard let sid = spreadsheetId else { return }
+        let idSet = Set(ids)
+        var updated = categories.filter { !idSet.contains($0.id) }
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [["id", "name", "order"]]
