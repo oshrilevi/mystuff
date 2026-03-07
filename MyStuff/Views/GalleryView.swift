@@ -1,5 +1,16 @@
 import SwiftUI
 
+/// Rounds value to 2 decimal places and formats as currency without trailing zeros.
+fileprivate func formatCurrency(_ value: Double) -> String {
+    if value == 0 { return "₪ 0" }
+    let rounded = (value * 100).rounded() / 100
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.minimumFractionDigits = 0
+    formatter.maximumFractionDigits = 2
+    return "₪ \(formatter.string(from: NSNumber(value: rounded)) ?? "0")"
+}
+
 enum ThumbnailSize: String, CaseIterable {
     case compact = "Compact"
     case medium = "Medium"
@@ -496,8 +507,7 @@ struct CategorySectionHeader: View {
     var showSearchField: Bool = true
 
     private var formattedValue: String {
-        if totalValue == 0 { return "₪ 0" }
-        return String(format: "₪ %.2f", totalValue)
+        formatCurrency(totalValue)
     }
 
     var body: some View {
@@ -581,8 +591,7 @@ struct StatusBar: View {
     let itemCount: Int
 
     private var formattedWorth: String {
-        if totalWorth == 0 { return "₪ 0" }
-        return String(format: "₪ %.2f", totalWorth)
+        formatCurrency(totalWorth)
     }
 
     var body: some View {
