@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import GoogleSignIn
+import Combine
 
 @MainActor
 final class Session: ObservableObject {
@@ -11,6 +12,7 @@ final class Session: ObservableObject {
     let categories: CategoriesViewModel
 
     private let authService: GoogleAuthService
+    private var cancellables = Set<AnyCancellable>()
 
     init(authService: GoogleAuthService) {
         self.authService = authService
@@ -23,6 +25,20 @@ final class Session: ObservableObject {
         })
         self.inventory = InventoryViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
         self.categories = CategoriesViewModel(sheets: self.sheets, appState: self.appState)
+
+        // Forward child view model updates so views observing Session re-render when items/categories load
+        appState.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        inventory.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        categories.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
     }
 
     func bootstrap() async {
