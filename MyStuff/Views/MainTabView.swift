@@ -21,11 +21,6 @@ struct MainTabView: View {
                 NavigationLink(value: 1) { Label("Categories", systemImage: "folder") }
             }
             .listStyle(.sidebar)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    UserAvatarMenuView()
-                }
-            }
         } detail: {
             if selectedTab == 0 {
                 GalleryView()

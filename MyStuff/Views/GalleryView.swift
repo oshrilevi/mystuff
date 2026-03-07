@@ -5,6 +5,14 @@ enum ThumbnailSize: String, CaseIterable {
     case medium = "Medium"
     case large = "Large"
 
+    var icon: String {
+        switch self {
+        case .compact: return "square.grid.3x3"
+        case .medium: return "square.grid.2x2"
+        case .large: return "rectangle.grid.1x2"
+        }
+    }
+
     var gridMinimum: CGFloat {
         switch self {
         case .compact: return 80
@@ -27,6 +35,21 @@ struct GalleryView: View {
 
     private var inventory: InventoryViewModel { session.inventory }
     private var categories: [Category] { session.categories.categories }
+
+    /// Display name for the current category (for title and dropdown).
+    private var currentCategoryName: String {
+        guard let id = inventory.selectedCategoryId, !id.isEmpty else { return "All" }
+        return categories.first(where: { $0.id == id })?.name ?? "All"
+    }
+
+    /// Toolbar title: "N Items" when All, "N Items in [CATEGORY]" when a category is selected.
+    private var toolbarTitle: String {
+        let n = inventory.filteredItems.count
+        guard let id = inventory.selectedCategoryId, !id.isEmpty else {
+            return "\(n) Items"
+        }
+        return "\(n) Items in \(currentCategoryName)"
+    }
 
     /// Total worth (price × quantity) of items in the current filtered view.
     private var totalWorth: Double {
@@ -66,37 +89,49 @@ struct GalleryView: View {
 
                 StatusBar(totalWorth: totalWorth, itemCount: inventory.filteredItems.count)
             }
-            .searchable(text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }), prompt: "Search items")
-            .navigationTitle("Items")
+            #if os(iOS)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            #else
+            .navigationTitle(toolbarTitle)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Picker("Thumbnail size", selection: $thumbnailSizeRaw) {
-                            ForEach(ThumbnailSize.allCases, id: \.rawValue) { size in
-                                Text(size.rawValue).tag(size.rawValue)
-                            }
-                        }
-                        Picker("Category", selection: Binding(get: { inventory.selectedCategoryId }, set: { inventory.selectedCategoryId = $0 })) {
-                            Text("All").tag(nil as String?)
-                            ForEach(categories) { cat in
-                                Text(cat.name).tag(cat.id as String?)
-                            }
-                        }
-                        Button("Refresh") { Task { await inventory.refresh() } }
-                    } label: { Image(systemName: "line.3.horizontal.decrease.circle") }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showAddItem = true } label: { Image(systemName: "plus") }
-                }
                 #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
-                    UserAvatarMenuView()
-                }
-                #else
-                ToolbarItem(placement: .primaryAction) {
-                    UserAvatarMenuView()
+                ToolbarItem(placement: .topBarLeading) {
+                    Text(toolbarTitle)
+                        .font(.headline)
                 }
                 #endif
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { showAddItem = true } label: { Image(systemName: "plus") }
+                }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Picker("Thumbnail size", selection: $thumbnailSizeRaw) {
+                        ForEach(ThumbnailSize.allCases, id: \.rawValue) { size in
+                            Image(systemName: size.icon).tag(size.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    Picker("Category", selection: Binding(get: { inventory.selectedCategoryId }, set: { inventory.selectedCategoryId = $0 })) {
+                        Text("All").tag(nil as String?)
+                        ForEach(categories) { cat in
+                            Text(cat.name).tag(cat.id as String?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    HStack(spacing: 16) {
+                        TextField("Search items", text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
+                            .textFieldStyle(.roundedBorder)
+                            .frame(minWidth: 120, maxWidth: 200)
+                            #if os(iOS)
+                            .focusEffectDisabled()
+                            #endif
+                        Rectangle()
+                            .fill(.tertiary)
+                            .frame(width: 1, height: 20)
+                        UserAvatarMenuView()
+                    }
+                }
             }
             .sheet(item: $selectedItem) { item in
                 ItemDetailView(item: item)
