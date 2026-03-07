@@ -20,6 +20,11 @@ enum ThumbnailSize: String, CaseIterable {
         case .large: return 200
         }
     }
+
+    /// Fixed size of the thumbnail image container (width and height).
+    var thumbnailDimension: CGFloat {
+        gridMinimum
+    }
 }
 
 struct GalleryView: View {
@@ -180,15 +185,16 @@ struct ItemCard: View {
         }
     }
 
+    private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: thumbnailSize == .compact ? 8 : 12)
                     .fill(Color.gray.opacity(0.2))
-                    .aspectRatio(1, contentMode: .fit)
                 if let fileId = photoId {
                     DriveImageView(drive: drive, fileId: fileId, contentMode: .fill)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(width: thumbDimension, height: thumbDimension)
                         .clipped()
                         .cornerRadius(thumbnailSize == .compact ? 8 : 12)
                 } else {
@@ -197,6 +203,7 @@ struct ItemCard: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .frame(width: thumbDimension, height: thumbDimension)
             Text(item.name)
                 .font(titleFont)
                 .fontWeight(.medium)
