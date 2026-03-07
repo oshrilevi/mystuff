@@ -59,7 +59,7 @@ struct ItemsListView: View {
         let list = inventory.filteredItems
         let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
         var sections: [CategorySection] = []
-        let sortedCats = categories.sorted { $0.order < $1.order }
+        let sortedCats = categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         for cat in sortedCats {
             guard let items = byCategory[cat.id], !items.isEmpty else { continue }
             let total = items.reduce(0.0) { sum, item in
