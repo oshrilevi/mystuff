@@ -3,11 +3,12 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var authService: GoogleAuthService
     @State private var selectedTab = 0
+    @State private var itemViewMode: ItemViewMode = .grid
 
     var body: some View {
         #if os(iOS)
         TabView(selection: $selectedTab) {
-            GalleryView()
+            ItemsTabView(viewMode: $itemViewMode)
                 .tabItem { Label("Items", systemImage: "square.grid.2x2") }
                 .tag(0)
             CategoriesView()
@@ -23,11 +24,25 @@ struct MainTabView: View {
             .listStyle(.sidebar)
         } detail: {
             if selectedTab == 0 {
-                GalleryView()
+                ItemsTabView(viewMode: $itemViewMode)
             } else {
                 CategoriesView()
             }
         }
         #endif
+    }
+}
+
+struct ItemsTabView: View {
+    @Binding var viewMode: ItemViewMode
+
+    var body: some View {
+        Group {
+            if viewMode == .grid {
+                GalleryView(viewMode: $viewMode)
+            } else {
+                ItemsListView(viewMode: $viewMode)
+            }
+        }
     }
 }

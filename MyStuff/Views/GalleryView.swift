@@ -38,6 +38,32 @@ enum ThumbnailSize: String, CaseIterable {
     }
 }
 
+/// Unified display choice: grid at a thumbnail size, or list. One segmented control in the toolbar.
+enum ItemsDisplayChoice: String, CaseIterable {
+    case gridCompact = "Compact"
+    case gridMedium = "Medium"
+    case gridLarge = "Large"
+    case list = "List"
+
+    var icon: String {
+        switch self {
+        case .gridCompact: return ThumbnailSize.compact.icon
+        case .gridMedium: return ThumbnailSize.medium.icon
+        case .gridLarge: return ThumbnailSize.large.icon
+        case .list: return "list.bullet"
+        }
+    }
+
+    var thumbnailSizeRaw: String {
+        switch self {
+        case .gridCompact: return ThumbnailSize.compact.rawValue
+        case .gridMedium: return ThumbnailSize.medium.rawValue
+        case .gridLarge: return ThumbnailSize.large.rawValue
+        case .list: return ThumbnailSize.medium.rawValue
+        }
+    }
+}
+
 struct CategorySection: Identifiable {
     let id: String
     let name: String
@@ -67,6 +93,7 @@ struct ItemSortOrder {
 struct GalleryView: View {
     @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
+    @Binding var viewMode: ItemViewMode
     @AppStorage("thumbnailSize") private var thumbnailSizeRaw: String = ThumbnailSize.medium.rawValue
     @State private var selectedItem: Item?
     @State private var showAddItem = false
@@ -77,6 +104,24 @@ struct GalleryView: View {
 
     private var thumbnailSize: ThumbnailSize {
         ThumbnailSize(rawValue: thumbnailSizeRaw) ?? .medium
+    }
+
+    /// One segmented control: Compact | Medium | Large | List (same bar as view options).
+    private var displayChoiceBinding: Binding<ItemsDisplayChoice> {
+        Binding(
+            get: {
+                if viewMode == .list { return .list }
+                return ItemsDisplayChoice(rawValue: thumbnailSizeRaw) ?? .gridMedium
+            },
+            set: { choice in
+                if choice == .list {
+                    viewMode = .list
+                } else {
+                    viewMode = .grid
+                    thumbnailSizeRaw = choice.thumbnailSizeRaw
+                }
+            }
+        )
     }
 
     private var inventory: InventoryViewModel { session.inventory }
@@ -288,9 +333,9 @@ struct GalleryView: View {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Picker("Thumbnail size", selection: $thumbnailSizeRaw) {
-                        ForEach(ThumbnailSize.allCases, id: \.rawValue) { size in
-                            Image(systemName: size.icon).tag(size.rawValue)
+                    Picker("Display", selection: displayChoiceBinding) {
+                        ForEach(ItemsDisplayChoice.allCases, id: \.rawValue) { choice in
+                            Image(systemName: choice.icon).tag(choice)
                         }
                     }
                     .pickerStyle(.segmented)
