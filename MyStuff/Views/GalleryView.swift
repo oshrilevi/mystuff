@@ -184,8 +184,13 @@ struct GalleryView: View {
                                         } else {
                                             LazyVGrid(columns: gridColumns, spacing: 16) {
                                                 ForEach(sortedItemsForSection) { item in
-                                                    ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-                                                        .onTapGesture { selectedItem = item }
+                                                    ItemCardWithHoverPopover(
+                                                        item: item,
+                                                        categoryName: section.name,
+                                                        drive: session.drive,
+                                                        thumbnailSize: thumbnailSize,
+                                                        onTap: { selectedItem = item }
+                                                    )
                                                 }
                                             }
                                             .padding(.horizontal)
@@ -233,8 +238,13 @@ struct GalleryView: View {
                                     )
                                     LazyVGrid(columns: gridColumns, spacing: 16) {
                                         ForEach(singleCategorySorted) { item in
-                                            ItemCard(item: item, drive: session.drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-                                                .onTapGesture { selectedItem = item }
+                                            ItemCardWithHoverPopover(
+                                                item: item,
+                                                categoryName: currentCategoryName,
+                                                drive: session.drive,
+                                                thumbnailSize: thumbnailSize,
+                                                onTap: { selectedItem = item }
+                                            )
                                         }
                                     }
                                     .padding()
@@ -309,6 +319,98 @@ struct GalleryView: View {
         [GridItem(.adaptive(minimum: thumbnailSize.gridMinimum), spacing: 16)]
     }
 }
+
+// MARK: - Hover popover (macOS)
+
+/// Compact popover content showing all item fields after 1s hover.
+struct ItemHoverPopoverContent: View {
+    let item: Item
+    let categoryName: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(item.name)
+                .font(.headline)
+                .lineLimit(2)
+            if !item.description.isEmpty {
+                Text(item.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+            Divider()
+            LabeledRow(label: "Category", value: categoryName)
+            LabeledRow(label: "Price", value: Item.priceInNIS(item.price))
+            LabeledRow(label: "Quantity", value: "\(item.quantity)")
+            LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
+            LabeledRow(label: "Condition", value: item.condition.isEmpty ? "—" : item.condition)
+            if !item.webLink.isEmpty {
+                LabeledRow(label: "Link", value: item.webLink)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(12)
+        .frame(minWidth: 220, maxWidth: 320, alignment: .leading)
+    }
+}
+
+private struct LabeledRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .frame(width: 80, alignment: .leading)
+            Text(value)
+                .font(.caption)
+        }
+    }
+}
+
+/// Wraps an item card and shows a popover with full item info after hovering for 1 second (macOS only).
+struct ItemCardWithHoverPopover: View {
+    let item: Item
+    let categoryName: String
+    let drive: DriveService
+    var thumbnailSize: ThumbnailSize = .medium
+    var onTap: () -> Void
+
+    #if os(macOS)
+    @State private var isHovering = false
+    @State private var showHoverPopover = false
+    @State private var hoverTask: Task<Void, Never>?
+    #endif
+
+    var body: some View {
+        ItemCard(item: item, drive: drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+            .onTapGesture { onTap() }
+            #if os(macOS)
+            .onHover { inside in
+                isHovering = inside
+                if inside {
+                    hoverTask = Task {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        guard !Task.isCancelled else { return }
+                        await MainActor.run { showHoverPopover = true }
+                    }
+                } else {
+                    hoverTask?.cancel()
+                    hoverTask = nil
+                    showHoverPopover = false
+                }
+            }
+            .popover(isPresented: $showHoverPopover, arrowEdge: .bottom) {
+                ItemHoverPopoverContent(item: item, categoryName: categoryName)
+            }
+            #endif
+    }
+}
+
+// MARK: - Item card
 
 struct ItemCard: View {
     let item: Item
