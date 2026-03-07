@@ -1,0 +1,65 @@
+import SwiftUI
+
+struct ItemDetailView: View {
+    @EnvironmentObject var session: Session
+    @Environment(\.dismiss) private var dismiss
+    let item: Item
+    @State private var showEdit = false
+
+    private var inventory: InventoryViewModel { session.inventory }
+    private var categoryName: String {
+        session.categories.categories.first { $0.id == item.categoryId }?.name ?? "—"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let url = item.photoIds.first.flatMap({ session.drive.thumbnailURL(fileId: $0) }) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image): image.resizable().scaledToFit()
+                            case .failure: Image(systemName: "photo").font(.largeTitle)
+                            default: ProgressView()
+                            }
+                        }
+                        .frame(maxHeight: 280)
+                        .clipped()
+                        .cornerRadius(12)
+                    }
+                    detailRow("Name", item.name)
+                    detailRow("Description", item.description.isEmpty ? "—" : item.description)
+                    detailRow("Category", categoryName)
+                    detailRow("Price", item.price.isEmpty ? "—" : item.price)
+                    detailRow("Purchase date", item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
+                    detailRow("Condition", item.condition.isEmpty ? "—" : item.condition)
+                }
+                .padding()
+            }
+            .navigationTitle(item.name)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit") { showEdit = true }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showEdit) {
+                ItemFormView(mode: .edit(item))
+                    .environmentObject(session)
+                    .onDisappear { Task { await inventory.refresh() }; dismiss() }
+            }
+        }
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.body)
+        }
+    }
+}
