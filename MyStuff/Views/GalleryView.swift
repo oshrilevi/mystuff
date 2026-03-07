@@ -69,9 +69,6 @@ struct GalleryView: View {
             .searchable(text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }), prompt: "Search items")
             .navigationTitle("Items")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Sign out") { authService.signOut() }
-                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Picker("Thumbnail size", selection: $thumbnailSizeRaw) {
@@ -91,6 +88,15 @@ struct GalleryView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }
                 }
+                #if os(iOS)
+                ToolbarItem(placement: .topBarTrailing) {
+                    UserAvatarMenuView()
+                }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    UserAvatarMenuView()
+                }
+                #endif
             }
             .sheet(item: $selectedItem) { item in
                 ItemDetailView(item: item)

@@ -31,12 +31,18 @@ struct CategoriesView: View {
             }
             .navigationTitle("Categories")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Sign out") { authService.signOut() }
-                }
                 ToolbarItem(placement: .primaryAction) {
                     Button { showAdd = true } label: { Image(systemName: "plus") }
                 }
+                #if os(iOS)
+                ToolbarItem(placement: .topBarTrailing) {
+                    UserAvatarMenuView()
+                }
+                #else
+                ToolbarItem(placement: .primaryAction) {
+                    UserAvatarMenuView()
+                }
+                #endif
             }
             .alert("New category", isPresented: $showAdd) {
                 TextField("Name", text: $newCategoryName)

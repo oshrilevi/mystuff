@@ -25,6 +25,7 @@
 		B0010000000000000000000F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000F /* MainTabView.swift */; };
 		B00100000000000000000010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000010 /* RootView.swift */; };
 		B00100000000000000000011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000011 /* SignInView.swift */; };
+		B00100000000000000000013 /* UserAvatarMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000016 /* UserAvatarMenuView.swift */; };
 		B00100000000000000000020 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = XGSPKG001GoogleSignIn00000001 /* GoogleSignIn */; };
 		B00100000000000000000021 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = XGSPKG001GoogleSignIn00000002 /* GoogleSignInSwift */; };
 		B00100000000000000000022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000013 /* Assets.xcassets */; };
@@ -49,6 +50,7 @@
 		F0010000000000000000000F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		F00100000000000000000010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		F00100000000000000000011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		F00100000000000000000016 /* UserAvatarMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAvatarMenuView.swift; sourceTree = "<group>"; };
 		F00100000000000000000012 /* MyStuff.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyStuff.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00100000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00100000000000000000014 /* MyStuff.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyStuff.entitlements; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 				F0010000000000000000000F /* MainTabView.swift */,
 				F00100000000000000000010 /* RootView.swift */,
 				F00100000000000000000011 /* SignInView.swift */,
+				F00100000000000000000016 /* UserAvatarMenuView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -231,6 +234,7 @@
 				B0010000000000000000000F /* MainTabView.swift in Sources */,
 				B00100000000000000000010 /* RootView.swift in Sources */,
 				B00100000000000000000011 /* SignInView.swift in Sources */,
+				B00100000000000000000013 /* UserAvatarMenuView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

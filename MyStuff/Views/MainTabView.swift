@@ -22,8 +22,8 @@ struct MainTabView: View {
             }
             .listStyle(.sidebar)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Sign out") { authService.signOut() }
+                ToolbarItem(placement: .primaryAction) {
+                    UserAvatarMenuView()
                 }
             }
         } detail: {
