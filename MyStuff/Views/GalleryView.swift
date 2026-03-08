@@ -550,24 +550,33 @@ struct ItemCardWithHoverPopover: View {
     @State private var hoverTask: Task<Void, Never>?
     #endif
 
+    private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
+
     var body: some View {
         ItemCard(item: item, drive: drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
-            .onTapGesture { onTap() }
-            #if os(macOS)
-            .onHover { inside in
-                isHovering = inside
-                if inside {
-                    hoverTask = Task {
-                        try? await Task.sleep(nanoseconds: 1_000_000_000)
-                        guard !Task.isCancelled else { return }
-                        await MainActor.run { showHoverPopover = true }
+            .overlay(alignment: .topLeading) {
+                Color.clear
+                    .frame(width: thumbDimension, height: thumbDimension)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onTap() }
+                    #if os(macOS)
+                    .onHover { inside in
+                        isHovering = inside
+                        if inside {
+                            hoverTask = Task {
+                                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                                guard !Task.isCancelled else { return }
+                                await MainActor.run { showHoverPopover = true }
+                            }
+                        } else {
+                            hoverTask?.cancel()
+                            hoverTask = nil
+                            showHoverPopover = false
+                        }
                     }
-                } else {
-                    hoverTask?.cancel()
-                    hoverTask = nil
-                    showHoverPopover = false
-                }
+                    #endif
             }
+            #if os(macOS)
             .popover(isPresented: $showHoverPopover, arrowEdge: .bottom) {
                 ItemHoverPopoverContent(item: item, categoryName: categoryName)
             }
