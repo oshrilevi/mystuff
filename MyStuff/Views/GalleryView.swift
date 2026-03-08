@@ -626,11 +626,9 @@ struct ItemCard: View {
                 .fontWeight(.medium)
                 .lineLimit(1)
             HStack(spacing: 4) {
-                if !item.price.isEmpty {
-                    Text(Item.priceInNIS(item.price))
-                        .font(priceFont)
-                        .foregroundStyle(.secondary)
-                }
+                Text(Item.priceInNIS(item.price))
+                    .font(priceFont)
+                    .foregroundStyle(.secondary)
                 if item.quantity > 1 {
                     Text("× \(item.quantity)")
                         .font(priceFont)

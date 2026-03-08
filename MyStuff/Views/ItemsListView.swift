@@ -475,11 +475,9 @@ private struct ItemListRow: View {
                     .font(.body)
                     .fontWeight(.medium)
                 HStack(spacing: 8) {
-                    if !item.price.isEmpty {
-                        Text(Item.priceInNIS(item.price))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(Item.priceInNIS(item.price))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Text("·")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
