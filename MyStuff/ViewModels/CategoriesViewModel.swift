@@ -51,6 +51,7 @@ final class CategoriesViewModel: ObservableObject {
             if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)"] }) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
+            applyWishlistPinnedByDefault()
         } catch {
             errorMessage = error.localizedDescription
             if let data = UserDefaults.standard.data(forKey: categoriesCacheKey),
@@ -60,7 +61,18 @@ final class CategoriesViewModel: ObservableObject {
                     return Category(id: row[0], name: row[1], order: index + 2)
                 }
                 categories = cached
+                applyWishlistPinnedByDefault()
             }
+        }
+    }
+
+    /// If the user has never set pinned categories, pin the Wishlist category by default.
+    private func applyWishlistPinnedByDefault() {
+        guard UserDefaults.standard.object(forKey: pinnedCategoryIdsKey) == nil else { return }
+        guard let wishlist = categories.first(where: { Category.isWishlist($0.name) }) else { return }
+        pinnedCategoryIds.insert(wishlist.id)
+        if let data = try? JSONEncoder().encode(pinnedCategoryIds) {
+            UserDefaults.standard.set(data, forKey: pinnedCategoryIdsKey)
         }
     }
 
