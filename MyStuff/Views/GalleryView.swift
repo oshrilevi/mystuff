@@ -550,6 +550,7 @@ private struct LabeledRow: View {
 
 /// Wraps an item card (hover popover disabled).
 struct ItemCardWithHoverPopover: View {
+    @EnvironmentObject var session: Session
     let item: Item
     let categoryName: String
     let drive: DriveService
@@ -565,6 +566,21 @@ struct ItemCardWithHoverPopover: View {
                     .frame(width: thumbDimension, height: thumbDimension)
                     .contentShape(Rectangle())
                     .onTapGesture { onTap() }
+                    .contextMenu {
+                        if !item.webLink.isEmpty, let url = URL(string: item.webLink) {
+                            Button("Visit Product Page") {
+                                #if os(iOS)
+                                UIApplication.shared.open(url)
+                                #elseif os(macOS)
+                                NSWorkspace.shared.open(url)
+                                #endif
+                            }
+                        }
+                        Button("Search On YouTube") {
+                            session.youtubeSearchQuery = item.name
+                            session.requestedSidebarSelection = .youtube
+                        }
+                    }
             }
     }
 }
