@@ -1,6 +1,7 @@
 import SwiftUI
 #if os(iOS)
 import PhotosUI
+import UIKit
 #elseif os(macOS)
 import UniformTypeIdentifiers
 #endif
@@ -27,8 +28,12 @@ struct ItemFormView: View {
     @State private var isExtracting = false
     #if os(iOS)
     @State private var selectedPhotos: [PhotosPickerItem] = []
+    @State private var showCamera = false
+    @State private var capturedImageData: Data?
     #elseif os(macOS)
     @State private var showImagePicker = false
+    @State private var showCamera = false
+    @State private var capturedImageData: Data?
     #endif
     @State private var imageData: [Data] = []
     @State private var removedPhoto = false
@@ -228,28 +233,44 @@ struct ItemFormView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    PhotosPicker(
-                        selection: $selectedPhotos,
-                        maxSelectionCount: 10,
-                        matching: .images
-                    ) {
-                        Label(isEdit && showCurrentPhoto ? "Pick new photos to replace" : "Pick photos", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .onChange(of: selectedPhotos) { _, new in
-                        removedPhoto = false
-                        Task { await loadPhotos(new) }
+                    HStack(spacing: 12) {
+                        PhotosPicker(
+                            selection: $selectedPhotos,
+                            maxSelectionCount: 10,
+                            matching: .images
+                        ) {
+                            Label(isEdit && showCurrentPhoto ? "Pick new photos to replace" : "Pick photos", systemImage: "photo.on.rectangle.angled")
+                        }
+                        .onChange(of: selectedPhotos) { _, new in
+                            removedPhoto = false
+                            Task { await loadPhotos(new) }
+                        }
+                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                            Button {
+                                showCamera = true
+                            } label: {
+                                Label("Take photo", systemImage: "camera")
+                            }
+                        }
                     }
                     #elseif os(macOS)
-                    if !showCurrentPhoto || !imageData.isEmpty {
-                        Button("Choose images…") { showImagePicker = true }
-                        .fileImporter(
-                            isPresented: $showImagePicker,
-                            allowedContentTypes: [.image, .jpeg, .png],
-                            allowsMultipleSelection: true
-                        ) { result in
-                            guard case .success(let urls) = result else { return }
-                            removedPhoto = false
-                            imageData = urls.compactMap { try? Data(contentsOf: $0) }
+                    HStack(spacing: 12) {
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("Take photo", systemImage: "camera")
+                        }
+                        if !showCurrentPhoto || !imageData.isEmpty {
+                            Button("Choose images…") { showImagePicker = true }
+                            .fileImporter(
+                                isPresented: $showImagePicker,
+                                allowedContentTypes: [.image, .jpeg, .png],
+                                allowsMultipleSelection: true
+                            ) { result in
+                                guard case .success(let urls) = result else { return }
+                                removedPhoto = false
+                                imageData = urls.compactMap { try? Data(contentsOf: $0) }
+                            }
                         }
                     }
                     if !imageData.isEmpty {
@@ -266,6 +287,28 @@ struct ItemFormView: View {
             .padding(20)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraImagePicker(imageData: $capturedImageData) {
+                    showCamera = false
+                    if let data = capturedImageData {
+                        imageData.append(data)
+                        removedPhoto = false
+                        selectedPhotos = []
+                    }
+                    capturedImageData = nil
+                }
+            }
+            #elseif os(macOS)
+            .sheet(isPresented: $showCamera) {
+                MacCameraCaptureView(capturedImageData: $capturedImageData) {
+                    showCamera = false
+                    if let data = capturedImageData {
+                        imageData.append(data)
+                        removedPhoto = false
+                    }
+                    capturedImageData = nil
+                }
+            }
             #endif
             .toolbar {
                 ToolbarItem(placement: .principal) {
