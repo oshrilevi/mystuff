@@ -407,12 +407,18 @@ struct GalleryView: View {
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .topBarLeading) {
+                    Button { showAddItem = true } label: { Image(systemName: "plus") }
+                }
+                ToolbarItem(placement: .topBarLeading) {
                     Text(toolbarTitle)
                         .font(.headline)
                 }
+                #else
+                ToolbarItem(placement: .navigation) {
+                    Button { showAddItem = true } label: { Image(systemName: "plus") }
+                }
                 #endif
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button { showAddItem = true } label: { Image(systemName: "plus") }
                     if isShowingAllCategories ? !categorySections.isEmpty : (inventory.selectedCategoryId ?? "").isEmpty == false {
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
