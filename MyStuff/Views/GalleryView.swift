@@ -105,6 +105,8 @@ struct GalleryView: View {
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
     /// Category section IDs that are collapsed (double-click header to toggle).
     @State private var collapsedSectionIds: Set<String> = []
+    /// When true, we have already applied "all collapsed" on first load; don't override user's expand/collapse.
+    @State private var hasAppliedInitialCollapse = false
 
     private var thumbnailSize: ThumbnailSize {
         ThumbnailSize(rawValue: thumbnailSizeRaw) ?? .medium
@@ -264,7 +266,6 @@ struct GalleryView: View {
                                                     }
                                                 }
                                                 .padding(.horizontal)
-                                                .padding(.bottom, 24)
                                                 .dropDestination(for: String.self) { itemIds, _ in
                                                     guard let itemId = itemIds.first,
                                                           let item = inventory.items.first(where: { $0.id == itemId }),
@@ -317,7 +318,6 @@ struct GalleryView: View {
                                         )
                                     }
                                 }
-                                .padding(.top, 8)
                             } else {
                                 let singleCategoryId = inventory.selectedCategoryId ?? ""
                                 let singleCategorySorted = sortedItems(inventory.filteredItems, sectionId: singleCategoryId)
@@ -460,6 +460,18 @@ struct GalleryView: View {
                     .onDisappear { Task { await inventory.refresh() } }
             }
             .task { await inventory.refresh() }
+            .onChange(of: categorySections.count) { _, newCount in
+                if !hasAppliedInitialCollapse, newCount > 0 {
+                    collapsedSectionIds = Set(categorySections.map(\.id))
+                    hasAppliedInitialCollapse = true
+                }
+            }
+            .onChange(of: inventory.selectedCategoryId) { _, newId in
+                if !hasAppliedInitialCollapse, let id = newId, !id.isEmpty {
+                    collapsedSectionIds = [id]
+                    hasAppliedInitialCollapse = true
+                }
+            }
         }
     }
 
@@ -634,6 +646,9 @@ struct ItemCard: View {
 }
 
 struct CategorySectionHeader: View {
+    /// Fixed height so the header doesn't shrink when collapsed.
+    static let fixedHeight: CGFloat = 44
+
     let name: String
     let itemCount: Int
     let totalValue: Double
@@ -763,7 +778,7 @@ struct CategorySectionHeader: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Self.fixedHeight, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
             onDoubleTap?()

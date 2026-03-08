@@ -33,6 +33,8 @@ struct ItemsListView: View {
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
     /// Category section IDs that are collapsed (double-click header to toggle).
     @State private var collapsedSectionIds: Set<String> = []
+    /// When true, we have already applied "all collapsed" on first load; don't override user's expand/collapse.
+    @State private var hasAppliedInitialCollapse = false
 
     private var inventory: InventoryViewModel { session.inventory }
     private var categories: [Category] { session.categories.categories }
@@ -132,15 +134,8 @@ struct ItemsListView: View {
         )
     }
 
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Group {
-                    if inventory.isLoading, inventory.items.isEmpty {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        List {
+    private var itemsListContent: some View {
+        return List {
                             if let err = inventory.errorMessage {
                                 Section {
                                     Text(err)
@@ -225,8 +220,10 @@ struct ItemsListView: View {
                                                 Task { await inventory.updateItem(updated) }
                                             }
                                         )
+                                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                                     }
                                 }
+                                .listSectionSeparator(.hidden)
                             } else {
                                 let singleCategoryId = inventory.selectedCategoryId ?? ""
                                 let singleCategorySorted = sortedItems(inventory.filteredItems, sectionId: singleCategoryId)
@@ -289,15 +286,25 @@ struct ItemsListView: View {
                                         },
                                         showSearchField: false
                                     )
+                                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                                 }
+                                .listSectionSeparator(.hidden)
                             }
-                        }
-                        #if os(iOS)
-                        .listStyle(.insetGrouped)
-                        #else
-                        .listStyle(.inset)
-                        #endif
-                        .refreshable { await inventory.refresh() }
+        }
+        .modifier(ItemsListStyleModifier())
+        .modifier(ItemsListSectionSpacingModifier())
+        .refreshable { await inventory.refresh() }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Group {
+                    if inventory.isLoading, inventory.items.isEmpty {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        itemsListContent
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -366,9 +373,45 @@ struct ItemsListView: View {
                     .onDisappear { Task { await inventory.refresh() } }
             }
             .task { await inventory.refresh() }
+            .onChange(of: categorySections.count) { _, newCount in
+                if !hasAppliedInitialCollapse, newCount > 0 {
+                    collapsedSectionIds = Set(categorySections.map(\.id))
+                    hasAppliedInitialCollapse = true
+                }
+            }
+            .onChange(of: inventory.selectedCategoryId) { _, newId in
+                if !hasAppliedInitialCollapse, let id = newId, !id.isEmpty {
+                    collapsedSectionIds = [id]
+                    hasAppliedInitialCollapse = true
+                }
+            }
         }
     }
 }
+
+private struct ItemsListStyleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.listStyle(.insetGrouped)
+        #else
+        content.listStyle(.inset)
+        #endif
+    }
+}
+
+#if os(iOS)
+private struct ItemsListSectionSpacingModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content.listSectionSpacing(0)
+    }
+}
+#else
+private struct ItemsListSectionSpacingModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+    }
+}
+#endif
 
 private struct ItemsListSearchField: View {
     @Binding var text: String
