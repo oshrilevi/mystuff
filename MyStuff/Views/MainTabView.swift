@@ -36,7 +36,13 @@ struct MainTabView: View {
                 .tabItem { Label("Sources", systemImage: "link") }
                 .tag(MainSidebarSelection.sourcesList)
             YouTubeSearchView()
-                .tabItem { Label("YouTube", systemImage: "play.rectangle") }
+                .tabItem {
+                    Label {
+                        Text("YouTube")
+                    } icon: {
+                        FaviconView(urlString: "https://www.youtube.com", fallbackSystemImage: "play.rectangle", size: 24)
+                    }
+                }
                 .tag(MainSidebarSelection.youtube)
         }
         .onChange(of: session.requestedSidebarSelection) { _, newValue in
@@ -58,7 +64,13 @@ struct MainTabView: View {
                     NavigationLink(value: MainSidebarSelection.sourcesList) { Label("Sources", systemImage: "link") }
                 }
                 Section("Media") {
-                    NavigationLink(value: MainSidebarSelection.youtube) { Label("YouTube", systemImage: "play.rectangle") }
+                    NavigationLink(value: MainSidebarSelection.youtube) {
+                        Label {
+                            Text("YouTube")
+                        } icon: {
+                            FaviconView(urlString: "https://www.youtube.com", fallbackSystemImage: "play.rectangle", size: 20)
+                        }
+                    }
                 }
                 Section("Stores") {
                     ForEach(session.stores.stores.sorted(by: { $0.order < $1.order })) { store in
