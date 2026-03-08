@@ -536,19 +536,13 @@ private struct LabeledRow: View {
     }
 }
 
-/// Wraps an item card and shows a popover with full item info after hovering for 1 second (macOS only).
+/// Wraps an item card (hover popover disabled).
 struct ItemCardWithHoverPopover: View {
     let item: Item
     let categoryName: String
     let drive: DriveService
     var thumbnailSize: ThumbnailSize = .medium
     var onTap: () -> Void
-
-    #if os(macOS)
-    @State private var isHovering = false
-    @State private var showHoverPopover = false
-    @State private var hoverTask: Task<Void, Never>?
-    #endif
 
     private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
 
@@ -559,28 +553,7 @@ struct ItemCardWithHoverPopover: View {
                     .frame(width: thumbDimension, height: thumbDimension)
                     .contentShape(Rectangle())
                     .onTapGesture { onTap() }
-                    #if os(macOS)
-                    .onHover { inside in
-                        isHovering = inside
-                        if inside {
-                            hoverTask = Task {
-                                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                                guard !Task.isCancelled else { return }
-                                await MainActor.run { showHoverPopover = true }
-                            }
-                        } else {
-                            hoverTask?.cancel()
-                            hoverTask = nil
-                            showHoverPopover = false
-                        }
-                    }
-                    #endif
             }
-            #if os(macOS)
-            .popover(isPresented: $showHoverPopover, arrowEdge: .bottom) {
-                ItemHoverPopoverContent(item: item, categoryName: categoryName)
-            }
-            #endif
     }
 }
 
