@@ -317,10 +317,23 @@ struct ItemsListView: View {
                         .font(.headline)
                 }
                 #endif
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { showAddItem = true } label: { Image(systemName: "plus") }
-                }
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Button { showAddItem = true } label: { Image(systemName: "plus") }
+                    if isShowingAllCategories ? !categorySections.isEmpty : (inventory.selectedCategoryId ?? "").isEmpty == false {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                let ids = isShowingAllCategories ? Set(categorySections.map(\.id)) : Set([inventory.selectedCategoryId ?? ""])
+                                collapsedSectionIds = ids
+                            }
+                        } label: { Image(systemName: "rectangle.compress.vertical") }
+                        .help("Collapse all categories")
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                collapsedSectionIds = []
+                            }
+                        } label: { Image(systemName: "rectangle.expand.vertical") }
+                        .help("Expand all categories")
+                    }
                     Picker("Display", selection: displayChoiceBinding) {
                         ForEach(ItemsDisplayChoice.allCases, id: \.rawValue) { choice in
                             Image(systemName: choice.icon).tag(choice)
