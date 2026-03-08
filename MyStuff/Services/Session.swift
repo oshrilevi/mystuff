@@ -18,6 +18,7 @@ final class Session: ObservableObject {
     let categories: CategoriesViewModel
     let locations: LocationsViewModel
     let stores: StoresViewModel
+    let sources: SourcesViewModel
 
     private let authService: GoogleAuthService
     private var cancellables = Set<AnyCancellable>()
@@ -36,6 +37,7 @@ final class Session: ObservableObject {
         self.categories = CategoriesViewModel(sheets: self.sheets, appState: self.appState)
         self.locations = LocationsViewModel(sheets: self.sheets, appState: self.appState)
         self.stores = StoresViewModel(sheets: self.sheets, appState: self.appState)
+        self.sources = SourcesViewModel(sheets: self.sheets, appState: self.appState)
 
         // Forward child view model updates so views observing Session re-render when items/categories load
         appState.objectWillChange
@@ -55,6 +57,10 @@ final class Session: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         stores.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        sources.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -92,6 +98,7 @@ final class Session: ObservableObject {
                     await self.categories.load()
                     await self.locations.load()
                     await self.stores.load()
+                    await self.sources.load()
                 }
                 return true
             }

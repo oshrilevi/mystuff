@@ -4,7 +4,7 @@ Reference for the Google Sheets and Drive layout. When you add or reorder column
 
 ## Google Spreadsheet
 
-Created on first run via `SheetsService.createSpreadsheet`. Four sheets:
+Created on first run via `SheetsService.createSpreadsheet`. Five sheets:
 
 ### Sheet: **Categories**
 
@@ -68,6 +68,19 @@ Created on first run via `SheetsService.createSpreadsheet`. Four sheets:
 - For existing spreadsheets created before Stores existed, the app adds the "Stores" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `StoresViewModel.load()`).
 - New spreadsheets are seeded with three default stores (Amazon, AliExpress, B&H Photo).
 
+### Sheet: **Sources**
+
+| Column index | Name   | Type   | Notes                                        |
+|--------------|--------|--------|----------------------------------------------|
+| A (0)        | id     | String | UUID                                         |
+| B (1)        | name   | String | Display name                                 |
+| C (2)        | url    | String | URL to open in the in-app source browser     |
+| D (3)        | order  | Int    | Sort order (row-based)                       |
+
+- Row 1 is the header row (`id`, `name`, `url`, `order`). Data starts at row 2.
+- `UserSource.columnOrder` in code: `["id", "name", "url", "order"]`.
+- For existing spreadsheets created before Sources existed, the app adds the "Sources" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `SourcesViewModel.load()`). No default seed rows; user adds sources in Settings → Sources.
+
 ## Google Drive
 
 - **Folder:** One folder per user, name **"MyStuff Photos"**, created in bootstrap via `DriveService.createFolder`.
@@ -84,6 +97,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Four sheets:
 | `mystuff_pinned_category_ids` | Pinned category IDs (Set)     |
 | `mystuff_default_location_id` | Default location ID for new items |
 | `mystuff_browser_<storeId>`   | Last-visited URL per store (in-app browser); storeId from Stores sheet |
+| `mystuff_browser_source_<id>` | Last-visited URL per source (in-app browser); id from Sources sheet   |
 
 **Caches directory (not UserDefaults):**
 

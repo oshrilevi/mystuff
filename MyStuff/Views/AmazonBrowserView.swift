@@ -313,7 +313,7 @@ import UIKit
 import AppKit
 #endif
 
-private enum OpenInBrowser {
+enum OpenInBrowser {
     /// Opens the URL in Chrome if available, otherwise in the system default browser.
     static func openInChromeOrDefault(_ url: URL) {
         guard url.scheme == "https" || url.scheme == "http" else { return }

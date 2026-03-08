@@ -20,7 +20,8 @@ final class SheetsService {
                 ["properties": ["title": "Categories"]],
                 ["properties": ["title": "Items"]],
                 ["properties": ["title": "Locations"]],
-                ["properties": ["title": "Stores"]]
+                ["properties": ["title": "Stores"]],
+                ["properties": ["title": "Sources"]]
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -45,6 +46,7 @@ final class SheetsService {
             [UUID().uuidString, "B&H Photo", "https://www.bhphotovideo.com/", "2", "camera"]
         ]
         try await appendRows(spreadsheetId: id, sheetName: "Stores", values: defaultStores)
+        try await appendRows(spreadsheetId: id, sheetName: "Sources", values: [["id", "name", "url", "order"]])
         return (id, "https://docs.google.com/spreadsheets/d/\(id)")
     }
 

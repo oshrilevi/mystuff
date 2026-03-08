@@ -8,6 +8,7 @@ Format: **[Version] (YYYY-MM-DD)** with sections Added / Changed / Fixed / Remov
 
 ## [Unreleased]
 
+- **Added:** Sources section. A new **Sources** sidebar section (and tab on iOS) lists user-defined web links. Sources are stored in a **Sources** Google Sheet and managed in **Settings → Sources** (add, edit, delete). Tapping a source opens it in the same in-app browser as stores (back, forward, reload, URL bar, Open in Chrome). Last-visited URL per source is persisted in UserDefaults (`mystuff_browser_source_<id>`). New spreadsheets get an empty Sources sheet; existing spreadsheets get the sheet on first load.
 - **Added:** “Search on YouTube” in the item detail dialog. A link next to “View link” opens a new **YouTube** section (tab on iOS, sidebar on macOS) with an in-app browser loading YouTube search results for the item name. Last-visited URL in the YouTube browser is persisted.
 - **Added:** Quick-add to wish list in the store browser. A sparkles toolbar button adds the current page to the Wishlist category without opening the add form: the app fetches metadata from the URL (title, description, price, tags) and saves the item for later editing. A spinner is shown while the request runs.
 - **Changed:** Item view and edit merged into one sheet. Tapping an item opens a single dialog; tapping Edit switches to edit mode in-place (no second sheet). Save returns to view mode with updated data; Done or Delete dismisses the sheet.

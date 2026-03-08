@@ -102,6 +102,7 @@ struct RootView: View {
                     await session.categories.load()
                     await session.locations.load()
                     await session.stores.load()
+                    await session.sources.load()
                     await session.inventory.refresh()
                     initialLoadComplete = true
                 }
