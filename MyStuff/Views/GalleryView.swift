@@ -150,7 +150,9 @@ struct GalleryView: View {
         }
     }
 
-    /// When filter is "All", groups filtered items by category for subsectioned layout.
+    private var pinnedCategoryIds: Set<String> { session.categories.pinnedCategoryIds }
+
+    /// When filter is "All", groups filtered items by category for subsectioned layout. Pinned categories always appear first.
     private var categorySections: [CategorySection] {
         let list = inventory.filteredItems
         let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
@@ -171,7 +173,9 @@ struct GalleryView: View {
             }
             sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
         }
-        return sections
+        let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return pinned + unpinned
     }
 
     private var isShowingAllCategories: Bool {
@@ -267,6 +271,9 @@ struct GalleryView: View {
                                                 get: { sortOrder(forSectionId: section.id) },
                                                 set: { sectionSortOrders[section.id] = $0 }
                                             ),
+                                            sectionId: section.id,
+                                            isPinned: pinnedCategoryIds.contains(section.id),
+                                            onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
                                                 showAddItem = true
@@ -288,6 +295,9 @@ struct GalleryView: View {
                                             get: { sortOrder(forSectionId: singleCategoryId) },
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
+                                        sectionId: singleCategoryId,
+                                        isPinned: pinnedCategoryIds.contains(singleCategoryId),
+                                        onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onAddItem: {
                                             inventory.lastNewItemCategoryId = singleCategoryId
                                             showAddItem = true
@@ -547,6 +557,9 @@ struct CategorySectionHeader: View {
     let totalValue: Double
     @Binding var sectionSearchText: String
     @Binding var sortOrder: ItemSortOrder
+    var sectionId: String? = nil
+    var isPinned: Bool = false
+    var onTogglePin: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
     var showSearchField: Bool = true
 
@@ -556,6 +569,16 @@ struct CategorySectionHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            if let onTogglePin {
+                Button {
+                    onTogglePin()
+                } label: {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .font(.subheadline)
+                        .foregroundStyle(isPinned ? Color.accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
             Text(name)
                 .font(.subheadline)
                 .fontWeight(.medium)

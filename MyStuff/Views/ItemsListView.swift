@@ -55,6 +55,8 @@ struct ItemsListView: View {
         }
     }
 
+    private var pinnedCategoryIds: Set<String> { session.categories.pinnedCategoryIds }
+
     private var categorySections: [CategorySection] {
         let list = inventory.filteredItems
         let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
@@ -75,7 +77,9 @@ struct ItemsListView: View {
             }
             sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
         }
-        return sections
+        let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return pinned + unpinned
     }
 
     private var isShowingAllCategories: Bool {
@@ -178,6 +182,9 @@ struct ItemsListView: View {
                                                 get: { sortOrder(forSectionId: section.id) },
                                                 set: { sectionSortOrders[section.id] = $0 }
                                             ),
+                                            sectionId: section.id,
+                                            isPinned: pinnedCategoryIds.contains(section.id),
+                                            onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
                                                 showAddItem = true
@@ -208,6 +215,9 @@ struct ItemsListView: View {
                                             get: { sortOrder(forSectionId: singleCategoryId) },
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
+                                        sectionId: singleCategoryId,
+                                        isPinned: pinnedCategoryIds.contains(singleCategoryId),
+                                        onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onAddItem: {
                                             inventory.lastNewItemCategoryId = singleCategoryId
                                             showAddItem = true

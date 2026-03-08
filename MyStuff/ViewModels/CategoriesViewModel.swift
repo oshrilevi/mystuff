@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 final class CategoriesViewModel: ObservableObject {
     @Published var categories: [Category] = []
+    @Published var pinnedCategoryIds: Set<String> = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -11,12 +12,28 @@ final class CategoriesViewModel: ObservableObject {
     private var spreadsheetId: String? { appState.spreadsheetId }
     private let appState: AppState
 
+    private let categoriesCacheKey = "mystuff_categories_cache"
+    private let pinnedCategoryIdsKey = "mystuff_pinned_category_ids"
+
     init(sheets: SheetsService, appState: AppState) {
         self.sheets = sheets
         self.appState = appState
+        if let data = UserDefaults.standard.data(forKey: pinnedCategoryIdsKey),
+           let ids = try? JSONDecoder().decode(Set<String>.self, from: data) {
+            pinnedCategoryIds = ids
+        }
     }
 
-    private let categoriesCacheKey = "mystuff_categories_cache"
+    func togglePinned(categoryId: String) {
+        if pinnedCategoryIds.contains(categoryId) {
+            pinnedCategoryIds.remove(categoryId)
+        } else {
+            pinnedCategoryIds.insert(categoryId)
+        }
+        if let data = try? JSONEncoder().encode(pinnedCategoryIds) {
+            UserDefaults.standard.set(data, forKey: pinnedCategoryIdsKey)
+        }
+    }
 
     func load() async {
         guard let sid = spreadsheetId else { return }
