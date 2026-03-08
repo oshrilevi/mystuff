@@ -102,9 +102,12 @@ final class PageMetadataService {
             }
         }
 
+        let cleanedTitle = title.map { cleanVendorPhrases(from: $0) }
+        let cleanedDescription = description.map { cleanVendorPhrases(from: $0) }
+
         return PageMetadata(
-            title: title?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? title : nil,
-            description: description?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? description : nil,
+            title: cleanedTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cleanedTitle : nil,
+            description: cleanedDescription?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cleanedDescription : nil,
             imageURL: imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? imageURL : nil,
             price: price?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? price : nil,
             tags: tags
@@ -136,6 +139,20 @@ final class PageMetadataService {
             guard match.numberOfRanges > 1, let captureRange = Range(match.range(at: 1), in: html) else { return nil }
             return String(html[captureRange])
         }
+    }
+
+    /// Removes common vendor boilerplate from title/description (e.g. Amazon prefixes and suffixes).
+    private func cleanVendorPhrases(from text: String) -> String {
+        var result = text
+        let phrasesToRemove = [
+            "Amazon.com: ",
+            "Buy ",
+            "- Amazon.com ✓ FREE DELIVERY possible on eligible purchases"
+        ]
+        for phrase in phrasesToRemove {
+            result = result.replacingOccurrences(of: phrase, with: "")
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Heuristic: split title into words and keep likely meaningful ones (brands, product terms).
