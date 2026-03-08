@@ -461,7 +461,7 @@ struct GalleryView: View {
             .task { await inventory.refresh() }
             .onChange(of: categorySections.count) { _, newCount in
                 if !inventory.hasAppliedInitialCategoryCollapse, newCount > 0 {
-                    inventory.categorySectionCollapsedIds = Set(categorySections.map(\.id))
+                    inventory.categorySectionCollapsedIds = Set(categorySections.filter { !Category.isWishlist($0.name) }.map(\.id))
                     inventory.hasAppliedInitialCategoryCollapse = true
                 }
             }
