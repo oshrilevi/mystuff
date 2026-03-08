@@ -352,6 +352,8 @@ struct StoreBrowserView: View {
     @StateObject private var webViewState = AmazonWebViewState()
     @State private var addFromURLItem: AddFromURLItem?
     @State private var urlBarText: String = ""
+    @State private var isQuickAddingToWishlist = false
+    @State private var wishlistToastMessage: String?
 
     private var initialURL: URL {
         (UserDefaults.standard.string(forKey: store.persistedURLKey)).flatMap { URL(string: $0) } ?? store.startURLAsURL
@@ -370,6 +372,18 @@ struct StoreBrowserView: View {
             toolbar
             AmazonWebViewRepresentable(initialURL: initialURL, persistedURLKey: store.persistedURLKey, state: webViewState)
         }
+        .overlay(alignment: .bottom) {
+            if let message = wishlistToastMessage {
+                Text(message)
+                    .font(.subheadline)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.bottom, 24)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: wishlistToastMessage != nil)
         .sheet(item: $addFromURLItem) { item in
             ItemFormView(mode: .add(initialWebLink: item.urlString, initialCategoryId: session.categories.wishlistCategoryId))
                 .environmentObject(session)
@@ -394,6 +408,65 @@ struct StoreBrowserView: View {
         }
         guard let url = URL(string: raw), url.scheme == "https" || url.scheme == "http" else { return }
         webViewState.loadURL?(url)
+    }
+
+    private func quickAddToWishlist() {
+        guard let urlString = webViewState.currentURLString,
+              !urlString.isEmpty,
+              let url = URL(string: urlString),
+              (url.scheme == "https" || url.scheme == "http"),
+              let wishlistCategoryId = session.categories.wishlistCategoryId
+        else {
+            return
+        }
+        isQuickAddingToWishlist = true
+        Task {
+            defer { Task { @MainActor in isQuickAddingToWishlist = false } }
+            let metadata: PageMetadata?
+            do {
+                metadata = try await session.pageMetadata.fetchMetadata(from: url)
+            } catch {
+                metadata = nil
+            }
+            let webLink = metadata?.resolvedURL?.absoluteString ?? urlString
+            let name: String
+            let description: String
+            let price: String
+            let tags: [String]
+            if let meta = metadata {
+                name = (meta.title?.trimmingCharacters(in: .whitespaces)).flatMap { $0.isEmpty ? nil : $0 } ?? "Item from \(url.host ?? "link")"
+                description = meta.description ?? ""
+                price = meta.price ?? ""
+                tags = meta.tags
+            } else {
+                name = "Item from \(url.host ?? "link")"
+                description = ""
+                price = ""
+                tags = []
+            }
+            let newItem = Item(
+                name: name,
+                description: description,
+                categoryId: wishlistCategoryId,
+                price: price,
+                purchaseDate: "",
+                condition: "",
+                quantity: 1,
+                webLink: webLink,
+                tags: tags,
+                locationId: ""
+            )
+            await session.inventory.addItem(newItem, imageData: [])
+            await MainActor.run {
+                if session.inventory.errorMessage == nil {
+                    wishlistToastMessage = "Added to wishlist"
+                    Task {
+                        try? await Task.sleep(nanoseconds: 2_500_000_000)
+                        await MainActor.run { wishlistToastMessage = nil }
+                    }
+                }
+            }
+        }
     }
 
     private var toolbar: some View {
@@ -450,6 +523,24 @@ struct StoreBrowserView: View {
             .help("Add this item")
             .accessibilityLabel("Add this item")
             .disabled(webViewState.currentURLString?.isEmpty ?? true)
+
+            Button {
+                quickAddToWishlist()
+            } label: {
+                if isQuickAddingToWishlist {
+                    ProgressView()
+                        .frame(width: 18, height: 18)
+                } else {
+                    Image(systemName: "sparkles")
+                }
+            }
+            .help("Quick add to wish list")
+            .accessibilityLabel("Quick add to wish list")
+            .disabled(
+                webViewState.currentURLString?.isEmpty ?? true
+                || session.categories.wishlistCategoryId == nil
+                || isQuickAddingToWishlist
+            )
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

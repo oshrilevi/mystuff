@@ -8,6 +8,7 @@ Format: **[Version] (YYYY-MM-DD)** with sections Added / Changed / Fixed / Remov
 
 ## [Unreleased]
 
+- **Added:** Quick-add to wish list in the store browser. A sparkles toolbar button adds the current page to the Wishlist category without opening the add form: the app fetches metadata from the URL (title, description, price, tags) and saves the item for later editing. A spinner is shown while the request runs.
 - **Changed:** Item view and edit merged into one sheet. Tapping an item opens a single dialog; tapping Edit switches to edit mode in-place (no second sheet). Save returns to view mode with updated data; Done or Delete dismisses the sheet.
 - **Changed:** Store icons now use each store’s website favicon (derived from its start URL). The SF Symbol in the Stores sheet is used as fallback when the favicon cannot be loaded. The add/edit store form no longer includes an icon picker.
 - **Added:** User-controlled stores. Stores are stored in the Google Sheet (new **Stores** sheet), like Categories and Locations. In **Settings → Stores** you can add, edit, and remove stores (name, start URL, icon). The **Stores** section in the sidebar lists your stores and opens each in the in-app browser. New spreadsheets are seeded with Amazon, AliExpress, and B&H Photo; existing spreadsheets get the Stores sheet on first load. Last-visited URL per store remains in UserDefaults (`mystuff_browser_<storeId>`).
