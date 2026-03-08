@@ -304,6 +304,38 @@ private struct AmazonWebViewRepresentable: NSViewRepresentable {
 }
 #endif
 
+// MARK: - Open in Chrome / default browser
+
+#if os(iOS)
+import UIKit
+#endif
+#if os(macOS)
+import AppKit
+#endif
+
+private enum OpenInBrowser {
+    /// Opens the URL in Chrome if available, otherwise in the system default browser.
+    static func openInChromeOrDefault(_ url: URL) {
+        guard url.scheme == "https" || url.scheme == "http" else { return }
+        #if os(iOS)
+        let chromeScheme = url.scheme == "https" ? "googlechromes" : "googlechrome"
+        let chromeURLString = url.absoluteString.replacingOccurrences(of: "\(url.scheme!)://", with: "\(chromeScheme)://")
+        guard let chromeURL = URL(string: chromeURLString) else { return }
+        if UIApplication.shared.canOpenURL(chromeURL) {
+            UIApplication.shared.open(chromeURL)
+        } else {
+            UIApplication.shared.open(url)
+        }
+        #elseif os(macOS)
+        if let chromeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {
+            NSWorkspace.shared.open([url], withApplicationAt: chromeURL, configuration: NSWorkspace.OpenConfiguration())
+        } else {
+            NSWorkspace.shared.open(url)
+        }
+        #endif
+    }
+}
+
 // MARK: - Sheet item for "Add from URL"
 
 private struct AddFromURLItem: Identifiable {
@@ -323,6 +355,14 @@ struct StoreBrowserView: View {
 
     private var initialURL: URL {
         (UserDefaults.standard.string(forKey: store.persistedURLKey)).flatMap { URL(string: $0) } ?? store.startURLAsURL
+    }
+
+    /// Current page URL if it is valid http(s), for the "Open in Chrome" button.
+    private var openInChromeURL: URL? {
+        guard let s = webViewState.currentURLString,
+              let url = URL(string: s),
+              url.scheme == "https" || url.scheme == "http" else { return nil }
+        return url
     }
 
     var body: some View {
@@ -386,6 +426,15 @@ struct StoreBrowserView: View {
                 )
                 .onSubmit { loadURLFromBar() }
                 .frame(minWidth: 0, maxWidth: .infinity)
+
+            Button {
+                guard let url = openInChromeURL else { return }
+                OpenInBrowser.openInChromeOrDefault(url)
+            } label: {
+                Image(systemName: "arrow.up.forward")
+            }
+            .accessibilityLabel("Open in Chrome")
+            .disabled(openInChromeURL == nil)
 
             Button {
                 if let url = webViewState.currentURLString, !url.isEmpty {
