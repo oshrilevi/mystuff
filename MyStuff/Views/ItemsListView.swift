@@ -338,6 +338,9 @@ struct ItemsListView: View {
                     Text(toolbarTitle)
                         .font(.headline)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    ExportMenuView()
+                }
                 #else
                 ToolbarItem(placement: .navigation) {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }

@@ -51,6 +51,8 @@
 		B00100000000000000000032 /* SourceBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002A /* SourceBrowserView.swift */; };
 		B00100000000000000000033 /* SourceIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002B /* SourceIconView.swift */; };
 		B00100000000000000000034 /* FaviconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002C /* FaviconView.swift */; };
+		B00100000000000000000035 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002D /* ExportService.swift */; };
+		B00100000000000000000036 /* ExportMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002E /* ExportMenuView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -98,6 +100,8 @@
 		F0010000000000000000002A /* SourceBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceBrowserView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002B /* SourceIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceIconView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002C /* FaviconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaviconView.swift; sourceTree = "<group>"; };
+		F0010000000000000000002D /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		F0010000000000000000002E /* ExportMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportMenuView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +142,7 @@
 			children = (
 				F00100000000000000000004 /* AppState.swift */,
 				F00100000000000000000005 /* DriveService.swift */,
+				F0010000000000000000002D /* ExportService.swift */,
 				F00100000000000000000006 /* GoogleAuthService.swift */,
 				F00100000000000000000017 /* PageMetadataService.swift */,
 				F00100000000000000000007 /* Session.swift */,
@@ -163,6 +168,7 @@
 			children = (
 				F0010000000000000000000B /* CategoriesView.swift */,
 				F00100000000000000000015 /* DriveImageView.swift */,
+				F0010000000000000000002E /* ExportMenuView.swift */,
 				F0010000000000000000000C /* GalleryView.swift */,
 				F0010000000000000000000D /* ItemDetailView.swift */,
 				F0010000000000000000000E /* ItemFormView.swift */,
@@ -331,6 +337,8 @@
 				B00100000000000000000032 /* SourceBrowserView.swift in Sources */,
 				B00100000000000000000033 /* SourceIconView.swift in Sources */,
 				B00100000000000000000034 /* FaviconView.swift in Sources */,
+				B00100000000000000000035 /* ExportService.swift in Sources */,
+				B00100000000000000000036 /* ExportMenuView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

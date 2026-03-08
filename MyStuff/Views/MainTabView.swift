@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum MainSidebarSelection: Hashable {
     case items
@@ -133,6 +134,8 @@ struct MainTabView: View {
 #if os(macOS)
 private struct SettingsMenuButton: View {
     @Binding var selection: MainSidebarSelection
+    @EnvironmentObject var session: Session
+    @State private var isExportingPDF = false
 
     var body: some View {
         Menu {
@@ -153,12 +156,73 @@ private struct SettingsMenuButton: View {
                     selection = .sourcesList
                 } label: { Label("Sources", systemImage: "link") }
             }
+            Section("Exports") {
+                Button {
+                    exportCSV()
+                } label: { Label("Export as CSV", systemImage: "table") }
+
+                Button {
+                    isExportingPDF = true
+                    Task {
+                        await exportPDF()
+                        await MainActor.run { isExportingPDF = false }
+                    }
+                } label: { Label("Export as PDF", systemImage: "doc.richtext") }
+            }
         } label: {
             Image(systemName: "gearshape")
                 .font(.title2)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
+        .sheet(isPresented: $isExportingPDF) {
+            VStack(spacing: 12) {
+                ProgressView()
+                    .scaleEffect(1.2)
+                Text("Generating PDF…")
+                    .font(.headline)
+            }
+            .frame(width: 200, height: 100)
+        }
+    }
+
+    private func exportCSV() {
+        let data = ExportService.makeCSVData(
+            items: session.inventory.items,
+            categories: session.categories.categories,
+            locations: session.locations.locations
+        )
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("mystuff_items.csv")
+        try? data.write(to: tempURL)
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = "mystuff_items.csv"
+        panel.begin { response in
+            if response == .OK, let dest = panel.url {
+                try? FileManager.default.copyItem(at: tempURL, to: dest)
+            }
+        }
+    }
+
+    private func exportPDF() async {
+        let data = await ExportService.makePDFData(
+            items: session.inventory.items,
+            categories: session.categories.categories,
+            locations: session.locations.locations,
+            drive: session.drive
+        )
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("mystuff_items.pdf")
+        try? data.write(to: tempURL)
+        await MainActor.run {
+            let panel = NSSavePanel()
+            panel.allowedContentTypes = [.pdf]
+            panel.nameFieldStringValue = "mystuff_items.pdf"
+            panel.begin { response in
+                if response == .OK, let dest = panel.url {
+                    try? FileManager.default.copyItem(at: tempURL, to: dest)
+                }
+            }
+        }
     }
 }
 #endif
