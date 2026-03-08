@@ -13,30 +13,19 @@ enum ExportService {
     ) -> Data {
         let sorted = sortItemsByCategoryThenName(items: items, categories: categories)
         let header = [
-            "id", "name", "description", "categoryId", "categoryName", "price", "purchaseDate",
-            "condition", "quantity", "createdAt", "updatedAt", "photoIds", "webLink", "tags",
-            "locationId", "locationName"
+            "name", "description", "categoryName", "price", "purchaseDate", "quantity", "locationName"
         ]
         var rows: [[String]] = [header]
         for item in sorted {
             let catName = categories.first(where: { $0.id == item.categoryId })?.name ?? ""
             let locName = locations.first(where: { $0.id == item.locationId })?.name ?? ""
             rows.append([
-                item.id,
                 item.name,
                 item.description,
-                item.categoryId,
                 catName,
                 item.price,
                 item.purchaseDate,
-                item.condition,
                 String(item.quantity),
-                item.createdAt,
-                item.updatedAt,
-                item.photoIds.joined(separator: ","),
-                item.webLink,
-                item.tags.joined(separator: ","),
-                item.locationId,
                 locName
             ])
         }
