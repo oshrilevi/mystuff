@@ -28,7 +28,6 @@ struct ItemsListView: View {
     @Binding var viewMode: ItemViewMode
     @AppStorage("thumbnailSize") private var thumbnailSizeRaw: String = ThumbnailSize.medium.rawValue
     @State private var selectedItem: Item?
-    @State private var itemToEdit: Item?
     @State private var showAddItem = false
     @State private var sectionSearchTexts: [String: String] = [:]
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
@@ -369,16 +368,8 @@ struct ItemsListView: View {
                 }
             }
             .sheet(item: $selectedItem) { item in
-                ItemDetailView(item: item, onEdit: { editItem in
-                    selectedItem = nil
-                    DispatchQueue.main.async { itemToEdit = editItem }
-                })
+                ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                     .environmentObject(session)
-            }
-            .sheet(item: $itemToEdit) { item in
-                ItemFormView(mode: .edit(item))
-                    .environmentObject(session)
-                    .onDisappear { Task { await inventory.refresh() } }
             }
             .sheet(isPresented: $showAddItem) {
                 ItemFormView(mode: .add(initialWebLink: nil))

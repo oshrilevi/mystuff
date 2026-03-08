@@ -38,7 +38,7 @@ MyStuff/
 │   ├── RootView.swift        # Auth + bootstrap routing
 │   ├── MainTabView.swift     # Tab bar (Gallery, List, Categories, etc.)
 │   ├── SignInView.swift
-│   ├── GalleryView.swift, ItemsListView.swift, ItemDetailView.swift, ItemFormView.swift
+│   ├── GalleryView.swift, ItemsListView.swift, ItemDetailView.swift (unified item sheet: view + in-place edit), ItemFormView.swift
 │   ├── CategoriesView.swift
 │   ├── UserAvatarMenuView.swift
 │   ├── DriveImageView.swift, CameraImagePicker.swift, MacCameraCaptureView.swift

@@ -16,6 +16,10 @@ struct ItemFormView: View {
         case edit(Item)
     }
     let mode: Mode
+    /// When set in edit mode, Save calls this with the updated item and does not dismiss (inline edit).
+    var onSaveSuccess: ((Item) -> Void)? = nil
+    /// When set in edit mode, Cancel calls this instead of dismissing (inline edit).
+    var onCancel: (() -> Void)? = nil
 
     @State private var name = ""
     @State private var description = ""
@@ -344,7 +348,13 @@ struct ItemFormView: View {
                         .font(.headline)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        if let onCancel {
+                            onCancel()
+                        } else {
+                            dismiss()
+                        }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Group {
@@ -527,7 +537,21 @@ struct ItemFormView: View {
             }
         }
         if inventory.errorMessage == nil {
-            dismiss()
+            if isEdit, let onSaveSuccess, let existing = existingItem {
+                var updated = existing
+                updated.name = name.trimmingCharacters(in: .whitespaces)
+                updated.description = description
+                updated.categoryId = categoryId
+                updated.price = price
+                updated.purchaseDate = Self.dateFormatter.string(from: purchaseDateValue)
+                updated.quantity = quantity
+                updated.webLink = webLink.trimmingCharacters(in: .whitespaces)
+                updated.tags = parsedTags()
+                updated.locationId = locationId
+                onSaveSuccess(updated)
+            } else {
+                dismiss()
+            }
         } else {
             errorMessage = inventory.errorMessage
         }

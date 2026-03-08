@@ -8,6 +8,7 @@ Format: **[Version] (YYYY-MM-DD)** with sections Added / Changed / Fixed / Remov
 
 ## [Unreleased]
 
+- **Changed:** Item view and edit merged into one sheet. Tapping an item opens a single dialog; tapping Edit switches to edit mode in-place (no second sheet). Save returns to view mode with updated data; Done or Delete dismisses the sheet.
 - **Changed:** Store icons now use each store’s website favicon (derived from its start URL). The SF Symbol in the Stores sheet is used as fallback when the favicon cannot be loaded. The add/edit store form no longer includes an icon picker.
 - **Added:** User-controlled stores. Stores are stored in the Google Sheet (new **Stores** sheet), like Categories and Locations. In **Settings → Stores** you can add, edit, and remove stores (name, start URL, icon). The **Stores** section in the sidebar lists your stores and opens each in the in-app browser. New spreadsheets are seeded with Amazon, AliExpress, and B&H Photo; existing spreadsheets get the Stores sheet on first load. Last-visited URL per store remains in UserDefaults (`mystuff_browser_<storeId>`).
 - **Added:** Thumbnail cache for Drive images. Item photos are cached in memory (NSCache) and on disk (`Caches/MyStuffThumbnails/`). Repeat views and app relaunches load from cache, reducing latency and Google Drive API usage. Disk cache is capped at 300 MB with oldest-files-first eviction.
