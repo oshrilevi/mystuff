@@ -215,6 +215,9 @@ struct WishlistItemDetailView: View {
                         detailRow("Notes", item.notes)
                     }
                     detailRow("Price", WishlistItem.priceInNIS(item.price))
+                    if !item.tags.isEmpty {
+                        detailRow("Tags", item.tags.joined(separator: ", "))
+                    }
                     if !item.link.isEmpty, let url = URL(string: item.link) {
                         Link("Open link", destination: url)
                             .font(.body)
@@ -287,7 +290,7 @@ struct WishlistItemDetailView: View {
             quantity: 1,
             photoIds: photoIds,
             webLink: item.link,
-            tags: []
+            tags: item.tags
         )
         await inventory.addItem(newItem, imageData: [])
         if inventory.errorMessage == nil {
@@ -313,6 +316,7 @@ struct WishlistItemFormView: View {
     @State private var notes = ""
     @State private var price = ""
     @State private var link = ""
+    @State private var tagsText = "" // Comma-separated tags
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var isExtracting = false
@@ -382,6 +386,10 @@ struct WishlistItemFormView: View {
                         }
                     }
                     .disabled(link.trimmingCharacters(in: .whitespaces).isEmpty || isExtracting)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Tags").font(.subheadline).foregroundStyle(.secondary)
+                        TextField("", text: $tagsText, prompt: Text("e.g. camera, lens, sale"))
+                    }
                 }
                 Section("Photo") {
                     if showExistingPhoto, let fileId = existingItem?.photoId {
@@ -493,7 +501,14 @@ struct WishlistItemFormView: View {
             notes = item.notes
             price = item.price
             link = item.link
+            tagsText = item.tags.joined(separator: ", ")
         }
+    }
+
+    private func parsedTags() -> [String] {
+        tagsText.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
     }
 
     private func extractFromLink() async {
@@ -510,6 +525,9 @@ struct WishlistItemFormView: View {
             if let t = metadata.title, !t.isEmpty { name = t }
             if let d = metadata.description, !d.isEmpty { notes = d }
             if let p = metadata.price, !p.isEmpty { price = p }
+            if !metadata.tags.isEmpty {
+                tagsText = metadata.tags.joined(separator: ", ")
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -530,19 +548,22 @@ struct WishlistItemFormView: View {
         errorMessage = nil
         defer { isSaving = false }
         let linkTrimmed = link.trimmingCharacters(in: .whitespaces)
+        let tags = parsedTags()
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)
             updated.notes = notes
             updated.price = price
             updated.link = linkTrimmed
+            updated.tags = tags
             await wishlist.update(updated, imageData: imageData, removePhoto: removePhoto)
         } else {
             let newItem = WishlistItem(
                 name: name.trimmingCharacters(in: .whitespaces),
                 notes: notes,
                 price: price,
-                link: linkTrimmed
+                link: linkTrimmed,
+                tags: tags
             )
             await wishlist.add(newItem, imageData: imageData)
         }

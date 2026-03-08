@@ -9,6 +9,7 @@ struct WishlistItem: Identifiable, Equatable {
     var createdAt: String
     /// Drive file ID of the uploaded photo (one photo per wishlist item).
     var photoId: String
+    var tags: [String]
 
     init(
         id: String = UUID().uuidString,
@@ -17,7 +18,8 @@ struct WishlistItem: Identifiable, Equatable {
         price: String = "",
         link: String = "",
         createdAt: String = "",
-        photoId: String = ""
+        photoId: String = "",
+        tags: [String] = []
     ) {
         self.id = id
         self.name = name
@@ -26,6 +28,7 @@ struct WishlistItem: Identifiable, Equatable {
         self.link = link
         self.createdAt = createdAt.isEmpty ? ISO8601DateFormatter().string(from: Date()) : createdAt
         self.photoId = photoId
+        self.tags = tags
     }
 
     /// Returns price string formatted for display in NIS (e.g. "₪ 99.00" or "—" if empty).
@@ -35,5 +38,5 @@ struct WishlistItem: Identifiable, Equatable {
         return "₪ \(trimmed)"
     }
 
-    static let columnOrder = ["id", "name", "notes", "price", "link", "createdAt", "photoId"]
+    static let columnOrder = ["id", "name", "notes", "price", "link", "createdAt", "photoId", "tags"]
 }

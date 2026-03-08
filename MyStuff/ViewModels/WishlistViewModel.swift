@@ -28,6 +28,7 @@ final class WishlistViewModel: ObservableObject {
             $0.name.lowercased().contains(q)
                 || $0.notes.lowercased().contains(q)
                 || $0.link.lowercased().contains(q)
+                || $0.tags.contains { $0.lowercased().contains(q) }
         }
     }
 
@@ -116,13 +117,16 @@ final class WishlistViewModel: ObservableObject {
     }
 
     private func itemToRow(_ item: WishlistItem) -> [String] {
-        [item.id, item.name, item.notes, item.price, item.link, item.createdAt, item.photoId]
+        [item.id, item.name, item.notes, item.price, item.link, item.createdAt, item.photoId, item.tags.joined(separator: ",")]
     }
 
     private func parseRow(_ row: [String]) -> WishlistItem? {
         guard row.count >= 2 else { return nil }
         let createdAt = row.count > 5 ? row[5] : ISO8601DateFormatter().string(from: Date())
         let photoId = row.count > 6 ? row[6] : ""
+        let tags: [String] = row.count > 7 && !row[7].isEmpty
+            ? row[7].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            : []
         return WishlistItem(
             id: row[0],
             name: row.count > 1 ? row[1] : "",
@@ -130,7 +134,8 @@ final class WishlistViewModel: ObservableObject {
             price: row.count > 3 ? row[3] : "",
             link: row.count > 4 ? row[4] : "",
             createdAt: createdAt,
-            photoId: photoId
+            photoId: photoId,
+            tags: tags
         )
     }
 }

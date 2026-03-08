@@ -81,7 +81,8 @@ struct ItemDetailView: View {
             notes: item.description,
             price: item.price,
             link: item.webLink,
-            photoId: item.photoIds.first ?? ""
+            photoId: item.photoIds.first ?? "",
+            tags: item.tags
         )
         await wishlist.add(wishlistItem, imageData: nil)
         if wishlist.errorMessage == nil {
