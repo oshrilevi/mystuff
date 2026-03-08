@@ -2,6 +2,14 @@
 
 Native macOS + iPhone app to track everything you own. Data is stored in your Google Sheet and photos in Google Drive.
 
+## Documentation (maintenance)
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** – App structure, MVVM, services, data flow.
+- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** – How to develop: conventions, where to add features, testing.
+- **[docs/DATA_SCHEMA.md](docs/DATA_SCHEMA.md)** – Google Sheets and Drive schema (columns, keys).
+- **[CHANGELOG.md](CHANGELOG.md)** – Version history and release notes.
+- **Cursor:** Project skill `.cursor/skills/mystuff-maintenance/` – agent follows these docs when modifying the app.
+
 ## Setup
 
 ### 1. Google Cloud Console
