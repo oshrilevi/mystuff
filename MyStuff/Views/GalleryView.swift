@@ -262,7 +262,7 @@ struct GalleryView: View {
                                             isPinned: pinnedCategoryIds.contains(section.id),
                                             isCollapsed: collapsedSectionIds.contains(section.id),
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
-                                            onDoubleTap: {
+                                            onTap: {
                                                 withAnimation(.easeInOut(duration: 0.2)) {
                                                     if collapsedSectionIds.contains(section.id) {
                                                         collapsedSectionIds.remove(section.id)
@@ -336,7 +336,7 @@ struct GalleryView: View {
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
-                                        onDoubleTap: {
+                                        onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {
                                                 if collapsedSectionIds.contains(singleCategoryId) {
                                                     collapsedSectionIds.remove(singleCategoryId)
@@ -661,7 +661,7 @@ struct CategorySectionHeader: View {
     var isPinned: Bool = false
     var isCollapsed: Bool = false
     var onTogglePin: (() -> Void)? = nil
-    var onDoubleTap: (() -> Void)? = nil
+    var onTap: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
     var onDropItem: ((String) -> Void)? = nil
     var showSearchField: Bool = true
@@ -689,9 +689,9 @@ struct CategorySectionHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if let onDoubleTap {
+            if let onTap {
                 Button {
-                    onDoubleTap()
+                    onTap()
                 } label: {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                         .font(.caption)
@@ -781,8 +781,8 @@ struct CategorySectionHeader: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, minHeight: Self.fixedHeight, alignment: .leading)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            onDoubleTap?()
+        .onTapGesture {
+            onTap?()
         }
         .background(headerBackground)
         #if os(iOS)

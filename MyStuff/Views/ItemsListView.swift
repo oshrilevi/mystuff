@@ -201,7 +201,7 @@ struct ItemsListView: View {
                                             isPinned: pinnedCategoryIds.contains(section.id),
                                             isCollapsed: collapsedSectionIds.contains(section.id),
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
-                                            onDoubleTap: {
+                                            onTap: {
                                                 withAnimation(.easeInOut(duration: 0.2)) {
                                                     if collapsedSectionIds.contains(section.id) {
                                                         collapsedSectionIds.remove(section.id)
@@ -268,7 +268,7 @@ struct ItemsListView: View {
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
-                                        onDoubleTap: {
+                                        onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {
                                                 if collapsedSectionIds.contains(singleCategoryId) {
                                                     collapsedSectionIds.remove(singleCategoryId)
