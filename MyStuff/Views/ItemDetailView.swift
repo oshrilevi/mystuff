@@ -107,7 +107,7 @@ struct ItemDetailView: View {
                         }
                     }
                     .confirmationDialog("Delete item?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
-                        Button("Delete \"\(currentItem.name)\"", role: .destructive) {
+                        Button("Delete \"\(currentItem.name.count > 75 ? String(currentItem.name.prefix(75)) + "…" : currentItem.name)\"", role: .destructive) {
                             Task {
                                 await inventory.deleteItems(ids: [currentItem.id])
                                 dismissSheet()
