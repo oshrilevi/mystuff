@@ -5,6 +5,7 @@ struct ItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let item: Item
     @State private var showEdit = false
+    @State private var showDeleteConfirmation = false
 
     private var inventory: InventoryViewModel { session.inventory }
     private var categoryName: String {
@@ -49,6 +50,20 @@ struct ItemDetailView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
+                ToolbarItem(placement: .destructiveAction) {
+                    Button("Delete", role: .destructive) { showDeleteConfirmation = true }
+                }
+            }
+            .confirmationDialog("Delete item?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+                Button("Delete \"\(item.name)\"", role: .destructive) {
+                    Task {
+                        await inventory.deleteItems(ids: [item.id])
+                        dismiss()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This cannot be undone. The item will be removed from your inventory.")
             }
             .sheet(isPresented: $showEdit) {
                 ItemFormView(mode: .edit(item))
