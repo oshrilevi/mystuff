@@ -8,6 +8,7 @@ Format: **[Version] (YYYY-MM-DD)** with sections Added / Changed / Fixed / Remov
 
 ## [Unreleased]
 
+- **Added:** Thumbnail cache for Drive images. Item photos are cached in memory (NSCache) and on disk (`Caches/MyStuffThumbnails/`). Repeat views and app relaunches load from cache, reducing latency and Google Drive API usage. Disk cache is capped at 300 MB with oldest-files-first eviction.
 - **Added:** AliExpress as a new store. **AliExpress** tab/sidebar entry opens aliexpress.com in the in-app browser; “Add this item” and “Extract from link” work as for other stores. Metadata extraction strips AliExpress-specific title/description boilerplate.
 - **Added:** B&H Photo Video as a second store. New **B&H** tab/sidebar entry (with Amazon) opens bhphotovideo.com in the in-app browser; “Add this item” and “Extract from link” work as for Amazon. Metadata extraction strips B&H-specific title boilerplate.
 - **Added:** Browse Amazon in-app. New **Amazon** tab with an embedded browser (WKWebView) and optional region picker (e.g. Amazon.com, Amazon.co.uk). Toolbar “Add this item” opens the add-item form with the current page URL prefilled and metadata extracted (title, description, price, tags) via existing “Extract from link.” Add-item form supports an optional initial URL (e.g. `ItemFormView(mode: .add(initialWebLink: url))`) for this flow.

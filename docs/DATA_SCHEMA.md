@@ -69,6 +69,12 @@ Created on first run via `SheetsService.createSpreadsheet`. Three sheets:
 | `mystuff_pinned_category_ids` | Pinned category IDs (Set)     |
 | `mystuff_default_location_id` | Default location ID for new items |
 
+**Caches directory (not UserDefaults):**
+
+| Location                    | Purpose                                                                 |
+|-----------------------------|-------------------------------------------------------------------------|
+| `Caches/MyStuffThumbnails/` | Disk cache for Drive image bytes (item photos). Eviction when total size exceeds 300 MB (oldest files by modification date removed first). In-memory cache (NSCache) also used; no TTL. |
+
 Clearing spreadsheet/folder IDs (e.g. for debugging or “start fresh”) is done via `AppState.clearStoredIds()`.
 
 ## Adding or changing columns
