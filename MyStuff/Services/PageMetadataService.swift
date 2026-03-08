@@ -156,7 +156,9 @@ final class PageMetadataService {
             "- Amazon.com ✓ FREE DELIVERY possible on eligible purchases",
             " | B&H Photo Video",
             " - B&H Explora",
-            " - B&H Photo Video"
+            " - B&H Photo Video",
+            " - AliExpress",
+            " | AliExpress"
         ]
         for phrase in phrasesToRemove {
             result = result.replacingOccurrences(of: phrase, with: "")

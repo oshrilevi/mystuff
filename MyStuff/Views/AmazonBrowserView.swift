@@ -5,11 +5,13 @@ import WebKit
 
 enum Store {
     case amazon
+    case aliexpress
     case bhPhoto
 
     var displayName: String {
         switch self {
         case .amazon: return "Amazon"
+        case .aliexpress: return "AliExpress"
         case .bhPhoto: return "B&H Photo"
         }
     }
@@ -17,6 +19,7 @@ enum Store {
     var startURL: URL {
         switch self {
         case .amazon: return URL(string: "https://www.amazon.com")!
+        case .aliexpress: return URL(string: "https://www.aliexpress.com/")!
         case .bhPhoto: return URL(string: "https://www.bhphotovideo.com/")!
         }
     }
@@ -24,6 +27,7 @@ enum Store {
     var persistedURLKey: String {
         switch self {
         case .amazon: return "mystuff_amazon_browser_last_url"
+        case .aliexpress: return "mystuff_aliexpress_browser_last_url"
         case .bhPhoto: return "mystuff_bh_browser_last_url"
         }
     }
@@ -31,6 +35,7 @@ enum Store {
     var systemImage: String {
         switch self {
         case .amazon: return "cart"
+        case .aliexpress: return "bag"
         case .bhPhoto: return "camera"
         }
     }

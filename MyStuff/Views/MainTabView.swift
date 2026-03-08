@@ -20,9 +20,12 @@ struct MainTabView: View {
             StoreBrowserView(store: .amazon)
                 .tabItem { Label("Amazon", systemImage: "cart") }
                 .tag(3)
+            StoreBrowserView(store: .aliexpress)
+                .tabItem { Label("AliExpress", systemImage: "bag") }
+                .tag(4)
             StoreBrowserView(store: .bhPhoto)
                 .tabItem { Label("B&H", systemImage: "camera") }
-                .tag(4)
+                .tag(5)
         }
         #else
         NavigationSplitView {
@@ -36,7 +39,8 @@ struct MainTabView: View {
                 }
                 Section("Stores") {
                     NavigationLink(value: 3) { Label("Amazon", systemImage: "cart") }
-                    NavigationLink(value: 4) { Label("B&H Photo", systemImage: "camera") }
+                    NavigationLink(value: 4) { Label("AliExpress", systemImage: "bag") }
+                    NavigationLink(value: 5) { Label("B&H Photo", systemImage: "camera") }
                 }
             }
             .listStyle(.sidebar)
@@ -50,6 +54,8 @@ struct MainTabView: View {
             } else if selectedTab == 3 {
                 StoreBrowserView(store: .amazon)
             } else if selectedTab == 4 {
+                StoreBrowserView(store: .aliexpress)
+            } else if selectedTab == 5 {
                 StoreBrowserView(store: .bhPhoto)
             } else {
                 EmptyView()
