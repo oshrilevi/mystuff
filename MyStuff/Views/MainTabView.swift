@@ -56,7 +56,11 @@ struct MainTabView: View {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
-                        Label("YouTube", systemImage: "play.rectangle")
+                        Label {
+                            Text("YouTube")
+                        } icon: {
+                            FaviconView(urlString: "https://www.youtube.com", fallbackSystemImage: "play.rectangle", size: 20)
+                        }
                     }
                 }
                 Section("Stores") {
