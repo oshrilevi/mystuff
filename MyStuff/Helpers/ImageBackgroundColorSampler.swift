@@ -6,8 +6,9 @@ import UIKit
 import AppKit
 #endif
 
-/// Samples the image at the corners and returns the average color as (red, green, blue) in 0...1.
-/// Used to infer the "background" color for thumbnail letterbox fill.
+/// Samples the image at 8 points (4 corners + 4 edge centers), drops the 4 farthest from the median
+/// in RGB space, and returns the average of the remaining 4 as (red, green, blue) in 0...1.
+/// Used to infer the "background" color for thumbnail letterbox fill; robust to a single bad pixel.
 enum ImageBackgroundColorSampler {
     private static let maxSampleSide: Int = 100
     private static let cacheLock = NSLock()
@@ -27,7 +28,7 @@ enum ImageBackgroundColorSampler {
         }
 
         guard let cgImage = decodeToCGImage(data: data) else { return nil }
-        guard let rgb = sampleCornerRGB(cgImage: cgImage) else { return nil }
+        guard let rgb = sampleEdgeRGBWithOutlierRemoval(cgImage: cgImage) else { return nil }
 
         if let id = fileId {
             cacheLock.lock()
@@ -52,7 +53,7 @@ enum ImageBackgroundColorSampler {
         #endif
     }
 
-    private static func sampleCornerRGB(cgImage: CGImage) -> (Double, Double, Double)? {
+    private static func sampleEdgeRGBWithOutlierRemoval(cgImage: CGImage) -> (Double, Double, Double)? {
         let w = cgImage.width
         let h = cgImage.height
         guard w >= 1, h >= 1 else { return nil }
@@ -82,17 +83,55 @@ enum ImageBackgroundColorSampler {
         }
         let offset = min(2, sw / 4)
         let oy = min(2, sh / 4)
-        var r: Double = 0, g: Double = 0, b: Double = 0
-        var count = 0
-        for (px, py) in [(offset, oy), (sw - 1 - offset, oy), (offset, sh - 1 - oy), (sw - 1 - offset, sh - 1 - oy)] {
+        let cx = min(sw - 1 - offset, max(offset, sw / 2))
+        let cy = min(sh - 1 - oy, max(oy, sh / 2))
+
+        let positions: [(Int, Int)] = [
+            (offset, oy),
+            (sw - 1 - offset, oy),
+            (offset, sh - 1 - oy),
+            (sw - 1 - offset, sh - 1 - oy),
+            (cx, oy),
+            (sw - 1 - offset, cy),
+            (cx, sh - 1 - oy),
+            (offset, cy),
+        ]
+
+        var samples: [(r: Double, g: Double, b: Double)] = []
+        for (px, py) in positions {
             let idx = i(px, py)
             guard idx + 2 < sw * sh * 4 else { continue }
-            r += Double(bytes[idx]) / 255
-            g += Double(bytes[idx + 1]) / 255
-            b += Double(bytes[idx + 2]) / 255
-            count += 1
+            let r = Double(bytes[idx]) / 255
+            let g = Double(bytes[idx + 1]) / 255
+            let b = Double(bytes[idx + 2]) / 255
+            samples.append((r, g, b))
         }
+        guard samples.count >= 4 else { return nil }
+
+        let medianR = median(samples.map(\.r))
+        let medianG = median(samples.map(\.g))
+        let medianB = median(samples.map(\.b))
+
+        let withDistance = samples.map { s -> (r: Double, g: Double, b: Double, d2: Double) in
+            let d2 = (s.r - medianR) * (s.r - medianR) + (s.g - medianG) * (s.g - medianG) + (s.b - medianB) * (s.b - medianB)
+            return (s.r, s.g, s.b, d2)
+        }
+        let kept = withDistance.sorted { $0.d2 < $1.d2 }.prefix(4)
+        let count = kept.count
         guard count > 0 else { return nil }
-        return (r / Double(count), g / Double(count), b / Double(count))
+        let sumR = kept.reduce(0) { $0 + $1.r }
+        let sumG = kept.reduce(0) { $0 + $1.g }
+        let sumB = kept.reduce(0) { $0 + $1.b }
+        return (sumR / Double(count), sumG / Double(count), sumB / Double(count))
+    }
+
+    private static func median(_ values: [Double]) -> Double {
+        let sorted = values.sorted()
+        let c = sorted.count
+        if c == 0 { return 0 }
+        if c.isMultiple(of: 2) {
+            return (sorted[c / 2 - 1] + sorted[c / 2]) / 2
+        }
+        return sorted[c / 2]
     }
 }
