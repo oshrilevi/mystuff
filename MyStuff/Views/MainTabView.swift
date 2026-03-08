@@ -17,6 +17,9 @@ struct MainTabView: View {
             LocationsView()
                 .tabItem { Label("Locations", systemImage: "location") }
                 .tag(2)
+            AmazonBrowserView()
+                .tabItem { Label("Amazon", systemImage: "cart") }
+                .tag(3)
         }
         #else
         NavigationSplitView {
@@ -24,6 +27,7 @@ struct MainTabView: View {
                 NavigationLink(value: 0) { Label("Items", systemImage: "square.grid.2x2") }
                 NavigationLink(value: 1) { Label("Categories", systemImage: "folder") }
                 NavigationLink(value: 2) { Label("Locations", systemImage: "location") }
+                NavigationLink(value: 3) { Label("Amazon", systemImage: "cart") }
             }
             .listStyle(.sidebar)
         } detail: {
@@ -31,8 +35,10 @@ struct MainTabView: View {
                 ItemsTabView(viewMode: $itemViewMode)
             } else if selectedTab == 1 {
                 CategoriesView()
-            } else {
+            } else if selectedTab == 2 {
                 LocationsView()
+            } else {
+                AmazonBrowserView()
             }
         }
         #endif

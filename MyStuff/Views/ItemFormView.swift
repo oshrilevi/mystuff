@@ -11,8 +11,8 @@ struct ItemFormView: View {
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
-    enum Mode {
-        case add
+    enum Mode: Equatable {
+        case add(initialWebLink: String?)
         case edit(Item)
     }
     let mode: Mode
@@ -61,6 +61,7 @@ struct ItemFormView: View {
     }
     private var isEdit: Bool { if case .edit = mode { true } else { false } }
     private var existingItem: Item? { if case .edit(let i) = mode { return i } else { return nil } }
+    private var initialWebLinkForAdd: String? { if case .add(let url) = mode { return url } else { return nil } }
     private var isWishlistCategory: Bool {
         Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
     }
@@ -356,10 +357,15 @@ struct ItemFormView: View {
                     categoryId = inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
                     locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
                     purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
-                    pasteURLFromClipboardAndExtract()
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 350_000_000)
-                        focusedField = .url
+                    if let url = initialWebLinkForAdd, !url.trimmingCharacters(in: .whitespaces).isEmpty {
+                        webLink = url.trimmingCharacters(in: .whitespaces)
+                        Task { await extractFromLink() }
+                    } else {
+                        pasteURLFromClipboardAndExtract()
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 350_000_000)
+                            focusedField = .url
+                        }
                     }
                 }
             }

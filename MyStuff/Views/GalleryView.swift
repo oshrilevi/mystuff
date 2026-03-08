@@ -454,7 +454,7 @@ struct GalleryView: View {
                     .environmentObject(session)
             }
             .sheet(isPresented: $showAddItem) {
-                ItemFormView(mode: .add)
+                ItemFormView(mode: .add(initialWebLink: nil))
                     .environmentObject(session)
                     .onDisappear { Task { await inventory.refresh() } }
             }
