@@ -607,7 +607,7 @@ struct ItemCard: View {
                 RoundedRectangle(cornerRadius: thumbnailSize == .compact ? 8 : 12)
                     .fill(Color.gray.opacity(0.2))
                 if let fileId = photoId {
-                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fill)
+                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit)
                         .frame(width: thumbDimension, height: thumbDimension)
                         .clipped()
                         .cornerRadius(thumbnailSize == .compact ? 8 : 12)

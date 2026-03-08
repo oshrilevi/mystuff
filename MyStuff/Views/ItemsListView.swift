@@ -455,7 +455,7 @@ private struct ItemListRow: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.gray.opacity(0.2))
                 if let fileId = item.photoIds.first {
-                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fill)
+                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit)
                         .frame(width: thumbSize, height: thumbSize)
                         .clipped()
                         .cornerRadius(8)
