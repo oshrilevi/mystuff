@@ -15,6 +15,10 @@ final class InventoryViewModel: ObservableObject {
     @Published var lastNewItemLocationId: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    /// Category section IDs that are collapsed in Items/Gallery; persists across tab switches.
+    @Published var categorySectionCollapsedIds: Set<String> = []
+    /// When true, initial "all collapsed" has been applied once; avoids overwriting user's expand/collapse.
+    @Published var hasAppliedInitialCategoryCollapse = false
 
     private let sheets: SheetsService
     private let drive: DriveService

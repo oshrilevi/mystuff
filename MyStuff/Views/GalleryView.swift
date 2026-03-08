@@ -103,10 +103,7 @@ struct GalleryView: View {
     @State private var sectionSearchTexts: [String: String] = [:]
     /// Per-category sort (key = category section id). When viewing a single category, that category id is used.
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
-    /// Category section IDs that are collapsed (double-click header to toggle).
-    @State private var collapsedSectionIds: Set<String> = []
-    /// When true, we have already applied "all collapsed" on first load; don't override user's expand/collapse.
-    @State private var hasAppliedInitialCollapse = false
+    /// Collapse state lives in inventory so it persists when navigating to Categories tab and back.
 
     private var thumbnailSize: ThumbnailSize {
         ThumbnailSize(rawValue: thumbnailSizeRaw) ?? .medium
@@ -132,6 +129,10 @@ struct GalleryView: View {
 
     private var inventory: InventoryViewModel { session.inventory }
     private var categories: [Category] { session.categories.categories }
+    private var collapsedSectionIds: Set<String> {
+        get { inventory.categorySectionCollapsedIds }
+        set { inventory.categorySectionCollapsedIds = newValue }
+    }
 
     /// Display name for the current category (for title and dropdown).
     private var currentCategoryName: String {
@@ -264,11 +265,13 @@ struct GalleryView: View {
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                             onTap: {
                                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                                    if collapsedSectionIds.contains(section.id) {
-                                                        collapsedSectionIds.remove(section.id)
+                                                    var next = inventory.categorySectionCollapsedIds
+                                                    if next.contains(section.id) {
+                                                        next.remove(section.id)
                                                     } else {
-                                                        collapsedSectionIds.insert(section.id)
+                                                        next.insert(section.id)
                                                     }
+                                                    inventory.categorySectionCollapsedIds = next
                                                 }
                                             },
                                             onAddItem: {
@@ -338,11 +341,13 @@ struct GalleryView: View {
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {
-                                                if collapsedSectionIds.contains(singleCategoryId) {
-                                                    collapsedSectionIds.remove(singleCategoryId)
+                                                var next = inventory.categorySectionCollapsedIds
+                                                if next.contains(singleCategoryId) {
+                                                    next.remove(singleCategoryId)
                                                 } else {
-                                                    collapsedSectionIds.insert(singleCategoryId)
+                                                    next.insert(singleCategoryId)
                                                 }
+                                                inventory.categorySectionCollapsedIds = next
                                             }
                                         },
                                         onAddItem: {
@@ -412,13 +417,13 @@ struct GalleryView: View {
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 let ids = isShowingAllCategories ? Set(categorySections.map(\.id)) : Set([inventory.selectedCategoryId ?? ""])
-                                collapsedSectionIds = ids
+                                inventory.categorySectionCollapsedIds = ids
                             }
                         } label: { Image(systemName: "rectangle.compress.vertical") }
                         .help("Collapse all categories")
                         Button {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                collapsedSectionIds = []
+                                inventory.categorySectionCollapsedIds = []
                             }
                         } label: { Image(systemName: "rectangle.expand.vertical") }
                         .help("Expand all categories")
@@ -462,15 +467,15 @@ struct GalleryView: View {
             }
             .task { await inventory.refresh() }
             .onChange(of: categorySections.count) { _, newCount in
-                if !hasAppliedInitialCollapse, newCount > 0 {
-                    collapsedSectionIds = Set(categorySections.map(\.id))
-                    hasAppliedInitialCollapse = true
+                if !inventory.hasAppliedInitialCategoryCollapse, newCount > 0 {
+                    inventory.categorySectionCollapsedIds = Set(categorySections.map(\.id))
+                    inventory.hasAppliedInitialCategoryCollapse = true
                 }
             }
             .onChange(of: inventory.selectedCategoryId) { _, newId in
-                if !hasAppliedInitialCollapse, let id = newId, !id.isEmpty {
-                    collapsedSectionIds = [id]
-                    hasAppliedInitialCollapse = true
+                if !inventory.hasAppliedInitialCategoryCollapse, let id = newId, !id.isEmpty {
+                    inventory.categorySectionCollapsedIds = [id]
+                    inventory.hasAppliedInitialCategoryCollapse = true
                 }
             }
         }
