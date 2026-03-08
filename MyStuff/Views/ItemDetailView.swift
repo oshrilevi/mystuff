@@ -11,6 +11,10 @@ struct ItemDetailView: View {
     private var categoryName: String {
         session.categories.categories.first { $0.id == item.categoryId }?.name ?? "—"
     }
+    private var locationName: String {
+        guard !item.locationId.isEmpty else { return "—" }
+        return session.locations.locations.first { $0.id == item.locationId }?.name ?? "—"
+    }
 
     private var isWishlist: Bool { Category.isWishlist(categoryName) }
 
@@ -27,6 +31,7 @@ struct ItemDetailView: View {
                     detailRow("Name", item.name)
                     detailRow("Description", item.description.isEmpty ? "—" : item.description)
                     detailRow("Category", categoryName)
+                    detailRow("Location", locationName)
                     detailRow("Price", Item.priceInNIS(item.price))
                     if !isWishlist {
                         detailRow("Quantity", "\(item.quantity)")

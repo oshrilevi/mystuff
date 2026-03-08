@@ -14,19 +14,25 @@ struct MainTabView: View {
             CategoriesView()
                 .tabItem { Label("Categories", systemImage: "folder") }
                 .tag(1)
+            LocationsView()
+                .tabItem { Label("Locations", systemImage: "location") }
+                .tag(2)
         }
         #else
         NavigationSplitView {
             List(selection: $selectedTab) {
                 NavigationLink(value: 0) { Label("Items", systemImage: "square.grid.2x2") }
                 NavigationLink(value: 1) { Label("Categories", systemImage: "folder") }
+                NavigationLink(value: 2) { Label("Locations", systemImage: "location") }
             }
             .listStyle(.sidebar)
         } detail: {
             if selectedTab == 0 {
                 ItemsTabView(viewMode: $itemViewMode)
-            } else {
+            } else if selectedTab == 1 {
                 CategoriesView()
+            } else {
+                LocationsView()
             }
         }
         #endif

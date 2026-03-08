@@ -26,6 +26,7 @@ struct ItemFormView: View {
     @State private var quantityText = "1"
     @State private var webLink = ""
     @State private var tagsText = "" // Comma-separated tags
+    @State private var locationId = ""
     @State private var isExtracting = false
     #if os(iOS)
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -53,6 +54,10 @@ struct ItemFormView: View {
     private var categories: [Category] { session.categories.categories }
     private var sortedCategories: [Category] {
         categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+    private var locations: [Location] { session.locations.locations }
+    private var sortedLocations: [Location] {
+        locations.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
     private var isEdit: Bool { if case .edit = mode { true } else { false } }
     private var existingItem: Item? { if case .edit(let i) = mode { return i } else { return nil } }
@@ -83,6 +88,16 @@ struct ItemFormView: View {
                             Text("None").tag("")
                             ForEach(sortedCategories) { cat in
                                 Text(cat.name).tag(cat.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Location").font(.subheadline).foregroundStyle(.secondary)
+                        Picker("", selection: $locationId) {
+                            Text("None").tag("")
+                            ForEach(sortedLocations) { loc in
+                                Text(loc.name).tag(loc.id)
                             }
                         }
                         .pickerStyle(.menu)
@@ -339,6 +354,7 @@ struct ItemFormView: View {
                 fillForm()
                 if !isEdit {
                     categoryId = inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
+                    locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
                     purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
                     pasteURLFromClipboardAndExtract()
                     Task { @MainActor in
@@ -386,6 +402,7 @@ struct ItemFormView: View {
             quantityText = "\(item.quantity)"
             webLink = item.webLink
             tagsText = item.tags.joined(separator: ", ")
+            locationId = item.locationId
         }
     }
 
@@ -446,6 +463,7 @@ struct ItemFormView: View {
             updated.quantity = quantity
             updated.webLink = link
             updated.tags = tags
+            updated.locationId = locationId
             let replacePhotos = removedPhoto || !imageData.isEmpty
             await inventory.updateItem(updated, newImageData: imageData, replaceExistingPhotos: replacePhotos)
         } else {
@@ -458,12 +476,14 @@ struct ItemFormView: View {
                 condition: "",
                 quantity: quantity,
                 webLink: link,
-                tags: tags
+                tags: tags,
+                locationId: locationId
             )
             await inventory.addItem(newItem, imageData: imageData)
             if inventory.errorMessage == nil {
                 inventory.lastNewItemPurchaseDate = purchaseDateValue
                 inventory.lastNewItemCategoryId = categoryId
+                inventory.lastNewItemLocationId = locationId
             }
         }
         if inventory.errorMessage == nil {

@@ -487,6 +487,7 @@ struct GalleryView: View {
 struct ItemHoverPopoverContent: View {
     let item: Item
     let categoryName: String
+    let locationName: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -501,6 +502,7 @@ struct ItemHoverPopoverContent: View {
             }
             Divider()
             LabeledRow(label: "Category", value: categoryName)
+            LabeledRow(label: "Location", value: locationName)
             LabeledRow(label: "Price", value: Item.priceInNIS(item.price))
             if !Category.isWishlist(categoryName) {
                 LabeledRow(label: "Quantity", value: "\(item.quantity)")

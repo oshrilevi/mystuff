@@ -18,7 +18,8 @@ final class SheetsService {
             "properties": ["title": title],
             "sheets": [
                 ["properties": ["title": "Categories"]],
-                ["properties": ["title": "Items"]]
+                ["properties": ["title": "Items"]],
+                ["properties": ["title": "Locations"]]
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -32,8 +33,9 @@ final class SheetsService {
         try await appendRows(spreadsheetId: id, sheetName: "Categories", values: [["id", "name", "order", "color"]])
         try await appendRows(spreadsheetId: id, sheetName: "Items", values: [[
             "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
-            "createdAt", "updatedAt", "photoIds", "webLink", "tags"
+            "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId"
         ]])
+        try await appendRows(spreadsheetId: id, sheetName: "Locations", values: [["id", "name", "order"]])
         return (id, "https://docs.google.com/spreadsheets/d/\(id)")
     }
 
@@ -103,7 +105,28 @@ final class SheetsService {
         }
     }
 
-    /// Returns sheet titles (e.g. ["Categories", "Items"]).
+    /// Adds a new sheet to an existing spreadsheet (e.g. for migration when "Locations" is missing).
+    func addSheet(spreadsheetId: String, title: String) async throws {
+        let token = try await tokenProvider()
+        let url = URL(string: "\(baseURL)/\(spreadsheetId):batchUpdate")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = [
+            "requests": [
+                ["addSheet": ["properties": ["title": title]]]
+            ]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 30
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
+        }
+    }
+
+    /// Returns sheet titles (e.g. ["Categories", "Items", "Locations"]).
     func getSheetTitles(spreadsheetId: String) async throws -> [String] {
         let token = try await tokenProvider()
         let url = URL(string: "\(baseURL)/\(spreadsheetId)?fields=sheets(properties(title))")!

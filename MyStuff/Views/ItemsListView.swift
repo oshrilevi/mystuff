@@ -165,6 +165,7 @@ struct ItemsListView: View {
                                                 ItemListRow(
                                                     item: item,
                                                     categoryName: section.name,
+                                                    locationName: session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—"),
                                                     drive: session.drive
                                                 )
                                                 .padding(.top, index == 0 ? 12 : 0)
@@ -235,6 +236,7 @@ struct ItemsListView: View {
                                             ItemListRow(
                                                 item: item,
                                                 categoryName: currentCategoryName,
+                                                locationName: session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—"),
                                                 drive: session.drive
                                             )
                                             .padding(.top, index == 0 ? 12 : 0)
@@ -435,6 +437,7 @@ private struct ItemsListSearchField: View {
 private struct ItemListRow: View {
     let item: Item
     let categoryName: String
+    let locationName: String
     let drive: DriveService
 
     private let thumbSize: CGFloat = 44
@@ -473,6 +476,14 @@ private struct ItemListRow: View {
                     Text(categoryName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if !locationName.isEmpty {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        Text(locationName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     if item.quantity > 1 {
                         Text("× \(item.quantity)")
                             .font(.caption)

@@ -34,6 +34,9 @@
 		B00100000000000000000020 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = XGSPKG001GoogleSignIn00000001 /* GoogleSignIn */; };
 		B00100000000000000000021 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = XGSPKG001GoogleSignIn00000002 /* GoogleSignInSwift */; };
 		B00100000000000000000022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000013 /* Assets.xcassets */; };
+		B00100000000000000000024 /* Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001C /* Location.swift */; };
+		B00100000000000000000025 /* LocationsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001D /* LocationsViewModel.swift */; };
+		B00100000000000000000026 /* LocationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001E /* LocationsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +67,9 @@
 		F00100000000000000000012 /* MyStuff.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyStuff.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00100000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00100000000000000000014 /* MyStuff.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyStuff.entitlements; sourceTree = "<group>"; };
+		F0010000000000000000001C /* Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Location.swift; sourceTree = "<group>"; };
+		F0010000000000000000001D /* LocationsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsViewModel.swift; sourceTree = "<group>"; };
+		F0010000000000000000001E /* LocationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,6 +98,7 @@
 			children = (
 				F00100000000000000000002 /* Category.swift */,
 				F00100000000000000000003 /* Item.swift */,
+				F0010000000000000000001C /* Location.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -114,6 +121,7 @@
 			children = (
 				F00100000000000000000009 /* CategoriesViewModel.swift */,
 				F0010000000000000000000A /* InventoryViewModel.swift */,
+				F0010000000000000000001D /* LocationsViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -129,6 +137,7 @@
 				F00100000000000000000019 /* CameraImagePicker.swift */,
 				F0010000000000000000001A /* MacCameraCaptureView.swift */,
 				F00100000000000000000018 /* ItemsListView.swift */,
+				F0010000000000000000001E /* LocationsView.swift */,
 				F0010000000000000000000F /* MainTabView.swift */,
 				F00100000000000000000010 /* RootView.swift */,
 				F00100000000000000000011 /* SignInView.swift */,
@@ -255,6 +264,9 @@
 				B00100000000000000000010 /* RootView.swift in Sources */,
 				B00100000000000000000011 /* SignInView.swift in Sources */,
 				B00100000000000000000013 /* UserAvatarMenuView.swift in Sources */,
+				B00100000000000000000024 /* Location.swift in Sources */,
+				B00100000000000000000025 /* LocationsViewModel.swift in Sources */,
+				B00100000000000000000026 /* LocationsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

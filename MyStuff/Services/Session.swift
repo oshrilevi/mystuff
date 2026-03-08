@@ -11,6 +11,7 @@ final class Session: ObservableObject {
     let pageMetadata: PageMetadataService
     let inventory: InventoryViewModel
     let categories: CategoriesViewModel
+    let locations: LocationsViewModel
 
     private let authService: GoogleAuthService
     private var cancellables = Set<AnyCancellable>()
@@ -27,6 +28,7 @@ final class Session: ObservableObject {
         self.pageMetadata = PageMetadataService()
         self.inventory = InventoryViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
         self.categories = CategoriesViewModel(sheets: self.sheets, appState: self.appState)
+        self.locations = LocationsViewModel(sheets: self.sheets, appState: self.appState)
 
         // Forward child view model updates so views observing Session re-render when items/categories load
         appState.objectWillChange
@@ -38,6 +40,10 @@ final class Session: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         categories.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        locations.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -73,6 +79,7 @@ final class Session: ObservableObject {
                 if self.appState.bootstrapError == nil, let sid = self.appState.spreadsheetId {
                     await self.inventory.refresh()
                     await self.categories.load()
+                    await self.locations.load()
                 }
                 return true
             }

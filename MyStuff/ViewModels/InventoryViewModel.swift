@@ -11,6 +11,8 @@ final class InventoryViewModel: ObservableObject {
     @Published var lastNewItemPurchaseDate: Date?
     /// Last category used when adding a new item; used as default when opening the add form.
     @Published var lastNewItemCategoryId: String?
+    /// Last location used when adding a new item; used as default when opening the add form.
+    @Published var lastNewItemLocationId: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -158,7 +160,8 @@ final class InventoryViewModel: ObservableObject {
             item.createdAt, item.updatedAt,
             item.photoIds.joined(separator: ","),
             item.webLink,
-            item.tags.joined(separator: ",")
+            item.tags.joined(separator: ","),
+            item.locationId
         ]
     }
 
@@ -184,6 +187,7 @@ final class InventoryViewModel: ObservableObject {
         let tags: [String] = row.count > 12 && !row[12].isEmpty
             ? row[12].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             : []
+        let locationId = row.count > 13 ? row[13] : ""
         return Item(
             id: row[0],
             name: row.count > 1 ? row[1] : "",
@@ -197,7 +201,8 @@ final class InventoryViewModel: ObservableObject {
             updatedAt: updatedAt,
             photoIds: photoIds,
             webLink: webLink,
-            tags: tags
+            tags: tags,
+            locationId: locationId
         )
     }
 

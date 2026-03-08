@@ -4,7 +4,7 @@ Reference for the Google Sheets and Drive layout. When you add or reorder column
 
 ## Google Spreadsheet
 
-Created on first run via `SheetsService.createSpreadsheet`. Two sheets:
+Created on first run via `SheetsService.createSpreadsheet`. Three sheets:
 
 ### Sheet: **Categories**
 
@@ -35,10 +35,23 @@ Created on first run via `SheetsService.createSpreadsheet`. Two sheets:
 | K (10)       | photoIds    | String | Comma-separated Drive file IDs             |
 | L (11)       | webLink     | String | URL                                        |
 | M (12)       | tags        | String | Comma-separated tags                       |
+| N (13)       | locationId  | String | FK to Locations id (optional)             |
 
 - Row 1 is the header row. Data starts at row 2.
-- `Item.columnOrder` in code: `["id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity", "createdAt", "updatedAt", "photoIds", "webLink", "tags"]`.
-- **Parsing:** `InventoryViewModel.parseItemRow` supports older spreadsheets with fewer columns (e.g. without quantity, webLink, tags). New rows are written with the full column set via `itemToRow`.
+- `Item.columnOrder` in code: `["id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity", "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId"]`.
+- **Parsing:** `InventoryViewModel.parseItemRow` supports older spreadsheets with fewer columns (e.g. without quantity, webLink, tags, locationId). New rows are written with the full column set via `itemToRow`.
+
+### Sheet: **Locations**
+
+| Column index | Name   | Type   | Notes                  |
+|--------------|--------|--------|------------------------|
+| A (0)        | id     | String | UUID                   |
+| B (1)        | name   | String | Display name           |
+| C (2)        | order  | Int    | Sort order (row-based) |
+
+- Row 1 is the header row (`id`, `name`, `order`). Data starts at row 2.
+- `Location.columnOrder` in code: `["id", "name", "order"]`.
+- For existing spreadsheets created before Locations existed, the app adds the "Locations" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `LocationsViewModel.load()`).
 
 ## Google Drive
 
@@ -54,6 +67,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Two sheets:
 | `mystuff_items_cache`      | Offline cache of items (encoded)  |
 | `mystuff_categories_cache` | Offline cache of categories       |
 | `mystuff_pinned_category_ids` | Pinned category IDs (Set)     |
+| `mystuff_default_location_id` | Default location ID for new items |
 
 Clearing spreadsheet/folder IDs (e.g. for debugging or “start fresh”) is done via `AppState.clearStoredIds()`.
 
