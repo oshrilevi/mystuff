@@ -39,6 +39,9 @@
 		B00100000000000000000026 /* LocationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001E /* LocationsView.swift */; };
 		B00100000000000000000027 /* AmazonBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001F /* AmazonBrowserView.swift */; };
 		B00100000000000000000028 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000020 /* LoadingView.swift */; };
+		B00100000000000000000029 /* UserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000021 /* UserStore.swift */; };
+		B0010000000000000000002A /* StoresViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000022 /* StoresViewModel.swift */; };
+		B0010000000000000000002B /* StoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000023 /* StoresView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +77,9 @@
 		F0010000000000000000001E /* LocationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsView.swift; sourceTree = "<group>"; };
 		F0010000000000000000001F /* AmazonBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmazonBrowserView.swift; sourceTree = "<group>"; };
 		F00100000000000000000020 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
+		F00100000000000000000021 /* UserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStore.swift; sourceTree = "<group>"; };
+		F00100000000000000000022 /* StoresViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresViewModel.swift; sourceTree = "<group>"; };
+		F00100000000000000000023 /* StoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +109,7 @@
 				F00100000000000000000002 /* Category.swift */,
 				F00100000000000000000003 /* Item.swift */,
 				F0010000000000000000001C /* Location.swift */,
+				F00100000000000000000021 /* UserStore.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -126,6 +133,7 @@
 				F00100000000000000000009 /* CategoriesViewModel.swift */,
 				F0010000000000000000000A /* InventoryViewModel.swift */,
 				F0010000000000000000001D /* LocationsViewModel.swift */,
+				F00100000000000000000022 /* StoresViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -144,6 +152,7 @@
 				F0010000000000000000001E /* LocationsView.swift */,
 				F0010000000000000000001F /* AmazonBrowserView.swift */,
 				F00100000000000000000020 /* LoadingView.swift */,
+				F00100000000000000000023 /* StoresView.swift */,
 				F0010000000000000000000F /* MainTabView.swift */,
 				F00100000000000000000010 /* RootView.swift */,
 				F00100000000000000000011 /* SignInView.swift */,
@@ -275,6 +284,9 @@
 				B00100000000000000000026 /* LocationsView.swift in Sources */,
 				B00100000000000000000027 /* AmazonBrowserView.swift in Sources */,
 				B00100000000000000000028 /* LoadingView.swift in Sources */,
+				B00100000000000000000029 /* UserStore.swift in Sources */,
+				B0010000000000000000002A /* StoresViewModel.swift in Sources */,
+				B0010000000000000000002B /* StoresView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

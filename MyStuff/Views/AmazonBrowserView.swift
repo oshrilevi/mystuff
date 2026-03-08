@@ -314,7 +314,7 @@ private struct AddFromURLItem: Identifiable {
 // MARK: - Store browser view
 
 struct StoreBrowserView: View {
-    let store: Store
+    let store: UserStore
 
     @EnvironmentObject var session: Session
     @StateObject private var webViewState = AmazonWebViewState()
@@ -322,7 +322,7 @@ struct StoreBrowserView: View {
     @State private var urlBarText: String = ""
 
     private var initialURL: URL {
-        (UserDefaults.standard.string(forKey: store.persistedURLKey)).flatMap { URL(string: $0) } ?? store.startURL
+        (UserDefaults.standard.string(forKey: store.persistedURLKey)).flatMap { URL(string: $0) } ?? store.startURLAsURL
     }
 
     var body: some View {
@@ -402,10 +402,3 @@ struct StoreBrowserView: View {
     }
 }
 
-// MARK: - Amazon browser view (wrapper for backward compatibility)
-
-struct AmazonBrowserView: View {
-    var body: some View {
-        StoreBrowserView(store: .amazon)
-    }
-}

@@ -1,69 +1,101 @@
 import SwiftUI
 
+enum MainSidebarSelection: Hashable {
+    case items
+    case categories
+    case locations
+    case storesList
+    case store(UserStore)
+}
+
 struct MainTabView: View {
+    @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
-    @State private var selectedTab = 0
+    @State private var selection: MainSidebarSelection = .items
     @State private var itemViewMode: ItemViewMode = .grid
 
     var body: some View {
         #if os(iOS)
-        TabView(selection: $selectedTab) {
+        TabView(selection: $selection) {
             ItemsTabView(viewMode: $itemViewMode)
                 .tabItem { Label("Items", systemImage: "square.grid.2x2") }
-                .tag(0)
+                .tag(MainSidebarSelection.items)
             CategoriesView()
                 .tabItem { Label("Categories", systemImage: "folder") }
-                .tag(1)
+                .tag(MainSidebarSelection.categories)
             LocationsView()
                 .tabItem { Label("Locations", systemImage: "location") }
-                .tag(2)
-            StoreBrowserView(store: .amazon)
-                .tabItem { Label("Amazon", systemImage: "cart") }
-                .tag(3)
-            StoreBrowserView(store: .aliexpress)
-                .tabItem { Label("AliExpress", systemImage: "bag") }
-                .tag(4)
-            StoreBrowserView(store: .bhPhoto)
-                .tabItem { Label("B&H", systemImage: "camera") }
-                .tag(5)
+                .tag(MainSidebarSelection.locations)
+            StoresTabContent()
+                .tabItem { Label("Stores", systemImage: "cart") }
+                .tag(MainSidebarSelection.storesList)
         }
         #else
         NavigationSplitView {
-            List(selection: $selectedTab) {
+            List(selection: $selection) {
                 Section("Items") {
-                    NavigationLink(value: 0) { Label("Items", systemImage: "square.grid.2x2") }
+                    NavigationLink(value: MainSidebarSelection.items) { Label("Items", systemImage: "square.grid.2x2") }
                 }
                 Section("Settings") {
-                    NavigationLink(value: 1) { Label("Categories", systemImage: "folder") }
-                    NavigationLink(value: 2) { Label("Locations", systemImage: "location") }
+                    NavigationLink(value: MainSidebarSelection.categories) { Label("Categories", systemImage: "folder") }
+                    NavigationLink(value: MainSidebarSelection.locations) { Label("Locations", systemImage: "location") }
+                    NavigationLink(value: MainSidebarSelection.storesList) { Label("Stores", systemImage: "cart") }
                 }
                 Section("Stores") {
-                    NavigationLink(value: 3) { Label("Amazon", systemImage: "cart") }
-                    NavigationLink(value: 4) { Label("AliExpress", systemImage: "bag") }
-                    NavigationLink(value: 5) { Label("B&H Photo", systemImage: "camera") }
+                    ForEach(session.stores.stores.sorted(by: { $0.order < $1.order })) { store in
+                        NavigationLink(value: MainSidebarSelection.store(store)) {
+                            Label(store.name, systemImage: store.systemImage)
+                        }
+                    }
                 }
             }
             .listStyle(.sidebar)
         } detail: {
-            if selectedTab == 0 {
-                ItemsTabView(viewMode: $itemViewMode)
-            } else if selectedTab == 1 {
-                CategoriesView()
-            } else if selectedTab == 2 {
-                LocationsView()
-            } else if selectedTab == 3 {
-                StoreBrowserView(store: .amazon)
-            } else if selectedTab == 4 {
-                StoreBrowserView(store: .aliexpress)
-            } else if selectedTab == 5 {
-                StoreBrowserView(store: .bhPhoto)
-            } else {
-                EmptyView()
+            Group {
+                switch selection {
+                case .items:
+                    ItemsTabView(viewMode: $itemViewMode)
+                case .categories:
+                    CategoriesView()
+                case .locations:
+                    LocationsView()
+                case .storesList:
+                    StoresView()
+                case .store(let store):
+                    StoreBrowserView(store: store)
+                }
             }
         }
         #endif
     }
 }
+
+#if os(iOS)
+/// On iOS, a single "Stores" tab that lists stores and pushes to the browser when one is tapped.
+private struct StoresTabContent: View {
+    @EnvironmentObject var session: Session
+
+    private var sortedStores: [UserStore] {
+        session.stores.stores.sorted { $0.order < $1.order }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(sortedStores) { store in
+                    NavigationLink(value: store) {
+                        Label(store.name, systemImage: store.systemImage)
+                    }
+                }
+            }
+            .navigationTitle("Stores")
+            .navigationDestination(for: UserStore.self) { store in
+                StoreBrowserView(store: store)
+            }
+        }
+    }
+}
+#endif
 
 struct ItemsTabView: View {
     @Binding var viewMode: ItemViewMode

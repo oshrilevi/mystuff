@@ -4,7 +4,7 @@ Reference for the Google Sheets and Drive layout. When you add or reorder column
 
 ## Google Spreadsheet
 
-Created on first run via `SheetsService.createSpreadsheet`. Three sheets:
+Created on first run via `SheetsService.createSpreadsheet`. Four sheets:
 
 ### Sheet: **Categories**
 
@@ -53,6 +53,21 @@ Created on first run via `SheetsService.createSpreadsheet`. Three sheets:
 - `Location.columnOrder` in code: `["id", "name", "order"]`.
 - For existing spreadsheets created before Locations existed, the app adds the "Locations" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `LocationsViewModel.load()`).
 
+### Sheet: **Stores**
+
+| Column index | Name      | Type   | Notes                                   |
+|--------------|-----------|--------|-----------------------------------------|
+| A (0)        | id        | String | UUID                                    |
+| B (1)        | name      | String | Display name                            |
+| C (2)        | startURL  | String | URL to open in the in-app store browser |
+| D (3)        | order     | Int    | Sort order (row-based)                  |
+| E (4)        | systemImage | String | SF Symbol name (e.g. "cart", "link") |
+
+- Row 1 is the header row (`id`, `name`, `startURL`, `order`, `systemImage`). Data starts at row 2.
+- `UserStore.columnOrder` in code: `["id", "name", "startURL", "order", "systemImage"]`.
+- For existing spreadsheets created before Stores existed, the app adds the "Stores" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `StoresViewModel.load()`).
+- New spreadsheets are seeded with three default stores (Amazon, AliExpress, B&H Photo).
+
 ## Google Drive
 
 - **Folder:** One folder per user, name **"MyStuff Photos"**, created in bootstrap via `DriveService.createFolder`.
@@ -68,6 +83,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Three sheets:
 | `mystuff_categories_cache` | Offline cache of categories       |
 | `mystuff_pinned_category_ids` | Pinned category IDs (Set)     |
 | `mystuff_default_location_id` | Default location ID for new items |
+| `mystuff_browser_<storeId>`   | Last-visited URL per store (in-app browser); storeId from Stores sheet |
 
 **Caches directory (not UserDefaults):**
 

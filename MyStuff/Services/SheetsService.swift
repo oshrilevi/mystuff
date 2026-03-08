@@ -19,7 +19,8 @@ final class SheetsService {
             "sheets": [
                 ["properties": ["title": "Categories"]],
                 ["properties": ["title": "Items"]],
-                ["properties": ["title": "Locations"]]
+                ["properties": ["title": "Locations"]],
+                ["properties": ["title": "Stores"]]
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -36,6 +37,14 @@ final class SheetsService {
             "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId"
         ]])
         try await appendRows(spreadsheetId: id, sheetName: "Locations", values: [["id", "name", "order"]])
+        try await appendRows(spreadsheetId: id, sheetName: "Stores", values: [["id", "name", "startURL", "order", "systemImage"]])
+        // Seed three default stores for new users
+        let defaultStores: [[String]] = [
+            [UUID().uuidString, "Amazon", "https://www.amazon.com", "0", "cart"],
+            [UUID().uuidString, "AliExpress", "https://www.aliexpress.com/", "1", "bag"],
+            [UUID().uuidString, "B&H Photo", "https://www.bhphotovideo.com/", "2", "camera"]
+        ]
+        try await appendRows(spreadsheetId: id, sheetName: "Stores", values: defaultStores)
         return (id, "https://docs.google.com/spreadsheets/d/\(id)")
     }
 
