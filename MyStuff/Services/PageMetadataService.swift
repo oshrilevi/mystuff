@@ -7,6 +7,8 @@ struct PageMetadata {
     var price: String?
     /// Keywords/tags from meta keywords, og:keywords, or JSON-LD.
     var tags: [String]
+    /// Final URL after redirects (use this as the canonical link to store).
+    var resolvedURL: URL?
 }
 
 enum PageMetadataError: LocalizedError {
@@ -46,8 +48,11 @@ final class PageMetadataService {
             throw PageMetadataError.badStatus(http.statusCode)
         }
 
+        let resolvedURL = response.url ?? url
         let html = String(data: data, encoding: .utf8) ?? ""
-        return parseMetadata(from: html, url: url)
+        var metadata = parseMetadata(from: html, url: url)
+        metadata.resolvedURL = resolvedURL
+        return metadata
     }
 
     private func parseMetadata(from html: String, url: URL) -> PageMetadata {
@@ -110,7 +115,8 @@ final class PageMetadataService {
             description: cleanedDescription?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? cleanedDescription : nil,
             imageURL: imageURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? imageURL : nil,
             price: price?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? price : nil,
-            tags: tags
+            tags: tags,
+            resolvedURL: nil
         )
     }
 
@@ -147,7 +153,10 @@ final class PageMetadataService {
         let phrasesToRemove = [
             "Amazon.com: ",
             "Buy ",
-            "- Amazon.com ✓ FREE DELIVERY possible on eligible purchases"
+            "- Amazon.com ✓ FREE DELIVERY possible on eligible purchases",
+            " | B&H Photo Video",
+            " - B&H Explora",
+            " - B&H Photo Video"
         ]
         for phrase in phrasesToRemove {
             result = result.replacingOccurrences(of: phrase, with: "")

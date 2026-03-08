@@ -17,9 +17,12 @@ struct MainTabView: View {
             LocationsView()
                 .tabItem { Label("Locations", systemImage: "location") }
                 .tag(2)
-            AmazonBrowserView()
+            StoreBrowserView(store: .amazon)
                 .tabItem { Label("Amazon", systemImage: "cart") }
                 .tag(3)
+            StoreBrowserView(store: .bhPhoto)
+                .tabItem { Label("B&H", systemImage: "camera") }
+                .tag(4)
         }
         #else
         NavigationSplitView {
@@ -33,6 +36,7 @@ struct MainTabView: View {
                 }
                 Section("Stores") {
                     NavigationLink(value: 3) { Label("Amazon", systemImage: "cart") }
+                    NavigationLink(value: 4) { Label("B&H Photo", systemImage: "camera") }
                 }
             }
             .listStyle(.sidebar)
@@ -43,8 +47,12 @@ struct MainTabView: View {
                 CategoriesView()
             } else if selectedTab == 2 {
                 LocationsView()
+            } else if selectedTab == 3 {
+                StoreBrowserView(store: .amazon)
+            } else if selectedTab == 4 {
+                StoreBrowserView(store: .bhPhoto)
             } else {
-                AmazonBrowserView()
+                EmptyView()
             }
         }
         #endif

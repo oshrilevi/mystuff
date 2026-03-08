@@ -433,6 +433,9 @@ struct ItemFormView: View {
         defer { isExtracting = false }
         do {
             let metadata = try await pageMetadata.fetchMetadata(from: url)
+            if let resolved = metadata.resolvedURL?.absoluteString {
+                webLink = resolved
+            }
             if let t = metadata.title, !t.isEmpty { name = t }
             if let d = metadata.description, !d.isEmpty { description = d }
             if let p = metadata.price, !p.isEmpty { price = p }
