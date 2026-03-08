@@ -255,10 +255,20 @@ struct GalleryView: View {
                                                         thumbnailSize: thumbnailSize,
                                                         onTap: { selectedItem = item }
                                                     )
+                                                    .draggable(item.id)
                                                 }
                                             }
                                             .padding(.horizontal)
                                             .padding(.bottom, 24)
+                                            .dropDestination(for: String.self) { itemIds, _ in
+                                                guard let itemId = itemIds.first,
+                                                      let item = inventory.items.first(where: { $0.id == itemId }),
+                                                      item.categoryId != section.id else { return false }
+                                                var updated = item
+                                                updated.categoryId = section.id
+                                                Task { await inventory.updateItem(updated) }
+                                                return true
+                                            }
                                         }
                                     } header: {
                                         CategorySectionHeader(
@@ -279,6 +289,13 @@ struct GalleryView: View {
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
                                                 showAddItem = true
+                                            },
+                                            onDropItem: { itemId in
+                                                guard let item = inventory.items.first(where: { $0.id == itemId }),
+                                                      item.categoryId != section.id else { return }
+                                                var updated = item
+                                                updated.categoryId = section.id
+                                                Task { await inventory.updateItem(updated) }
                                             }
                                         )
                                     }
@@ -304,6 +321,13 @@ struct GalleryView: View {
                                             inventory.lastNewItemCategoryId = singleCategoryId
                                             showAddItem = true
                                         },
+                                        onDropItem: { itemId in
+                                            guard let item = inventory.items.first(where: { $0.id == itemId }),
+                                                  item.categoryId != singleCategoryId else { return }
+                                            var updated = item
+                                            updated.categoryId = singleCategoryId
+                                            Task { await inventory.updateItem(updated) }
+                                        },
                                         showSearchField: false
                                     )
                                     LazyVGrid(columns: gridColumns, spacing: 16) {
@@ -315,9 +339,19 @@ struct GalleryView: View {
                                                 thumbnailSize: thumbnailSize,
                                                 onTap: { selectedItem = item }
                                             )
+                                            .draggable(item.id)
                                         }
                                     }
                                     .padding()
+                                    .dropDestination(for: String.self) { itemIds, _ in
+                                        guard let itemId = itemIds.first,
+                                              let item = inventory.items.first(where: { $0.id == itemId }),
+                                              item.categoryId != singleCategoryId else { return false }
+                                        var updated = item
+                                        updated.categoryId = singleCategoryId
+                                        Task { await inventory.updateItem(updated) }
+                                        return true
+                                    }
                                 }
                             }
                         }
@@ -565,6 +599,7 @@ struct CategorySectionHeader: View {
     var isPinned: Bool = false
     var onTogglePin: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
+    var onDropItem: ((String) -> Void)? = nil
     var showSearchField: Bool = true
 
     private var isWishlist: Bool { Category.isWishlist(name) }
@@ -664,6 +699,11 @@ struct CategorySectionHeader: View {
         #if os(iOS)
         .overlay(alignment: .top) { Divider() }
         #endif
+        .dropDestination(for: String.self) { itemIds, _ in
+            guard let itemId = itemIds.first, let onDropItem else { return false }
+            onDropItem(itemId)
+            return true
+        } isTargeted: { _ in }
     }
 }
 

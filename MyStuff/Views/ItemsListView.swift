@@ -171,6 +171,16 @@ struct ItemsListView: View {
                                             )
                                             .contentShape(Rectangle())
                                             .onTapGesture { selectedItem = item }
+                                            .draggable(item.id)
+                                        }
+                                        .dropDestination(for: String.self) { itemIds, _ in
+                                            guard let itemId = itemIds.first,
+                                                  let item = inventory.items.first(where: { $0.id == itemId }),
+                                                  item.categoryId != section.id else { return false }
+                                            var updated = item
+                                            updated.categoryId = section.id
+                                            Task { await inventory.updateItem(updated) }
+                                            return true
                                         }
                                     } header: {
                                         CategorySectionHeader(
@@ -191,6 +201,13 @@ struct ItemsListView: View {
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
                                                 showAddItem = true
+                                            },
+                                            onDropItem: { itemId in
+                                                guard let item = inventory.items.first(where: { $0.id == itemId }),
+                                                      item.categoryId != section.id else { return }
+                                                var updated = item
+                                                updated.categoryId = section.id
+                                                Task { await inventory.updateItem(updated) }
                                             }
                                         )
                                     }
@@ -207,6 +224,16 @@ struct ItemsListView: View {
                                         )
                                         .contentShape(Rectangle())
                                         .onTapGesture { selectedItem = item }
+                                        .draggable(item.id)
+                                    }
+                                    .dropDestination(for: String.self) { itemIds, _ in
+                                        guard let itemId = itemIds.first,
+                                              let item = inventory.items.first(where: { $0.id == itemId }),
+                                              item.categoryId != singleCategoryId else { return false }
+                                        var updated = item
+                                        updated.categoryId = singleCategoryId
+                                        Task { await inventory.updateItem(updated) }
+                                        return true
                                     }
                                 } header: {
                                     CategorySectionHeader(
@@ -224,6 +251,13 @@ struct ItemsListView: View {
                                         onAddItem: {
                                             inventory.lastNewItemCategoryId = singleCategoryId
                                             showAddItem = true
+                                        },
+                                        onDropItem: { itemId in
+                                            guard let item = inventory.items.first(where: { $0.id == itemId }),
+                                                  item.categoryId != singleCategoryId else { return }
+                                            var updated = item
+                                            updated.categoryId = singleCategoryId
+                                            Task { await inventory.updateItem(updated) }
                                         },
                                         showSearchField: false
                                     )
