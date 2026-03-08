@@ -36,9 +36,7 @@ struct SourcesView: View {
                         }
                         ForEach(sortedSources) { source in
                             HStack(spacing: 12) {
-                                Image(systemName: "link")
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 20, alignment: .center)
+                                SourceIconView(source: source, size: 20)
                                 Text(source.name)
                                 Text(source.url)
                                     .font(.caption)

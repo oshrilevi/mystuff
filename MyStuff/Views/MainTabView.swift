@@ -74,7 +74,11 @@ struct MainTabView: View {
                 Section("Sources") {
                     ForEach(session.sources.sources.sorted(by: { $0.order < $1.order })) { source in
                         NavigationLink(value: MainSidebarSelection.source(source)) {
-                            Label(source.name, systemImage: "link")
+                            Label {
+                                Text(source.name)
+                            } icon: {
+                                SourceIconView(source: source, size: 20)
+                            }
                         }
                     }
                 }
@@ -158,7 +162,11 @@ private struct SourcesTabContent: View {
             List {
                 ForEach(sortedSources) { source in
                     NavigationLink(value: source) {
-                        Label(source.name, systemImage: "link")
+                        Label {
+                            Text(source.name)
+                        } icon: {
+                            SourceIconView(source: source, size: 20)
+                        }
                     }
                 }
             }

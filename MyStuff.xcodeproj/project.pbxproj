@@ -49,6 +49,7 @@
 		B00100000000000000000030 /* SourcesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000028 /* SourcesViewModel.swift */; };
 		B00100000000000000000031 /* SourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000029 /* SourcesView.swift */; };
 		B00100000000000000000032 /* SourceBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002A /* SourceBrowserView.swift */; };
+		B00100000000000000000033 /* SourceIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002B /* SourceIconView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -94,6 +95,7 @@
 		F00100000000000000000028 /* SourcesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesViewModel.swift; sourceTree = "<group>"; };
 		F00100000000000000000029 /* SourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002A /* SourceBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceBrowserView.swift; sourceTree = "<group>"; };
+		F0010000000000000000002B /* SourceIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceIconView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -172,6 +174,7 @@
 				F00100000000000000000024 /* StoreIconView.swift */,
 				F00100000000000000000029 /* SourcesView.swift */,
 				F0010000000000000000002A /* SourceBrowserView.swift */,
+				F0010000000000000000002B /* SourceIconView.swift */,
 				F00100000000000000000026 /* YouTubeSearchView.swift */,
 				F0010000000000000000000F /* MainTabView.swift */,
 				F00100000000000000000010 /* RootView.swift */,
@@ -323,6 +326,7 @@
 				B00100000000000000000030 /* SourcesViewModel.swift in Sources */,
 				B00100000000000000000031 /* SourcesView.swift in Sources */,
 				B00100000000000000000032 /* SourceBrowserView.swift in Sources */,
+				B00100000000000000000033 /* SourceIconView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
