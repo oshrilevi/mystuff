@@ -91,6 +91,8 @@ struct RootView: View {
                     .task(id: session.appState.spreadsheetId) {
                         guard session.appState.spreadsheetId != nil else { return }
                         await session.categories.load()
+                        await session.locations.load()
+                        await session.inventory.refresh()
                     }
             }
         }

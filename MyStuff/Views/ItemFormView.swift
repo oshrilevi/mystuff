@@ -369,6 +369,10 @@ struct ItemFormView: View {
                     }
                 }
             }
+            .task {
+                guard session.appState.spreadsheetId != nil, locations.isEmpty else { return }
+                await session.locations.load()
+            }
         }
     }
 
