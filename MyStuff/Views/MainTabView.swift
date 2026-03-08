@@ -16,12 +16,11 @@ struct MainTabView: View {
     @EnvironmentObject var authService: GoogleAuthService
     @State private var selection: MainSidebarSelection = .items
     @State private var itemViewMode: ItemViewMode = .grid
-
     var body: some View {
         #if os(iOS)
         TabView(selection: $selection) {
             ItemsTabView(viewMode: $itemViewMode)
-                .tabItem { Label("Items", systemImage: "square.grid.2x2") }
+                .tabItem { Label("My Stuff", systemImage: "square.grid.2x2") }
                 .tag(MainSidebarSelection.items)
             CategoriesView()
                 .tabItem { Label("Categories", systemImage: "folder") }
@@ -54,22 +53,10 @@ struct MainTabView: View {
         #else
         NavigationSplitView {
             List(selection: $selection) {
-                Section("Items") {
-                    NavigationLink(value: MainSidebarSelection.items) { Label("Items", systemImage: "square.grid.2x2") }
-                }
-                Section("Settings") {
-                    NavigationLink(value: MainSidebarSelection.categories) { Label("Categories", systemImage: "folder") }
-                    NavigationLink(value: MainSidebarSelection.locations) { Label("Locations", systemImage: "location") }
-                    NavigationLink(value: MainSidebarSelection.storesList) { Label("Stores", systemImage: "cart") }
-                    NavigationLink(value: MainSidebarSelection.sourcesList) { Label("Sources", systemImage: "link") }
-                }
+                NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
-                        Label {
-                            Text("YouTube")
-                        } icon: {
-                            FaviconView(urlString: "https://www.youtube.com", fallbackSystemImage: "play.rectangle", size: 20)
-                        }
+                        Label("YouTube", systemImage: "play.rectangle")
                     }
                 }
                 Section("Stores") {
@@ -94,6 +81,15 @@ struct MainTabView: View {
                         }
                     }
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    SettingsMenuButton(selection: $selection)
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
             }
             .listStyle(.sidebar)
         } detail: {
@@ -129,6 +125,37 @@ struct MainTabView: View {
         #endif
     }
 }
+
+#if os(macOS)
+private struct SettingsMenuButton: View {
+    @Binding var selection: MainSidebarSelection
+
+    var body: some View {
+        Menu {
+            Button {
+                selection = .categories
+            } label: { Label("Categories", systemImage: "folder") }
+
+            Button {
+                selection = .locations
+            } label: { Label("Locations", systemImage: "location") }
+
+            Button {
+                selection = .storesList
+            } label: { Label("Stores", systemImage: "cart") }
+
+            Button {
+                selection = .sourcesList
+            } label: { Label("Sources", systemImage: "link") }
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.title2)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+    }
+}
+#endif
 
 #if os(iOS)
 /// On iOS, a single "Stores" tab that lists stores and pushes to the browser when one is tapped.
