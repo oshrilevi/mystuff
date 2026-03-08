@@ -50,6 +50,9 @@ struct ItemFormView: View {
     }
     private var isEdit: Bool { if case .edit = mode { true } else { false } }
     private var existingItem: Item? { if case .edit(let i) = mode { return i } else { return nil } }
+    private var isWishlistCategory: Bool {
+        Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
+    }
 
     private var showCurrentPhoto: Bool {
         isEdit && !removedPhoto && imageData.isEmpty && !(existingItem?.photoIds.first ?? "").isEmpty
@@ -85,75 +88,77 @@ struct ItemFormView: View {
                             .keyboardType(.decimalPad)
                             #endif
                     }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Purchase Date").font(.subheadline).foregroundStyle(.secondary)
-                        Button {
-                            showDatePicker = true
-                        } label: {
-                            HStack {
-                                Text(Self.dateFormatter.string(from: purchaseDateValue))
-                                Spacer()
-                                Image(systemName: "calendar")
-                                    .foregroundStyle(.secondary)
+                    if !isWishlistCategory {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Purchase Date").font(.subheadline).foregroundStyle(.secondary)
+                            Button {
+                                showDatePicker = true
+                            } label: {
+                                HStack {
+                                    Text(Self.dateFormatter.string(from: purchaseDateValue))
+                                    Spacer()
+                                    Image(systemName: "calendar")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .sheet(isPresented: $showDatePicker) {
+                                NavigationStack {
+                                    DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
+                                        #if os(iOS)
+                                        .datePickerStyle(.graphical)
+                                        #endif
+                                        .padding()
+                                        .onChange(of: purchaseDateValue) { _, _ in
+                                            showDatePicker = false
+                                        }
+                                        .toolbar {
+                                            ToolbarItem(placement: .confirmationAction) {
+                                                Button("Done") { showDatePicker = false }
+                                            }
+                                        }
+                                }
                             }
                         }
-                        .sheet(isPresented: $showDatePicker) {
-                            NavigationStack {
-                                DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
-                                    #if os(iOS)
-                                    .datePickerStyle(.graphical)
-                                    #endif
-                                    .padding()
-                                    .onChange(of: purchaseDateValue) { _, _ in
-                                        showDatePicker = false
-                                    }
-                                    .toolbar {
-                                        ToolbarItem(placement: .confirmationAction) {
-                                            Button("Done") { showDatePicker = false }
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
+                            HStack(spacing: 12) {
+                                TextField("", text: $quantityText, prompt: Text("1"))
+                                    .onChange(of: quantityText) { _, new in
+                                        let parsed = Int(new.filter { $0.isNumber }) ?? 0
+                                        quantity = min(999, max(1, parsed))
+                                        if parsed != quantity {
+                                            quantityText = "\(quantity)"
                                         }
                                     }
-                            }
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
-                        HStack(spacing: 12) {
-                            TextField("", text: $quantityText, prompt: Text("1"))
-                                .onChange(of: quantityText) { _, new in
-                                    let parsed = Int(new.filter { $0.isNumber }) ?? 0
-                                    quantity = min(999, max(1, parsed))
-                                    if parsed != quantity {
-                                        quantityText = "\(quantity)"
+                                    #if os(iOS)
+                                    .keyboardType(.numberPad)
+                                    #endif
+                                HStack(spacing: 4) {
+                                    Button {
+                                        let next = min(999, quantity + 1)
+                                        quantity = next
+                                        quantityText = "\(next)"
+                                    } label: {
+                                        Image(systemName: "chevron.up")
+                                            .font(.body.weight(.semibold))
+                                            .frame(minWidth: 36, minHeight: 36)
+                                            .contentShape(Rectangle())
                                     }
+                                    .buttonStyle(.plain)
+                                    Button {
+                                        let next = max(1, quantity - 1)
+                                        quantity = next
+                                        quantityText = "\(next)"
+                                    } label: {
+                                        Image(systemName: "chevron.down")
+                                            .font(.body.weight(.semibold))
+                                            .frame(minWidth: 36, minHeight: 36)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                #if os(iOS)
-                                .keyboardType(.numberPad)
-                                #endif
-                            HStack(spacing: 4) {
-                                Button {
-                                    let next = min(999, quantity + 1)
-                                    quantity = next
-                                    quantityText = "\(next)"
-                                } label: {
-                                    Image(systemName: "chevron.up")
-                                        .font(.body.weight(.semibold))
-                                        .frame(minWidth: 36, minHeight: 36)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                Button {
-                                    let next = max(1, quantity - 1)
-                                    quantity = next
-                                    quantityText = "\(next)"
-                                } label: {
-                                    Image(systemName: "chevron.down")
-                                        .font(.body.weight(.semibold))
-                                        .frame(minWidth: 36, minHeight: 36)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
                             }
-                            .foregroundStyle(.secondary)
                         }
                     }
                 }

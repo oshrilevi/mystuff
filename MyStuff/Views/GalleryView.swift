@@ -142,9 +142,11 @@ struct GalleryView: View {
         return "\(n) Items in \(currentCategoryName)"
     }
 
-    /// Total worth (price × quantity) of items in the current filtered view.
+    /// Total worth (price × quantity) of items in the current filtered view. Excludes items in a category named Wishlist.
     private var totalWorth: Double {
         inventory.filteredItems.reduce(0) { sum, item in
+            let catName = categories.first(where: { $0.id == item.categoryId })?.name ?? ""
+            if Category.isWishlist(catName) { return sum }
             let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
             return sum + p * Double(item.quantity)
         }
@@ -409,8 +411,10 @@ struct ItemHoverPopoverContent: View {
             Divider()
             LabeledRow(label: "Category", value: categoryName)
             LabeledRow(label: "Price", value: Item.priceInNIS(item.price))
-            LabeledRow(label: "Quantity", value: "\(item.quantity)")
-            LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
+            if !Category.isWishlist(categoryName) {
+                LabeledRow(label: "Quantity", value: "\(item.quantity)")
+                LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
+            }
             if !item.tags.isEmpty {
                 LabeledRow(label: "Tags", value: item.tags.joined(separator: ", "))
             }
@@ -563,8 +567,16 @@ struct CategorySectionHeader: View {
     var onAddItem: (() -> Void)? = nil
     var showSearchField: Bool = true
 
+    private var isWishlist: Bool { Category.isWishlist(name) }
     private var formattedValue: String {
         formatCurrency(totalValue)
+    }
+
+    private var sortOptions: [ItemSortOption] {
+        if isWishlist {
+            return ItemSortOption.allCases.filter { $0 != .purchaseDate }
+        }
+        return Array(ItemSortOption.allCases)
     }
 
     var body: some View {
@@ -585,18 +597,20 @@ struct CategorySectionHeader: View {
             Text("\(itemCount) item(s)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("·")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            Text("Total: \(formattedValue)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if !isWishlist {
+                Text("·")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Text("Total: \(formattedValue)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Spacer(minLength: 8)
             HStack(spacing: 4) {
                 Text("Sort:")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                ForEach(ItemSortOption.allCases, id: \.rawValue) { option in
+                ForEach(sortOptions, id: \.rawValue) { option in
                     let isSelected = sortOrder.option == option
                     Button {
                         if isSelected {

@@ -11,6 +11,8 @@ struct ItemDetailView: View {
         session.categories.categories.first { $0.id == item.categoryId }?.name ?? "—"
     }
 
+    private var isWishlist: Bool { Category.isWishlist(categoryName) }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -25,8 +27,10 @@ struct ItemDetailView: View {
                     detailRow("Description", item.description.isEmpty ? "—" : item.description)
                     detailRow("Category", categoryName)
                     detailRow("Price", Item.priceInNIS(item.price))
-                    detailRow("Quantity", "\(item.quantity)")
-                    detailRow("Purchase date", item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
+                    if !isWishlist {
+                        detailRow("Quantity", "\(item.quantity)")
+                        detailRow("Purchase date", item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
+                    }
                     if !item.tags.isEmpty {
                         detailRow("Tags", item.tags.joined(separator: ", "))
                     }

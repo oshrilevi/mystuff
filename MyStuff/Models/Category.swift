@@ -12,4 +12,9 @@ struct Category: Identifiable, Equatable {
     }
 
     static let columnOrder = ["id", "name", "order"]
+
+    /// True when the category name is "Wishlist" (case-insensitive). Used to hide totals, date sort, and quantity/purchase date in UI.
+    static func isWishlist(_ name: String) -> Bool {
+        name.caseInsensitiveCompare("Wishlist") == .orderedSame
+    }
 }

@@ -48,8 +48,11 @@ struct ItemsListView: View {
         return "\(n) Items in \(currentCategoryName)"
     }
 
+    /// Excludes items in a category named Wishlist.
     private var totalWorth: Double {
         inventory.filteredItems.reduce(0) { sum, item in
+            let catName = categories.first(where: { $0.id == item.categoryId })?.name ?? ""
+            if Category.isWishlist(catName) { return sum }
             let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
             return sum + p * Double(item.quantity)
         }
