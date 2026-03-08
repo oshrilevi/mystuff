@@ -53,6 +53,7 @@
 		B00100000000000000000034 /* FaviconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002C /* FaviconView.swift */; };
 		B00100000000000000000035 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002D /* ExportService.swift */; };
 		B00100000000000000000036 /* ExportMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002E /* ExportMenuView.swift */; };
+		B00100000000000000000037 /* PDFExportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002F /* PDFExportBuilder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -102,6 +103,7 @@
 		F0010000000000000000002C /* FaviconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaviconView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002D /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		F0010000000000000000002E /* ExportMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportMenuView.swift; sourceTree = "<group>"; };
+		F0010000000000000000002F /* PDFExportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportBuilder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -169,6 +171,7 @@
 				F0010000000000000000000B /* CategoriesView.swift */,
 				F00100000000000000000015 /* DriveImageView.swift */,
 				F0010000000000000000002E /* ExportMenuView.swift */,
+				F0010000000000000000002F /* PDFExportBuilder.swift */,
 				F0010000000000000000000C /* GalleryView.swift */,
 				F0010000000000000000000D /* ItemDetailView.swift */,
 				F0010000000000000000000E /* ItemFormView.swift */,
@@ -339,6 +342,7 @@
 				B00100000000000000000034 /* FaviconView.swift in Sources */,
 				B00100000000000000000035 /* ExportService.swift in Sources */,
 				B00100000000000000000036 /* ExportMenuView.swift in Sources */,
+				B00100000000000000000037 /* PDFExportBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
