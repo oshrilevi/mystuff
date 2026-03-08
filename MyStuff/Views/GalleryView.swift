@@ -817,8 +817,10 @@ struct StatusBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(.bar)
-        #if os(iOS)
-        .overlay(alignment: .top) { Divider() }
-        #endif
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(.separator)
+                .frame(height: 1)
+        }
     }
 }
