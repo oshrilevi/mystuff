@@ -11,6 +11,7 @@ final class Session: ObservableObject {
     let pageMetadata: PageMetadataService
     let inventory: InventoryViewModel
     let categories: CategoriesViewModel
+    let wishlist: WishlistViewModel
 
     private let authService: GoogleAuthService
     private var cancellables = Set<AnyCancellable>()
@@ -27,6 +28,7 @@ final class Session: ObservableObject {
         self.pageMetadata = PageMetadataService()
         self.inventory = InventoryViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
         self.categories = CategoriesViewModel(sheets: self.sheets, appState: self.appState)
+        self.wishlist = WishlistViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
 
         // Forward child view model updates so views observing Session re-render when items/categories load
         appState.objectWillChange
@@ -38,6 +40,10 @@ final class Session: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         categories.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        wishlist.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -70,9 +76,11 @@ final class Session: ObservableObject {
         await withTaskGroup(of: Bool.self) { group in
             group.addTask { @MainActor in
                 await self.appState.bootstrapIfNeeded(sheets: self.sheets, drive: self.drive, userEmail: email)
-                if self.appState.bootstrapError == nil {
+                if self.appState.bootstrapError == nil, let sid = self.appState.spreadsheetId {
+                    try? await self.sheets.ensureWishlistSheetExists(spreadsheetId: sid)
                     await self.inventory.refresh()
                     await self.categories.load()
+                    await self.wishlist.load()
                 }
                 return true
             }
