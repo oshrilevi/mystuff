@@ -29,25 +29,54 @@ enum PageMetadataError: LocalizedError {
 
 final class PageMetadataService {
     private let timeout: TimeInterval = 15
-    private let browserUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+    private let safariUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+    private let chromeUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     func fetchMetadata(from url: URL) async throws -> PageMetadata {
         guard url.scheme == "https" || url.scheme == "http" else {
             throw PageMetadataError.invalidURL
         }
+
+        let (data, response) = try await performRequest(url: url, userAgent: safariUserAgent)
+        if (200...299).contains(response.statusCode) {
+            return buildMetadata(data: data, response: response, url: url)
+        }
+        // Retry once with a different User-Agent on 4xx (e.g. 403)
+        if (400...499).contains(response.statusCode) {
+            let (retryData, retryResponse) = try await performRequest(url: url, userAgent: chromeUserAgent)
+            if (200...299).contains(retryResponse.statusCode) {
+                return buildMetadata(data: retryData, response: retryResponse, url: url)
+            }
+            throw PageMetadataError.badStatus(retryResponse.statusCode)
+        }
+        throw PageMetadataError.badStatus(response.statusCode)
+    }
+
+    private func performRequest(url: URL, userAgent: String) async throws -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue(browserUserAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", forHTTPHeaderField: "Accept")
+        request.setValue("en-US,en;q=0.9,he;q=0.8", forHTTPHeaderField: "Accept-Language")
+        if let referer = origin(for: url) {
+            request.setValue(referer, forHTTPHeaderField: "Referer")
+        }
         request.timeoutInterval = timeout
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw PageMetadataError.nonHTTPResponse
         }
-        guard (200...299).contains(http.statusCode) else {
-            throw PageMetadataError.badStatus(http.statusCode)
-        }
+        return (data, http)
+    }
 
+    private func origin(for url: URL) -> String? {
+        guard let host = url.host else { return nil }
+        let scheme = url.scheme ?? "https"
+        return "\(scheme)://\(host)/"
+    }
+
+    private func buildMetadata(data: Data, response: HTTPURLResponse, url: URL) -> PageMetadata {
         let resolvedURL = response.url ?? url
         let html = String(data: data, encoding: .utf8) ?? ""
         var metadata = parseMetadata(from: html, url: url)

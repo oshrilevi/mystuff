@@ -36,7 +36,7 @@ struct StoresView: View {
                         }
                         ForEach(sortedStores) { store in
                             HStack(spacing: 12) {
-                                StoreIconView(store: store, size: 24)
+                                StoreIconView(store: store, size: 20)
                                 Text(store.name)
                                 Text(store.startURL)
                                     .font(.caption)

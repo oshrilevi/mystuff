@@ -443,7 +443,15 @@ struct ItemFormView: View {
                 tagsText = metadata.tags.joined(separator: ", ")
             }
         } catch {
-            errorMessage = error.localizedDescription
+            if case PageMetadataError.badStatus(let code) = error {
+                if code == 403 {
+                    errorMessage = "This site doesn't allow automatic fetching (HTTP 403). You can still add the item and fill in the name and details yourself."
+                } else {
+                    errorMessage = "Could not load details from this link (HTTP \(code)). You can still add the item and fill in the details yourself."
+                }
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

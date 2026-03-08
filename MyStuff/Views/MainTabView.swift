@@ -47,7 +47,7 @@ struct MainTabView: View {
                             Label {
                                 Text(store.name)
                             } icon: {
-                                StoreIconView(store: store, size: 24)
+                                StoreIconView(store: store, size: 20)
                             }
                         }
                     }
@@ -67,6 +67,7 @@ struct MainTabView: View {
                     StoresView()
                 case .store(let store):
                     StoreBrowserView(store: store)
+                        .id(store.id)
                 }
             }
         }
@@ -91,7 +92,7 @@ private struct StoresTabContent: View {
                         Label {
                             Text(store.name)
                         } icon: {
-                            StoreIconView(store: store, size: 24)
+                            StoreIconView(store: store, size: 20)
                         }
                     }
                 }
@@ -99,6 +100,7 @@ private struct StoresTabContent: View {
             .navigationTitle("Stores")
             .navigationDestination(for: UserStore.self) { store in
                 StoreBrowserView(store: store)
+                    .id(store.id)
             }
         }
     }
