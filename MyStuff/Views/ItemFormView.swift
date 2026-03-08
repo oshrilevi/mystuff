@@ -3,6 +3,7 @@ import SwiftUI
 import PhotosUI
 import UIKit
 #elseif os(macOS)
+import AppKit
 import UniformTypeIdentifiers
 #endif
 
@@ -339,6 +340,7 @@ struct ItemFormView: View {
                 if !isEdit {
                     categoryId = inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
                     purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
+                    pasteURLFromClipboardAndExtract()
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 350_000_000)
                         focusedField = .url
@@ -354,6 +356,24 @@ struct ItemFormView: View {
         f.timeZone = TimeZone.current
         return f
     }()
+
+    private func pasteURLFromClipboardAndExtract() {
+        let clipboardString: String? = {
+            #if os(iOS)
+            return UIPasteboard.general.string
+            #elseif os(macOS)
+            return NSPasteboard.general.string(forType: .string)
+            #else
+            return nil
+            #endif
+        }()
+        guard let str = clipboardString?.trimmingCharacters(in: .whitespaces),
+              !str.isEmpty,
+              let url = URL(string: str),
+              url.scheme == "https" || url.scheme == "http" else { return }
+        webLink = str
+        Task { await extractFromLink() }
+    }
 
     private func fillForm() {
         if let item = existingItem {
