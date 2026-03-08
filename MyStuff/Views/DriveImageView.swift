@@ -11,6 +11,8 @@ struct DriveImageView: View {
     let drive: DriveService
     let fileId: String
     var contentMode: SwiftUI.ContentMode = .fit
+    /// When set, called on the main actor with the detected background color after the image loads (for thumbnail fill).
+    var onBackgroundColorDetected: ((Color?) -> Void)? = nil
 
     @State private var imageData: Data?
     @State private var failed = false
@@ -33,6 +35,15 @@ struct DriveImageView: View {
                 imageData = try await drive.fetchImageData(fileId: fileId)
             } catch {
                 failed = true
+            }
+        }
+        .onChange(of: imageData) { _, newValue in
+            guard let data = newValue, let callback = onBackgroundColorDetected else { return }
+            let id = fileId
+            Task.detached(priority: .userInitiated) {
+                let rgb = ImageBackgroundColorSampler.sampleBackgroundRGB(from: data, fileId: id)
+                let color = rgb.map { Color(red: $0.red, green: $0.green, blue: $0.blue) }
+                await MainActor.run { callback(color) }
             }
         }
     }

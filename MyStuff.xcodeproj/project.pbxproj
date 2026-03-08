@@ -43,6 +43,7 @@
 		B0010000000000000000002A /* StoresViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000022 /* StoresViewModel.swift */; };
 		B0010000000000000000002B /* StoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000023 /* StoresView.swift */; };
 		B0010000000000000000002C /* StoreIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000024 /* StoreIconView.swift */; };
+		B0010000000000000000002D /* ImageBackgroundColorSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000025 /* ImageBackgroundColorSampler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -82,6 +83,7 @@
 		F00100000000000000000022 /* StoresViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresViewModel.swift; sourceTree = "<group>"; };
 		F00100000000000000000023 /* StoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresView.swift; sourceTree = "<group>"; };
 		F00100000000000000000024 /* StoreIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreIconView.swift; sourceTree = "<group>"; };
+		F00100000000000000000025 /* ImageBackgroundColorSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageBackgroundColorSampler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -164,6 +166,14 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		G00100000000000000000007 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				F00100000000000000000025 /* ImageBackgroundColorSampler.swift */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
 		G00100000000000000000005 /* MyStuff */ = {
 			isa = PBXGroup;
 			children = (
@@ -171,6 +181,7 @@
 				F0010000000000000000001B /* NSTextFieldFocusRing.swift */,
 				F00100000000000000000013 /* Assets.xcassets */,
 				F00100000000000000000014 /* MyStuff.entitlements */,
+				G00100000000000000000007 /* Helpers */,
 				G00100000000000000000001 /* Models */,
 				G00100000000000000000002 /* Services */,
 				G00100000000000000000003 /* ViewModels */,
@@ -291,6 +302,7 @@
 				B0010000000000000000002A /* StoresViewModel.swift in Sources */,
 				B0010000000000000000002B /* StoresView.swift in Sources */,
 				B0010000000000000000002C /* StoreIconView.swift in Sources */,
+				B0010000000000000000002D /* ImageBackgroundColorSampler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

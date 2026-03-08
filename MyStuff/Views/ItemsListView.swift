@@ -438,15 +438,17 @@ private struct ItemListRow: View {
     let locationName: String
     let drive: DriveService
 
+    @State private var fillColor: Color?
+
     private let thumbSize: CGFloat = 44
 
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(fillColor ?? Color.gray.opacity(0.2))
                 if let fileId = item.photoIds.first {
-                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit)
+                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit, onBackgroundColorDetected: { fillColor = $0 })
                         .frame(width: thumbSize, height: thumbSize)
                         .clipped()
                         .cornerRadius(8)
