@@ -161,12 +161,14 @@ struct ItemsListView: View {
                                     }
                                     Section {
                                         if !collapsedSectionIds.contains(section.id) {
-                                            ForEach(sortedItemsForSection) { item in
+                                            ForEach(Array(sortedItemsForSection.enumerated()), id: \.element.id) { index, item in
                                                 ItemListRow(
                                                     item: item,
                                                     categoryName: section.name,
                                                     drive: session.drive
                                                 )
+                                                .padding(.top, index == 0 ? 12 : 0)
+                                                .padding(.bottom, index == sortedItemsForSection.count - 1 ? 12 : 0)
                                                 .contentShape(Rectangle())
                                                 .onTapGesture { selectedItem = item }
                                                 .draggable(item.id)
@@ -229,12 +231,14 @@ struct ItemsListView: View {
                                 let singleCategorySorted = sortedItems(inventory.filteredItems, sectionId: singleCategoryId)
                                 Section {
                                     if !collapsedSectionIds.contains(singleCategoryId) {
-                                        ForEach(singleCategorySorted) { item in
+                                        ForEach(Array(singleCategorySorted.enumerated()), id: \.element.id) { index, item in
                                             ItemListRow(
                                                 item: item,
                                                 categoryName: currentCategoryName,
                                                 drive: session.drive
                                             )
+                                            .padding(.top, index == 0 ? 12 : 0)
+                                            .padding(.bottom, index == singleCategorySorted.count - 1 ? 12 : 0)
                                             .contentShape(Rectangle())
                                             .onTapGesture { selectedItem = item }
                                             .draggable(item.id)

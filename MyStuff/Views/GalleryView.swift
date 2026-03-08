@@ -304,6 +304,7 @@ struct GalleryView: View {
                                                     }
                                                 }
                                                 .padding(.horizontal)
+                                                .padding(.vertical, 12)
                                                 .dropDestination(for: String.self) { itemIds, _ in
                                                     guard let itemId = itemIds.first,
                                                           let item = inventory.items.first(where: { $0.id == itemId }),
@@ -370,7 +371,8 @@ struct GalleryView: View {
                                             .draggable(item.id)
                                         }
                                     }
-                                    .padding()
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 12)
                                     .dropDestination(for: String.self) { itemIds, _ in
                                         guard let itemId = itemIds.first,
                                               let item = inventory.items.first(where: { $0.id == itemId }),
