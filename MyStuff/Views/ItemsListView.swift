@@ -307,12 +307,7 @@ struct ItemsListView: View {
                     }
                     .pickerStyle(.menu)
                     HStack(spacing: 16) {
-                        TextField("Search items", text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
-                            .textFieldStyle(.roundedBorder)
-                            .frame(minWidth: 120, maxWidth: 200)
-                        #if os(iOS)
-                        .focusEffectDisabled()
-                        #endif
+                        ItemsListSearchField(text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
                         Rectangle()
                             .fill(.tertiary)
                             .frame(width: 1, height: 20)
@@ -331,6 +326,19 @@ struct ItemsListView: View {
             }
             .task { await inventory.refresh() }
         }
+    }
+}
+
+private struct ItemsListSearchField: View {
+    @Binding var text: String
+    var body: some View {
+        TextField("Search items", text: $text)
+            .padding(.leading, 8)
+            .textFieldStyle(.roundedBorder)
+            .frame(minWidth: 120, maxWidth: 200)
+        #if os(iOS)
+            .focusEffectDisabled()
+        #endif
     }
 }
 

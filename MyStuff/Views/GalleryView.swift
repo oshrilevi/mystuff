@@ -394,6 +394,7 @@ struct GalleryView: View {
                     .pickerStyle(.menu)
                     HStack(spacing: 16) {
                         TextField("Search items", text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
+                            .padding(.leading, 8)
                             .textFieldStyle(.roundedBorder)
                             .frame(minWidth: 120, maxWidth: 200)
                             #if os(iOS)

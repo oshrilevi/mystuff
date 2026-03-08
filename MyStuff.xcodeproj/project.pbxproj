@@ -30,6 +30,7 @@
 		B00100000000000000000011 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000011 /* SignInView.swift */; };
 		B00100000000000000000013 /* UserAvatarMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000016 /* UserAvatarMenuView.swift */; };
 		B00100000000000000000018 /* ItemsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000018 /* ItemsListView.swift */; };
+		B00100000000000000000023 /* NSTextFieldFocusRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001B /* NSTextFieldFocusRing.swift */; };
 		B00100000000000000000020 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = XGSPKG001GoogleSignIn00000001 /* GoogleSignIn */; };
 		B00100000000000000000021 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = XGSPKG001GoogleSignIn00000002 /* GoogleSignInSwift */; };
 		B00100000000000000000022 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000013 /* Assets.xcassets */; };
@@ -59,6 +60,7 @@
 		F00100000000000000000011 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		F00100000000000000000016 /* UserAvatarMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAvatarMenuView.swift; sourceTree = "<group>"; };
 		F00100000000000000000018 /* ItemsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemsListView.swift; sourceTree = "<group>"; };
+		F0010000000000000000001B /* NSTextFieldFocusRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NSTextFieldFocusRing.swift; sourceTree = "<group>"; };
 		F00100000000000000000012 /* MyStuff.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyStuff.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00100000000000000000013 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00100000000000000000014 /* MyStuff.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MyStuff.entitlements; sourceTree = "<group>"; };
@@ -139,6 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				F00100000000000000000001 /* MyStuffApp.swift */,
+				F0010000000000000000001B /* NSTextFieldFocusRing.swift */,
 				F00100000000000000000013 /* Assets.xcassets */,
 				F00100000000000000000014 /* MyStuff.entitlements */,
 				G00100000000000000000001 /* Models */,
@@ -247,6 +250,7 @@
 				B00100000000000000000019 /* CameraImagePicker.swift in Sources */,
 				B0010000000000000000001A /* MacCameraCaptureView.swift in Sources */,
 				B00100000000000000000018 /* ItemsListView.swift in Sources */,
+				B00100000000000000000023 /* NSTextFieldFocusRing.swift in Sources */,
 				B0010000000000000000000F /* MainTabView.swift in Sources */,
 				B00100000000000000000010 /* RootView.swift in Sources */,
 				B00100000000000000000011 /* SignInView.swift in Sources */,
