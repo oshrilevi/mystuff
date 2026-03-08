@@ -276,6 +276,7 @@ struct WishlistItemDetailView: View {
     private func moveToMyStuff() async {
         isMoving = true
         defer { isMoving = false }
+        let photoIds = item.photoId.isEmpty ? [] : [item.photoId]
         let newItem = Item(
             name: item.name,
             description: item.notes,
@@ -284,6 +285,7 @@ struct WishlistItemDetailView: View {
             purchaseDate: ISO8601DateFormatter().string(from: Date()).prefix(10).description,
             condition: "",
             quantity: 1,
+            photoIds: photoIds,
             webLink: item.link,
             tags: []
         )

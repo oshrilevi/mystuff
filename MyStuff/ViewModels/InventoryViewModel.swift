@@ -86,7 +86,7 @@ final class InventoryViewModel: ObservableObject {
             errorMessage = "Not bootstrapped"
             return
         }
-        var photoIds: [String] = []
+        var photoIds: [String] = item.photoIds
         for (i, data) in imageData.enumerated() {
             let mime = "image/jpeg"
             let name = "\(item.id)_\(i).jpg"
@@ -123,6 +123,23 @@ final class InventoryViewModel: ObservableObject {
         let rowIndex = index + 1
         do {
             try await sheets.updateRow(spreadsheetId: sid, sheetName: "Items", rowIndex: rowIndex, values: values)
+            await loadItems()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteItems(ids: [String]) async {
+        guard let sid = spreadsheetId else { return }
+        let idSet = Set(ids)
+        let updated = items.filter { !idSet.contains($0.id) }
+        do {
+            try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Items")
+            try await sheets.appendRows(spreadsheetId: sid, sheetName: "Items", values: [Item.columnOrder])
+            if !updated.isEmpty {
+                let rows = updated.map { itemToRow($0) }
+                try await sheets.appendRows(spreadsheetId: sid, sheetName: "Items", values: rows)
+            }
             await loadItems()
         } catch {
             errorMessage = error.localizedDescription
