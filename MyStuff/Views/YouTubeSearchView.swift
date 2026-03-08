@@ -10,7 +10,7 @@ struct YouTubeSearchView: View {
 
     private var initialURL: URL {
         if let query = session.youtubeSearchQuery, !query.isEmpty,
-           let encoded = query.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: " "))) {
+           let encoded = query.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: " &="))) {
             return URL(string: "https://www.youtube.com/results?search_query=\(encoded)") ?? youtubeBaseURL
         }
         if let saved = UserDefaults.standard.string(forKey: youtubePersistedURLKey), let url = URL(string: saved) {
