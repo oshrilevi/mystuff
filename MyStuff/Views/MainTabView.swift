@@ -24,10 +24,16 @@ struct MainTabView: View {
         #else
         NavigationSplitView {
             List(selection: $selectedTab) {
-                NavigationLink(value: 0) { Label("Items", systemImage: "square.grid.2x2") }
-                NavigationLink(value: 1) { Label("Categories", systemImage: "folder") }
-                NavigationLink(value: 2) { Label("Locations", systemImage: "location") }
-                NavigationLink(value: 3) { Label("Amazon", systemImage: "cart") }
+                Section("Items") {
+                    NavigationLink(value: 0) { Label("Items", systemImage: "square.grid.2x2") }
+                }
+                Section("Settings") {
+                    NavigationLink(value: 1) { Label("Categories", systemImage: "folder") }
+                    NavigationLink(value: 2) { Label("Locations", systemImage: "location") }
+                }
+                Section("Stores") {
+                    NavigationLink(value: 3) { Label("Amazon", systemImage: "cart") }
+                }
             }
             .listStyle(.sidebar)
         } detail: {
