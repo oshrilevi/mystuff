@@ -103,6 +103,8 @@ struct GalleryView: View {
     @State private var sectionSearchTexts: [String: String] = [:]
     /// Per-category sort (key = category section id). When viewing a single category, that category id is used.
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
+    /// Category section IDs that are collapsed (double-click header to toggle).
+    @State private var collapsedSectionIds: Set<String> = []
 
     private var thumbnailSize: ThumbnailSize {
         ThumbnailSize(rawValue: thumbnailSizeRaw) ?? .medium
@@ -241,35 +243,37 @@ struct GalleryView: View {
                                         return sum + p * Double(item.quantity)
                                     }
                                     Section {
-                                        if sortedItemsForSection.isEmpty {
-                                            Text("No items match your filter")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 32)
-                                        } else {
-                                            LazyVGrid(columns: gridColumns, spacing: 16) {
-                                                ForEach(sortedItemsForSection) { item in
-                                                    ItemCardWithHoverPopover(
-                                                        item: item,
-                                                        categoryName: section.name,
-                                                        drive: session.drive,
-                                                        thumbnailSize: thumbnailSize,
-                                                        onTap: { selectedItem = item }
-                                                    )
-                                                    .draggable(item.id)
+                                        if !collapsedSectionIds.contains(section.id) {
+                                            if sortedItemsForSection.isEmpty {
+                                                Text("No items match your filter")
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding(.vertical, 32)
+                                            } else {
+                                                LazyVGrid(columns: gridColumns, spacing: 16) {
+                                                    ForEach(sortedItemsForSection) { item in
+                                                        ItemCardWithHoverPopover(
+                                                            item: item,
+                                                            categoryName: section.name,
+                                                            drive: session.drive,
+                                                            thumbnailSize: thumbnailSize,
+                                                            onTap: { selectedItem = item }
+                                                        )
+                                                        .draggable(item.id)
+                                                    }
                                                 }
-                                            }
-                                            .padding(.horizontal)
-                                            .padding(.bottom, 24)
-                                            .dropDestination(for: String.self) { itemIds, _ in
-                                                guard let itemId = itemIds.first,
-                                                      let item = inventory.items.first(where: { $0.id == itemId }),
-                                                      item.categoryId != section.id else { return false }
-                                                var updated = item
-                                                updated.categoryId = section.id
-                                                Task { await inventory.updateItem(updated) }
-                                                return true
+                                                .padding(.horizontal)
+                                                .padding(.bottom, 24)
+                                                .dropDestination(for: String.self) { itemIds, _ in
+                                                    guard let itemId = itemIds.first,
+                                                          let item = inventory.items.first(where: { $0.id == itemId }),
+                                                          item.categoryId != section.id else { return false }
+                                                    var updated = item
+                                                    updated.categoryId = section.id
+                                                    Task { await inventory.updateItem(updated) }
+                                                    return true
+                                                }
                                             }
                                         }
                                     } header: {
@@ -288,7 +292,17 @@ struct GalleryView: View {
                                             sectionId: section.id,
                                             categoryColor: Color(hex: section.color),
                                             isPinned: pinnedCategoryIds.contains(section.id),
+                                            isCollapsed: collapsedSectionIds.contains(section.id),
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
+                                            onDoubleTap: {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    if collapsedSectionIds.contains(section.id) {
+                                                        collapsedSectionIds.remove(section.id)
+                                                    } else {
+                                                        collapsedSectionIds.insert(section.id)
+                                                    }
+                                                }
+                                            },
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
                                                 showAddItem = true
@@ -320,7 +334,17 @@ struct GalleryView: View {
                                         sectionId: singleCategoryId,
                                         categoryColor: categories.first(where: { $0.id == singleCategoryId }).flatMap { Color(hex: $0.color) },
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
+                                        isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
+                                        onDoubleTap: {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                if collapsedSectionIds.contains(singleCategoryId) {
+                                                    collapsedSectionIds.remove(singleCategoryId)
+                                                } else {
+                                                    collapsedSectionIds.insert(singleCategoryId)
+                                                }
+                                            }
+                                        },
                                         onAddItem: {
                                             inventory.lastNewItemCategoryId = singleCategoryId
                                             showAddItem = true
@@ -334,6 +358,7 @@ struct GalleryView: View {
                                         },
                                         showSearchField: false
                                     )
+                                    if !collapsedSectionIds.contains(singleCategoryId) {
                                     LazyVGrid(columns: gridColumns, spacing: 16) {
                                         ForEach(singleCategorySorted) { item in
                                             ItemCardWithHoverPopover(
@@ -355,6 +380,7 @@ struct GalleryView: View {
                                         updated.categoryId = singleCategoryId
                                         Task { await inventory.updateItem(updated) }
                                         return true
+                                    }
                                     }
                                 }
                             }
@@ -604,7 +630,9 @@ struct CategorySectionHeader: View {
     /// When set, used as the section header background color (from category color).
     var categoryColor: Color? = nil
     var isPinned: Bool = false
+    var isCollapsed: Bool = false
     var onTogglePin: (() -> Void)? = nil
+    var onDoubleTap: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
     var onDropItem: ((String) -> Void)? = nil
     var showSearchField: Bool = true
@@ -632,6 +660,16 @@ struct CategorySectionHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            if let onDoubleTap {
+                Button {
+                    onDoubleTap()
+                } label: {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
             if let onTogglePin {
                 Button {
                     onTogglePin()
@@ -657,60 +695,66 @@ struct CategorySectionHeader: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            HStack(spacing: 4) {
-                Text("Sort:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                ForEach(sortOptions, id: \.rawValue) { option in
-                    let isSelected = sortOrder.option == option
-                    Button {
-                        if isSelected {
-                            sortOrder.ascending.toggle()
-                        } else {
-                            sortOrder = ItemSortOrder(option: option, ascending: true)
-                        }
-                    } label: {
-                        HStack(spacing: 2) {
-                            Image(systemName: option.icon)
-                            Text(option.rawValue)
-                                .font(.caption2)
+            if !isCollapsed {
+                HStack(spacing: 4) {
+                    Text("Sort:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(sortOptions, id: \.rawValue) { option in
+                        let isSelected = sortOrder.option == option
+                        Button {
                             if isSelected {
-                                Image(systemName: sortOrder.ascending ? "arrow.up" : "arrow.down")
-                                    .font(.caption2)
+                                sortOrder.ascending.toggle()
+                            } else {
+                                sortOrder = ItemSortOrder(option: option, ascending: true)
                             }
+                        } label: {
+                            HStack(spacing: 2) {
+                                Image(systemName: option.icon)
+                                Text(option.rawValue)
+                                    .font(.caption2)
+                                if isSelected {
+                                    Image(systemName: sortOrder.ascending ? "arrow.up" : "arrow.down")
+                                        .font(.caption2)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
+                            .clipShape(Capsule())
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-                        .clipShape(Capsule())
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                Spacer(minLength: 8)
+                if let onAddItem {
+                    Button {
+                        onAddItem()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                 }
-            }
-            .frame(maxWidth: .infinity)
-            Spacer(minLength: 8)
-            if let onAddItem {
-                Button {
-                    onAddItem()
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
+                if showSearchField {
+                    TextField("Filter in \(name)", text: $sectionSearchText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(minWidth: 100, maxWidth: 180)
+                    #if os(iOS)
+                    .focusEffectDisabled()
+                    #endif
                 }
-                .buttonStyle(.plain)
-            }
-            if showSearchField {
-                TextField("Filter in \(name)", text: $sectionSearchText)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(minWidth: 100, maxWidth: 180)
-                #if os(iOS)
-                .focusEffectDisabled()
-                #endif
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            onDoubleTap?()
+        }
         .background(headerBackground)
         #if os(iOS)
         .overlay(alignment: .top) { Divider() }

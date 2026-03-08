@@ -31,6 +31,8 @@ struct ItemsListView: View {
     @State private var showAddItem = false
     @State private var sectionSearchTexts: [String: String] = [:]
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
+    /// Category section IDs that are collapsed (double-click header to toggle).
+    @State private var collapsedSectionIds: Set<String> = []
 
     private var inventory: InventoryViewModel { session.inventory }
     private var categories: [Category] { session.categories.categories }
@@ -163,24 +165,26 @@ struct ItemsListView: View {
                                         return sum + p * Double(item.quantity)
                                     }
                                     Section {
-                                        ForEach(sortedItemsForSection) { item in
-                                            ItemListRow(
-                                                item: item,
-                                                categoryName: section.name,
-                                                drive: session.drive
-                                            )
-                                            .contentShape(Rectangle())
-                                            .onTapGesture { selectedItem = item }
-                                            .draggable(item.id)
-                                        }
-                                        .dropDestination(for: String.self) { itemIds, _ in
-                                            guard let itemId = itemIds.first,
-                                                  let item = inventory.items.first(where: { $0.id == itemId }),
-                                                  item.categoryId != section.id else { return false }
-                                            var updated = item
-                                            updated.categoryId = section.id
-                                            Task { await inventory.updateItem(updated) }
-                                            return true
+                                        if !collapsedSectionIds.contains(section.id) {
+                                            ForEach(sortedItemsForSection) { item in
+                                                ItemListRow(
+                                                    item: item,
+                                                    categoryName: section.name,
+                                                    drive: session.drive
+                                                )
+                                                .contentShape(Rectangle())
+                                                .onTapGesture { selectedItem = item }
+                                                .draggable(item.id)
+                                            }
+                                            .dropDestination(for: String.self) { itemIds, _ in
+                                                guard let itemId = itemIds.first,
+                                                      let item = inventory.items.first(where: { $0.id == itemId }),
+                                                      item.categoryId != section.id else { return false }
+                                                var updated = item
+                                                updated.categoryId = section.id
+                                                Task { await inventory.updateItem(updated) }
+                                                return true
+                                            }
                                         }
                                     } header: {
                                         CategorySectionHeader(
@@ -198,7 +202,17 @@ struct ItemsListView: View {
                                             sectionId: section.id,
                                             categoryColor: Color(hex: section.color),
                                             isPinned: pinnedCategoryIds.contains(section.id),
+                                            isCollapsed: collapsedSectionIds.contains(section.id),
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
+                                            onDoubleTap: {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    if collapsedSectionIds.contains(section.id) {
+                                                        collapsedSectionIds.remove(section.id)
+                                                    } else {
+                                                        collapsedSectionIds.insert(section.id)
+                                                    }
+                                                }
+                                            },
                                             onAddItem: {
                                                 inventory.lastNewItemCategoryId = section.id
                                                 showAddItem = true
@@ -217,24 +231,26 @@ struct ItemsListView: View {
                                 let singleCategoryId = inventory.selectedCategoryId ?? ""
                                 let singleCategorySorted = sortedItems(inventory.filteredItems, sectionId: singleCategoryId)
                                 Section {
-                                    ForEach(singleCategorySorted) { item in
-                                        ItemListRow(
-                                            item: item,
-                                            categoryName: currentCategoryName,
-                                            drive: session.drive
-                                        )
-                                        .contentShape(Rectangle())
-                                        .onTapGesture { selectedItem = item }
-                                        .draggable(item.id)
-                                    }
-                                    .dropDestination(for: String.self) { itemIds, _ in
-                                        guard let itemId = itemIds.first,
-                                              let item = inventory.items.first(where: { $0.id == itemId }),
-                                              item.categoryId != singleCategoryId else { return false }
-                                        var updated = item
-                                        updated.categoryId = singleCategoryId
-                                        Task { await inventory.updateItem(updated) }
-                                        return true
+                                    if !collapsedSectionIds.contains(singleCategoryId) {
+                                        ForEach(singleCategorySorted) { item in
+                                            ItemListRow(
+                                                item: item,
+                                                categoryName: currentCategoryName,
+                                                drive: session.drive
+                                            )
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { selectedItem = item }
+                                            .draggable(item.id)
+                                        }
+                                        .dropDestination(for: String.self) { itemIds, _ in
+                                            guard let itemId = itemIds.first,
+                                                  let item = inventory.items.first(where: { $0.id == itemId }),
+                                                  item.categoryId != singleCategoryId else { return false }
+                                            var updated = item
+                                            updated.categoryId = singleCategoryId
+                                            Task { await inventory.updateItem(updated) }
+                                            return true
+                                        }
                                     }
                                 } header: {
                                     CategorySectionHeader(
@@ -249,7 +265,17 @@ struct ItemsListView: View {
                                         sectionId: singleCategoryId,
                                         categoryColor: categories.first(where: { $0.id == singleCategoryId }).flatMap { Color(hex: $0.color) },
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
+                                        isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
+                                        onDoubleTap: {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                if collapsedSectionIds.contains(singleCategoryId) {
+                                                    collapsedSectionIds.remove(singleCategoryId)
+                                                } else {
+                                                    collapsedSectionIds.insert(singleCategoryId)
+                                                }
+                                            }
+                                        },
                                         onAddItem: {
                                             inventory.lastNewItemCategoryId = singleCategoryId
                                             showAddItem = true
