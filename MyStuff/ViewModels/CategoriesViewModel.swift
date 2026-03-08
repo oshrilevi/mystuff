@@ -8,6 +8,9 @@ final class CategoriesViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    /// ID of the category named "Wishlist", if present. Used as default when adding an item from the store browser.
+    var wishlistCategoryId: String? { categories.first(where: { Category.isWishlist($0.name) })?.id }
+
     private let sheets: SheetsService
     private var spreadsheetId: String? { appState.spreadsheetId }
     private let appState: AppState

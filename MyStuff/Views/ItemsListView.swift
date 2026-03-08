@@ -378,7 +378,7 @@ struct ItemsListView: View {
                     .environmentObject(session)
             }
             .sheet(isPresented: $showAddItem) {
-                ItemFormView(mode: .add(initialWebLink: nil))
+                ItemFormView(mode: .add(initialWebLink: nil, initialCategoryId: nil))
                     .environmentObject(session)
                     .onDisappear { Task { await inventory.refresh() } }
             }

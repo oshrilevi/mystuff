@@ -12,7 +12,7 @@ struct ItemFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     enum Mode: Equatable {
-        case add(initialWebLink: String?)
+        case add(initialWebLink: String?, initialCategoryId: String?)
         case edit(Item)
     }
     let mode: Mode
@@ -66,7 +66,8 @@ struct ItemFormView: View {
     }
     private var isEdit: Bool { if case .edit = mode { true } else { false } }
     private var existingItem: Item? { if case .edit(let i) = mode { return i } else { return nil } }
-    private var initialWebLinkForAdd: String? { if case .add(let url) = mode { return url } else { return nil } }
+    private var initialWebLinkForAdd: String? { if case .add(let url, _) = mode { return url } else { return nil } }
+    private var initialCategoryIdForAdd: String? { if case .add(_, let cid) = mode { return cid } else { return nil } }
     private var isWishlistCategory: Bool {
         Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
     }
@@ -383,7 +384,7 @@ struct ItemFormView: View {
                         focusedField = nil
                     }
                 } else {
-                    categoryId = inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
+                    categoryId = initialCategoryIdForAdd ?? inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
                     locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
                     purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
                     if let url = initialWebLinkForAdd, !url.trimmingCharacters(in: .whitespaces).isEmpty {

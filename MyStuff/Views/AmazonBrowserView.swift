@@ -371,7 +371,7 @@ struct StoreBrowserView: View {
             AmazonWebViewRepresentable(initialURL: initialURL, persistedURLKey: store.persistedURLKey, state: webViewState)
         }
         .sheet(item: $addFromURLItem) { item in
-            ItemFormView(mode: .add(initialWebLink: item.urlString))
+            ItemFormView(mode: .add(initialWebLink: item.urlString, initialCategoryId: session.categories.wishlistCategoryId))
                 .environmentObject(session)
                 .onDisappear {
                     addFromURLItem = nil
@@ -441,8 +441,9 @@ struct StoreBrowserView: View {
                     addFromURLItem = AddFromURLItem(urlString: url)
                 }
             } label: {
-                Label("Add this item", systemImage: "plus.circle.fill")
+                Image(systemName: "plus.circle.fill")
             }
+            .accessibilityLabel("Add this item")
             .disabled(webViewState.currentURLString?.isEmpty ?? true)
         }
         .padding(.horizontal, 12)
