@@ -402,7 +402,9 @@ private struct ItemsListStyleModifier: ViewModifier {
 #if os(iOS)
 private struct ItemsListSectionSpacingModifier: ViewModifier {
     func body(content: Content) -> some View {
-        content.listSectionSpacing(0)
+        content
+            .listSectionSpacing(0)
+            .listRowSpacing(0)
     }
 }
 #else

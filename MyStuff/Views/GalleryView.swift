@@ -229,55 +229,22 @@ struct GalleryView: View {
                                     .padding(8)
                             }
                             if isShowingAllCategories && !categorySections.isEmpty {
-                                ForEach(categorySections) { section in
-                                    let searchText = sectionSearchTexts[section.id] ?? ""
-                                    let filteredItems = searchText.isEmpty
-                                        ? section.items
-                                        : section.items.filter {
-                                            let q = searchText.lowercased()
-                                            return $0.name.lowercased().contains(q)
-                                                || $0.description.lowercased().contains(q)
-                                                || $0.tags.contains { $0.lowercased().contains(q) }
-                                        }
-                                    let sortedItemsForSection = sortedItems(filteredItems, sectionId: section.id)
-                                    let filteredTotal = sortedItemsForSection.reduce(0.0) { sum, item in
-                                        let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
-                                        return sum + p * Double(item.quantity)
-                                    }
-                                    Section {
-                                        if !collapsedSectionIds.contains(section.id) {
-                                            if sortedItemsForSection.isEmpty {
-                                                Text("No items match your filter")
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.secondary)
-                                                    .frame(maxWidth: .infinity)
-                                                    .padding(.vertical, 32)
-                                            } else {
-                                                LazyVGrid(columns: gridColumns, spacing: 16) {
-                                                    ForEach(sortedItemsForSection) { item in
-                                                        ItemCardWithHoverPopover(
-                                                            item: item,
-                                                            categoryName: section.name,
-                                                            drive: session.drive,
-                                                            thumbnailSize: thumbnailSize,
-                                                            onTap: { selectedItem = item }
-                                                        )
-                                                        .draggable(item.id)
-                                                    }
-                                                }
-                                                .padding(.horizontal)
-                                                .dropDestination(for: String.self) { itemIds, _ in
-                                                    guard let itemId = itemIds.first,
-                                                          let item = inventory.items.first(where: { $0.id == itemId }),
-                                                          item.categoryId != section.id else { return false }
-                                                    var updated = item
-                                                    updated.categoryId = section.id
-                                                    Task { await inventory.updateItem(updated) }
-                                                    return true
-                                                }
+                                VStack(spacing: 0) {
+                                    ForEach(categorySections) { section in
+                                        let searchText = sectionSearchTexts[section.id] ?? ""
+                                        let filteredItems = searchText.isEmpty
+                                            ? section.items
+                                            : section.items.filter {
+                                                let q = searchText.lowercased()
+                                                return $0.name.lowercased().contains(q)
+                                                    || $0.description.lowercased().contains(q)
+                                                    || $0.tags.contains { $0.lowercased().contains(q) }
                                             }
+                                        let sortedItemsForSection = sortedItems(filteredItems, sectionId: section.id)
+                                        let filteredTotal = sortedItemsForSection.reduce(0.0) { sum, item in
+                                            let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                                            return sum + p * Double(item.quantity)
                                         }
-                                    } header: {
                                         CategorySectionHeader(
                                             name: section.name,
                                             itemCount: sortedItemsForSection.count,
@@ -316,6 +283,38 @@ struct GalleryView: View {
                                                 Task { await inventory.updateItem(updated) }
                                             }
                                         )
+                                        if !collapsedSectionIds.contains(section.id) {
+                                            if sortedItemsForSection.isEmpty {
+                                                Text("No items match your filter")
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.secondary)
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding(.vertical, 32)
+                                            } else {
+                                                LazyVGrid(columns: gridColumns, spacing: 16) {
+                                                    ForEach(sortedItemsForSection) { item in
+                                                        ItemCardWithHoverPopover(
+                                                            item: item,
+                                                            categoryName: section.name,
+                                                            drive: session.drive,
+                                                            thumbnailSize: thumbnailSize,
+                                                            onTap: { selectedItem = item }
+                                                        )
+                                                        .draggable(item.id)
+                                                    }
+                                                }
+                                                .padding(.horizontal)
+                                                .dropDestination(for: String.self) { itemIds, _ in
+                                                    guard let itemId = itemIds.first,
+                                                          let item = inventory.items.first(where: { $0.id == itemId }),
+                                                          item.categoryId != section.id else { return false }
+                                                    var updated = item
+                                                    updated.categoryId = section.id
+                                                    Task { await inventory.updateItem(updated) }
+                                                    return true
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             } else {
