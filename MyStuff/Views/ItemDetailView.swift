@@ -82,9 +82,23 @@ struct ItemDetailView: View {
                             if !currentItem.tags.isEmpty {
                                 detailRow("Tags", currentItem.tags.joined(separator: ", "))
                             }
-                            if !currentItem.webLink.isEmpty, let url = URL(string: currentItem.webLink) {
-                                Link("View link", destination: url)
+                            HStack(spacing: 16) {
+                                if !currentItem.webLink.isEmpty, let url = URL(string: currentItem.webLink) {
+                                    Button("Visit Product") {
+                                        #if os(iOS)
+                                        UIApplication.shared.open(url)
+                                        #elseif os(macOS)
+                                        NSWorkspace.shared.open(url)
+                                        #endif
+                                    }
                                     .font(.body)
+                                }
+                                Button("Search on YouTube") {
+                                    session.youtubeSearchQuery = currentItem.name
+                                    session.requestedSidebarSelection = .youtube
+                                    dismissSheet()
+                                }
+                                .font(.body)
                             }
                         }
                         .padding()

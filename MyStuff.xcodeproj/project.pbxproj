@@ -44,6 +44,7 @@
 		B0010000000000000000002B /* StoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000023 /* StoresView.swift */; };
 		B0010000000000000000002C /* StoreIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000024 /* StoreIconView.swift */; };
 		B0010000000000000000002D /* ImageBackgroundColorSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000025 /* ImageBackgroundColorSampler.swift */; };
+		B0010000000000000000002E /* YouTubeSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000026 /* YouTubeSearchView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -84,6 +85,7 @@
 		F00100000000000000000023 /* StoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresView.swift; sourceTree = "<group>"; };
 		F00100000000000000000024 /* StoreIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreIconView.swift; sourceTree = "<group>"; };
 		F00100000000000000000025 /* ImageBackgroundColorSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageBackgroundColorSampler.swift; sourceTree = "<group>"; };
+		F00100000000000000000026 /* YouTubeSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YouTubeSearchView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,6 +160,7 @@
 				F00100000000000000000020 /* LoadingView.swift */,
 				F00100000000000000000023 /* StoresView.swift */,
 				F00100000000000000000024 /* StoreIconView.swift */,
+				F00100000000000000000026 /* YouTubeSearchView.swift */,
 				F0010000000000000000000F /* MainTabView.swift */,
 				F00100000000000000000010 /* RootView.swift */,
 				F00100000000000000000011 /* SignInView.swift */,
@@ -303,6 +306,7 @@
 				B0010000000000000000002B /* StoresView.swift in Sources */,
 				B0010000000000000000002C /* StoreIconView.swift in Sources */,
 				B0010000000000000000002D /* ImageBackgroundColorSampler.swift in Sources */,
+				B0010000000000000000002E /* YouTubeSearchView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

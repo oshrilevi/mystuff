@@ -5,6 +5,11 @@ import Combine
 
 @MainActor
 final class Session: ObservableObject {
+    /// When set, MainTabView should switch to this selection (e.g. from ItemDetailView "Search on YouTube").
+    @Published var requestedSidebarSelection: MainSidebarSelection?
+    /// Optional search query for the YouTube section; consumed by YouTubeSearchView on appear.
+    @Published var youtubeSearchQuery: String?
+
     let appState: AppState
     let sheets: SheetsService
     let drive: DriveService

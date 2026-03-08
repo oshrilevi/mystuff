@@ -6,6 +6,7 @@ enum MainSidebarSelection: Hashable {
     case locations
     case storesList
     case store(UserStore)
+    case youtube
 }
 
 struct MainTabView: View {
@@ -29,6 +30,15 @@ struct MainTabView: View {
             StoresTabContent()
                 .tabItem { Label("Stores", systemImage: "cart") }
                 .tag(MainSidebarSelection.storesList)
+            YouTubeSearchView()
+                .tabItem { Label("YouTube", systemImage: "play.rectangle") }
+                .tag(MainSidebarSelection.youtube)
+        }
+        .onChange(of: session.requestedSidebarSelection) { _, newValue in
+            if let sel = newValue {
+                selection = sel
+                session.requestedSidebarSelection = nil
+            }
         }
         #else
         NavigationSplitView {
@@ -40,6 +50,9 @@ struct MainTabView: View {
                     NavigationLink(value: MainSidebarSelection.categories) { Label("Categories", systemImage: "folder") }
                     NavigationLink(value: MainSidebarSelection.locations) { Label("Locations", systemImage: "location") }
                     NavigationLink(value: MainSidebarSelection.storesList) { Label("Stores", systemImage: "cart") }
+                }
+                Section("Media") {
+                    NavigationLink(value: MainSidebarSelection.youtube) { Label("YouTube", systemImage: "play.rectangle") }
                 }
                 Section("Stores") {
                     ForEach(session.stores.stores.sorted(by: { $0.order < $1.order })) { store in
@@ -68,6 +81,14 @@ struct MainTabView: View {
                 case .store(let store):
                     StoreBrowserView(store: store)
                         .id(store.id)
+                case .youtube:
+                    YouTubeSearchView()
+                }
+            }
+            .onChange(of: session.requestedSidebarSelection) { _, newValue in
+                if let sel = newValue {
+                    selection = sel
+                    session.requestedSidebarSelection = nil
                 }
             }
         }

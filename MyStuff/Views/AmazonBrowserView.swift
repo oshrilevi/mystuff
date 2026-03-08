@@ -59,7 +59,7 @@ final class AmazonWebViewState: ObservableObject {
 // MARK: - WKWebView wrapper (iOS)
 
 #if os(iOS)
-private struct AmazonWebViewRepresentable: UIViewRepresentable {
+struct AmazonWebViewRepresentable: UIViewRepresentable {
     let initialURL: URL
     let persistedURLKey: String
     @ObservedObject var state: AmazonWebViewState
@@ -151,7 +151,7 @@ private final class AmazonDownloadableWebView: WKWebView {
     }
 }
 
-private struct AmazonWebViewRepresentable: NSViewRepresentable {
+struct AmazonWebViewRepresentable: NSViewRepresentable {
     let initialURL: URL
     let persistedURLKey: String
     @ObservedObject var state: AmazonWebViewState

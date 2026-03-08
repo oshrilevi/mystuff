@@ -8,6 +8,7 @@ Format: **[Version] (YYYY-MM-DD)** with sections Added / Changed / Fixed / Remov
 
 ## [Unreleased]
 
+- **Added:** “Search on YouTube” in the item detail dialog. A link next to “View link” opens a new **YouTube** section (tab on iOS, sidebar on macOS) with an in-app browser loading YouTube search results for the item name. Last-visited URL in the YouTube browser is persisted.
 - **Added:** Quick-add to wish list in the store browser. A sparkles toolbar button adds the current page to the Wishlist category without opening the add form: the app fetches metadata from the URL (title, description, price, tags) and saves the item for later editing. A spinner is shown while the request runs.
 - **Changed:** Item view and edit merged into one sheet. Tapping an item opens a single dialog; tapping Edit switches to edit mode in-place (no second sheet). Save returns to view mode with updated data; Done or Delete dismisses the sheet.
 - **Changed:** Store icons now use each store’s website favicon (derived from its start URL). The SF Symbol in the Stores sheet is used as fallback when the favicon cannot be loaded. The add/edit store form no longer includes an icon picker.
