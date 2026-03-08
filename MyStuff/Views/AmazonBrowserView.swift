@@ -401,16 +401,19 @@ struct StoreBrowserView: View {
             Button { webViewState.goBack?() } label: {
                 Image(systemName: "chevron.left")
             }
+            .help("Back")
             .disabled(!webViewState.canGoBack)
 
             Button { webViewState.goForward?() } label: {
                 Image(systemName: "chevron.right")
             }
+            .help("Forward")
             .disabled(!webViewState.canGoForward)
 
             Button { webViewState.reload?() } label: {
                 Image(systemName: "arrow.clockwise")
             }
+            .help("Reload")
 
             TextField("URL", text: $urlBarText, prompt: Text("https://"))
                 .textFieldStyle(.plain)
@@ -433,6 +436,7 @@ struct StoreBrowserView: View {
             } label: {
                 Image(systemName: "arrow.up.forward")
             }
+            .help("Open in Chrome")
             .accessibilityLabel("Open in Chrome")
             .disabled(openInChromeURL == nil)
 
@@ -443,6 +447,7 @@ struct StoreBrowserView: View {
             } label: {
                 Image(systemName: "plus.circle.fill")
             }
+            .help("Add this item")
             .accessibilityLabel("Add this item")
             .disabled(webViewState.currentURLString?.isEmpty ?? true)
         }

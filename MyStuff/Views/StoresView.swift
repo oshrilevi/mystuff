@@ -59,6 +59,7 @@ struct StoresView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .help("Add store")
                         UserAvatarMenuView()
                     }
                 }
@@ -66,6 +67,7 @@ struct StoresView: View {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .help("Add store")
                         UserAvatarMenuView()
                     }
                 }
@@ -137,6 +139,7 @@ private struct StoreFormSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", action: onDismiss)
+                        .help("Cancel")
                         .disabled(isSaving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -147,6 +150,7 @@ private struct StoreFormSheet: View {
                         Button("Save") {
                             save()
                         }
+                        .help("Save")
                         .disabled(!isValid)
                     }
                 }

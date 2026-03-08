@@ -356,6 +356,7 @@ struct ItemFormView: View {
                             dismiss()
                         }
                     }
+                    .help("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Group {
@@ -368,6 +369,7 @@ struct ItemFormView: View {
                             }
                         } else {
                             Button("Save") { Task { await save() } }
+                                .help("Save")
                         }
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)

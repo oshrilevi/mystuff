@@ -50,6 +50,7 @@ struct LocationsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .help("Add location")
                         UserAvatarMenuView()
                     }
                 }
@@ -57,6 +58,7 @@ struct LocationsView: View {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .help("Add location")
                         UserAvatarMenuView()
                     }
                 }
@@ -144,6 +146,7 @@ private struct EditLocationSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", action: onDismiss)
+                        .help("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -155,6 +158,7 @@ private struct EditLocationSheet: View {
                         }
                         onDismiss()
                     }
+                    .help("Save")
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }

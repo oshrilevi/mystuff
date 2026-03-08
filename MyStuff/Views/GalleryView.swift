@@ -408,6 +408,7 @@ struct GalleryView: View {
                 #if os(iOS)
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }
+                        .help("Add item")
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     Text(toolbarTitle)
@@ -416,6 +417,7 @@ struct GalleryView: View {
                 #else
                 ToolbarItem(placement: .navigation) {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }
+                        .help("Add item")
                 }
                 #endif
                 ToolbarItemGroup(placement: .primaryAction) {
@@ -440,11 +442,13 @@ struct GalleryView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .help("Display: Compact, Medium, Large, or List")
                     HStack(spacing: 16) {
                         TextField("Search items", text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
                             .padding(.leading, 8)
                             .textFieldStyle(.roundedBorder)
                             .frame(minWidth: 120, maxWidth: 200)
+                            .help("Search items")
                             #if os(iOS)
                             .focusEffectDisabled()
                             #endif

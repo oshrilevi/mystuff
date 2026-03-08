@@ -14,6 +14,7 @@ struct UserAvatarMenuView: View {
             avatarImage
         }
         .buttonStyle(.plain)
+        .help("Account")
         .confirmationDialog("Account", isPresented: $showSignOut, titleVisibility: .visible) {
             Button("Sign out", role: .destructive) {
                 authService.signOut()

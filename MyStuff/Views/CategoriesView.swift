@@ -112,6 +112,7 @@ struct CategoriesView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .help("Add category")
                         UserAvatarMenuView()
                     }
                 }
@@ -119,6 +120,7 @@ struct CategoriesView: View {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
+                            .help("Add category")
                         UserAvatarMenuView()
                     }
                 }
@@ -238,6 +240,7 @@ private struct EditCategorySheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", action: onDismiss)
+                        .help("Cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -249,6 +252,7 @@ private struct EditCategorySheet: View {
                         }
                         onDismiss()
                     }
+                    .help("Save")
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }

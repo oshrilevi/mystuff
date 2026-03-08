@@ -95,12 +95,15 @@ struct ItemDetailView: View {
                             Button("Edit") {
                                 withAnimation(.easeInOut(duration: 0.35)) { isEditing = true }
                             }
+                            .help("Edit item")
                         }
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Done") { dismissSheet() }
+                                .help("Done")
                         }
                         ToolbarItem(placement: .destructiveAction) {
                             Button("Delete", role: .destructive) { showDeleteConfirmation = true }
+                                .help("Delete item")
                         }
                     }
                     .confirmationDialog("Delete item?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
