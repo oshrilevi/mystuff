@@ -8,7 +8,7 @@ Format: **[Version] (YYYY-MM-DD)** with sections Added / Changed / Fixed / Remov
 
 ## [Unreleased]
 
-- (Add changes here before a release.)
+- **Added:** Per-category color. Users can assign a color to each category in the Categories tab (edit → Header color). The main Items list and Gallery use that color as the category section header background.
 
 ---
 

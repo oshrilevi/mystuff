@@ -71,14 +71,14 @@ struct ItemsListView: View {
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total, color: cat.color))
         }
         if let uncategorized = byCategory[""], !uncategorized.isEmpty {
             let total = uncategorized.reduce(0.0) { sum, item in
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, color: nil))
         }
         let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -196,6 +196,7 @@ struct ItemsListView: View {
                                                 set: { sectionSortOrders[section.id] = $0 }
                                             ),
                                             sectionId: section.id,
+                                            categoryColor: Color(hex: section.color),
                                             isPinned: pinnedCategoryIds.contains(section.id),
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                             onAddItem: {
@@ -246,6 +247,7 @@ struct ItemsListView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
+                                        categoryColor: categories.first(where: { $0.id == singleCategoryId }).flatMap { Color(hex: $0.color) },
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onAddItem: {

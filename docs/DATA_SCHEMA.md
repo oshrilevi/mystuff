@@ -13,9 +13,10 @@ Created on first run via `SheetsService.createSpreadsheet`. Two sheets:
 | A (0)        | id     | String | UUID                      |
 | B (1)        | name   | String | Display name              |
 | C (2)        | order  | Int    | Sort order (row-based)    |
+| D (3)        | color  | String | Optional hex (e.g. #FF5733) for category header color |
 
-- Row 1 is the header row (`id`, `name`, `order`). Data starts at row 2.
-- `Category.columnOrder` in code: `["id", "name", "order"]`.
+- Row 1 is the header row (`id`, `name`, `order`, `color`). Data starts at row 2.
+- `Category.columnOrder` in code: `["id", "name", "order", "color"]`.
 
 ### Sheet: **Items**
 

@@ -69,6 +69,8 @@ struct CategorySection: Identifiable {
     let name: String
     let items: [Item]
     let totalValue: Double
+    /// Optional hex color for section header background (from category).
+    var color: String?
 }
 
 enum ItemSortOption: String, CaseIterable {
@@ -166,14 +168,14 @@ struct GalleryView: View {
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total, color: cat.color))
         }
         if let uncategorized = byCategory[""], !uncategorized.isEmpty {
             let total = uncategorized.reduce(0.0) { sum, item in
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, color: nil))
         }
         let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -284,6 +286,7 @@ struct GalleryView: View {
                                                 set: { sectionSortOrders[section.id] = $0 }
                                             ),
                                             sectionId: section.id,
+                                            categoryColor: Color(hex: section.color),
                                             isPinned: pinnedCategoryIds.contains(section.id),
                                             onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                             onAddItem: {
@@ -315,6 +318,7 @@ struct GalleryView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
+                                        categoryColor: categories.first(where: { $0.id == singleCategoryId }).flatMap { Color(hex: $0.color) },
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onAddItem: {
@@ -597,6 +601,8 @@ struct CategorySectionHeader: View {
     @Binding var sectionSearchText: String
     @Binding var sortOrder: ItemSortOrder
     var sectionId: String? = nil
+    /// When set, used as the section header background color (from category color).
+    var categoryColor: Color? = nil
     var isPinned: Bool = false
     var onTogglePin: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
@@ -606,6 +612,15 @@ struct CategorySectionHeader: View {
     private var isWishlist: Bool { Category.isWishlist(name) }
     private var formattedValue: String {
         formatCurrency(totalValue)
+    }
+
+    @ViewBuilder
+    private var headerBackground: some View {
+        if let color = categoryColor {
+            color.opacity(0.35)
+        } else {
+            Rectangle().fill(.ultraThinMaterial)
+        }
     }
 
     private var sortOptions: [ItemSortOption] {
@@ -680,7 +695,7 @@ struct CategorySectionHeader: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(.tint)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -696,7 +711,7 @@ struct CategorySectionHeader: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
+        .background(headerBackground)
         #if os(iOS)
         .overlay(alignment: .top) { Divider() }
         #endif

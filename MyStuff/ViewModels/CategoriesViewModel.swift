@@ -45,10 +45,11 @@ final class CategoriesViewModel: ObservableObject {
             let loaded: [Category] = rows.enumerated().compactMap { index, row in
                 guard row.count >= 2 else { return nil }
                 let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
-                return Category(id: row[0], name: row[1], order: order)
+                let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
+                return Category(id: row[0], name: row[1], order: order, color: color)
             }
             categories = loaded
-            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)"] }) {
+            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
             applyWishlistPinnedByDefault()
@@ -58,7 +59,9 @@ final class CategoriesViewModel: ObservableObject {
                let rows = try? JSONDecoder().decode([[String]].self, from: data) {
                 let cached: [Category] = rows.enumerated().compactMap { index, row in
                     guard row.count >= 2 else { return nil }
-                    return Category(id: row[0], name: row[1], order: index + 2)
+                    let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
+                    let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
+                    return Category(id: row[0], name: row[1], order: order, color: color)
                 }
                 categories = cached
                 applyWishlistPinnedByDefault()
@@ -76,10 +79,10 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func addCategory(name: String) async {
+    func addCategory(name: String, color: String? = nil) async {
         guard let sid = spreadsheetId else { return }
-        let category = Category(name: name, order: categories.count)
-        let values = [[category.id, category.name, "\(category.order)"]]
+        let category = Category(name: name, order: categories.count, color: color)
+        let values = [[category.id, category.name, "\(category.order)", category.color ?? ""]]
         do {
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: values)
             await load()
@@ -88,16 +91,17 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func updateCategory(id: String, name: String) async {
+    func updateCategory(id: String, name: String, color: String? = nil) async {
         guard let sid = spreadsheetId else { return }
         guard let index = categories.firstIndex(where: { $0.id == id }) else { return }
         var updated = categories
         updated[index].name = name
+        updated[index].color = color
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
-            let header = [["id", "name", "order"]]
+            let header = [["id", "name", "order", "color"]]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)"] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -113,9 +117,9 @@ final class CategoriesViewModel: ObservableObject {
         var updated = categories.filter { !idSet.contains($0.id) }
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
-            let header = [["id", "name", "order"]]
+            let header = [["id", "name", "order", "color"]]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)"] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
