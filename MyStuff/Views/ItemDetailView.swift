@@ -4,6 +4,8 @@ struct ItemDetailView: View {
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
     let item: Item
+    /// When set, Edit invokes this instead of presenting the edit sheet locally (parent presents edit sheet).
+    var onEdit: ((Item) -> Void)? = nil
     @State private var showEdit = false
     @State private var showDeleteConfirmation = false
 
@@ -52,7 +54,13 @@ struct ItemDetailView: View {
             .navigationTitle(item.name)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Edit") { showEdit = true }
+                    Button("Edit") {
+                        if let onEdit {
+                            onEdit(item)
+                        } else {
+                            showEdit = true
+                        }
+                    }
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }

@@ -98,6 +98,7 @@ struct GalleryView: View {
     @Binding var viewMode: ItemViewMode
     @AppStorage("thumbnailSize") private var thumbnailSizeRaw: String = ThumbnailSize.medium.rawValue
     @State private var selectedItem: Item?
+    @State private var itemToEdit: Item?
     @State private var showAddItem = false
     /// Per-category section search text (key = category section id); filters items within that section.
     @State private var sectionSearchTexts: [String: String] = [:]
@@ -450,8 +451,16 @@ struct GalleryView: View {
                 }
             }
             .sheet(item: $selectedItem) { item in
-                ItemDetailView(item: item)
+                ItemDetailView(item: item, onEdit: { editItem in
+                    selectedItem = nil
+                    DispatchQueue.main.async { itemToEdit = editItem }
+                })
                     .environmentObject(session)
+            }
+            .sheet(item: $itemToEdit) { item in
+                ItemFormView(mode: .edit(item))
+                    .environmentObject(session)
+                    .onDisappear { Task { await inventory.refresh() } }
             }
             .sheet(isPresented: $showAddItem) {
                 ItemFormView(mode: .add(initialWebLink: nil))
