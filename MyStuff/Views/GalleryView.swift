@@ -129,8 +129,8 @@ struct GalleryView: View {
 
     /// Display name for the current category (for title and dropdown).
     private var currentCategoryName: String {
-        guard let id = inventory.selectedCategoryId, !id.isEmpty else { return "All" }
-        return categories.first(where: { $0.id == id })?.name ?? "All"
+        guard let id = inventory.selectedCategoryId, !id.isEmpty else { return "All Categories" }
+        return categories.first(where: { $0.id == id })?.name ?? "All Categories"
     }
 
     /// Toolbar title: "N Items" when All, "N Items in [CATEGORY]" when a category is selected.
@@ -386,7 +386,7 @@ struct GalleryView: View {
                     }
                     .pickerStyle(.segmented)
                     Picker("Category", selection: Binding(get: { inventory.selectedCategoryId }, set: { inventory.selectedCategoryId = $0 })) {
-                        Text("All").tag(nil as String?)
+                        Text("All Categories").tag(nil as String?)
                         ForEach(categories) { cat in
                             Text(cat.name).tag(cat.id as String?)
                         }

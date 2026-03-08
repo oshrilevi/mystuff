@@ -36,8 +36,8 @@ struct ItemsListView: View {
     private var categories: [Category] { session.categories.categories }
 
     private var currentCategoryName: String {
-        guard let id = inventory.selectedCategoryId, !id.isEmpty else { return "All" }
-        return categories.first(where: { $0.id == id })?.name ?? "All"
+        guard let id = inventory.selectedCategoryId, !id.isEmpty else { return "All Categories" }
+        return categories.first(where: { $0.id == id })?.name ?? "All Categories"
     }
 
     private var toolbarTitle: String {
@@ -300,7 +300,7 @@ struct ItemsListView: View {
                     }
                     .pickerStyle(.segmented)
                     Picker("Category", selection: Binding(get: { inventory.selectedCategoryId }, set: { inventory.selectedCategoryId = $0 })) {
-                        Text("All").tag(nil as String?)
+                        Text("All Categories").tag(nil as String?)
                         ForEach(categories) { cat in
                             Text(cat.name).tag(cat.id as String?)
                         }
