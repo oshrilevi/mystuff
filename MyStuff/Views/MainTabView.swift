@@ -44,7 +44,11 @@ struct MainTabView: View {
                 Section("Stores") {
                     ForEach(session.stores.stores.sorted(by: { $0.order < $1.order })) { store in
                         NavigationLink(value: MainSidebarSelection.store(store)) {
-                            Label(store.name, systemImage: store.systemImage)
+                            Label {
+                                Text(store.name)
+                            } icon: {
+                                StoreIconView(store: store, size: 24)
+                            }
                         }
                     }
                 }
@@ -84,7 +88,11 @@ private struct StoresTabContent: View {
             List {
                 ForEach(sortedStores) { store in
                     NavigationLink(value: store) {
-                        Label(store.name, systemImage: store.systemImage)
+                        Label {
+                            Text(store.name)
+                        } icon: {
+                            StoreIconView(store: store, size: 24)
+                        }
                     }
                 }
             }

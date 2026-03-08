@@ -36,9 +36,7 @@ struct StoresView: View {
                         }
                         ForEach(sortedStores) { store in
                             HStack(spacing: 12) {
-                                Image(systemName: store.systemImage)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 24, alignment: .center)
+                                StoreIconView(store: store, size: 24)
                                 Text(store.name)
                                 Text(store.startURL)
                                     .font(.caption)
@@ -103,10 +101,7 @@ private struct StoreFormSheet: View {
 
     @State private var name: String = ""
     @State private var startURL: String = "https://"
-    @State private var systemImage: String = "link"
     @State private var isSaving = false
-
-    private static let iconOptions = ["link", "globe", "cart", "bag", "camera", "house", "star", "tag"]
 
     var body: some View {
         NavigationStack {
@@ -127,16 +122,6 @@ private struct StoreFormSheet: View {
                         .labelsHidden()
                 } header: {
                     Text("Start URL")
-                }
-                Section {
-                    Picker("Icon", selection: $systemImage) {
-                        ForEach(Self.iconOptions, id: \.self) { icon in
-                            Label(icon, systemImage: icon).tag(icon)
-                        }
-                    }
-                    .labelsHidden()
-                } header: {
-                    Text("Icon")
                 }
             }
             .formStyle(.grouped)
@@ -173,7 +158,6 @@ private struct StoreFormSheet: View {
                 case .edit(let store):
                     name = store.name
                     startURL = store.startURL
-                    systemImage = store.systemImage
                 }
             }
         }
@@ -195,9 +179,9 @@ private struct StoreFormSheet: View {
         Task {
             switch mode {
             case .add:
-                await storesVM.addStore(name: n, startURL: u, systemImage: systemImage)
+                await storesVM.addStore(name: n, startURL: u, systemImage: "link")
             case .edit(let store):
-                await storesVM.updateStore(id: store.id, name: n, startURL: u, systemImage: systemImage)
+                await storesVM.updateStore(id: store.id, name: n, startURL: u, systemImage: store.systemImage)
             }
             isSaving = false
             onDismiss()

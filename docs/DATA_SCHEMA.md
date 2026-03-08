@@ -61,7 +61,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Four sheets:
 | B (1)        | name      | String | Display name                            |
 | C (2)        | startURL  | String | URL to open in the in-app store browser |
 | D (3)        | order     | Int    | Sort order (row-based)                  |
-| E (4)        | systemImage | String | SF Symbol name (e.g. "cart", "link") |
+| E (4)        | systemImage | String | SF Symbol name; used as fallback when the store’s favicon (from start URL domain) cannot be loaded |
 
 - Row 1 is the header row (`id`, `name`, `startURL`, `order`, `systemImage`). Data starts at row 2.
 - `UserStore.columnOrder` in code: `["id", "name", "startURL", "order", "systemImage"]`.
