@@ -38,6 +38,7 @@
 		B00100000000000000000025 /* LocationsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001D /* LocationsViewModel.swift */; };
 		B00100000000000000000026 /* LocationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001E /* LocationsView.swift */; };
 		B00100000000000000000027 /* AmazonBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001F /* AmazonBrowserView.swift */; };
+		B00100000000000000000028 /* LoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000020 /* LoadingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +73,7 @@
 		F0010000000000000000001D /* LocationsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsViewModel.swift; sourceTree = "<group>"; };
 		F0010000000000000000001E /* LocationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsView.swift; sourceTree = "<group>"; };
 		F0010000000000000000001F /* AmazonBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmazonBrowserView.swift; sourceTree = "<group>"; };
+		F00100000000000000000020 /* LoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -141,6 +143,7 @@
 				F00100000000000000000018 /* ItemsListView.swift */,
 				F0010000000000000000001E /* LocationsView.swift */,
 				F0010000000000000000001F /* AmazonBrowserView.swift */,
+				F00100000000000000000020 /* LoadingView.swift */,
 				F0010000000000000000000F /* MainTabView.swift */,
 				F00100000000000000000010 /* RootView.swift */,
 				F00100000000000000000011 /* SignInView.swift */,
@@ -271,6 +274,7 @@
 				B00100000000000000000025 /* LocationsViewModel.swift in Sources */,
 				B00100000000000000000026 /* LocationsView.swift in Sources */,
 				B00100000000000000000027 /* AmazonBrowserView.swift in Sources */,
+				B00100000000000000000028 /* LoadingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

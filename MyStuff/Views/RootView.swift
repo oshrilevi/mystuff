@@ -4,6 +4,7 @@ struct RootView: View {
     @EnvironmentObject var authService: GoogleAuthService
     @State private var session: Session?
     @State private var setupTakingTooLong = false
+    @State private var initialLoadComplete = false
 
     var body: some View {
         Group {
@@ -86,14 +87,23 @@ struct RootView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let session = session {
-                MainTabView()
-                    .environmentObject(session)
-                    .task(id: session.appState.spreadsheetId) {
-                        guard session.appState.spreadsheetId != nil else { return }
-                        await session.categories.load()
-                        await session.locations.load()
-                        await session.inventory.refresh()
-                    }
+                ZStack {
+                    MainTabView()
+                        .environmentObject(session)
+                        .opacity(initialLoadComplete ? 1 : 0)
+                    LoadingView()
+                        .opacity(initialLoadComplete ? 0 : 1)
+                        .allowsHitTesting(!initialLoadComplete)
+                }
+                .animation(.easeIn(duration: 0.35), value: initialLoadComplete)
+                .task(id: session.appState.spreadsheetId) {
+                    guard session.appState.spreadsheetId != nil else { return }
+                    initialLoadComplete = false
+                    await session.categories.load()
+                    await session.locations.load()
+                    await session.inventory.refresh()
+                    initialLoadComplete = true
+                }
             }
         }
         .animation(.easeInOut, value: authService.isSignedIn)
