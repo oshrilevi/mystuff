@@ -136,21 +136,23 @@ private struct SettingsMenuButton: View {
 
     var body: some View {
         Menu {
-            Button {
-                selection = .categories
-            } label: { Label("Categories", systemImage: "folder") }
+            Section("Settings") {
+                Button {
+                    selection = .categories
+                } label: { Label("Categories", systemImage: "folder") }
 
-            Button {
-                selection = .locations
-            } label: { Label("Locations", systemImage: "location") }
+                Button {
+                    selection = .locations
+                } label: { Label("Locations", systemImage: "location") }
 
-            Button {
-                selection = .storesList
-            } label: { Label("Stores", systemImage: "cart") }
+                Button {
+                    selection = .storesList
+                } label: { Label("Stores", systemImage: "cart") }
 
-            Button {
-                selection = .sourcesList
-            } label: { Label("Sources", systemImage: "link") }
+                Button {
+                    selection = .sourcesList
+                } label: { Label("Sources", systemImage: "link") }
+            }
         } label: {
             Image(systemName: "gearshape")
                 .font(.title2)
