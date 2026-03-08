@@ -18,8 +18,7 @@ final class SheetsService {
             "properties": ["title": title],
             "sheets": [
                 ["properties": ["title": "Categories"]],
-                ["properties": ["title": "Items"]],
-                ["properties": ["title": "Wishlist"]]
+                ["properties": ["title": "Items"]]
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -35,7 +34,6 @@ final class SheetsService {
             "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
             "createdAt", "updatedAt", "photoIds", "webLink", "tags"
         ]])
-        try await appendRows(spreadsheetId: id, sheetName: "Wishlist", values: [WishlistItem.columnOrder])
         return (id, "https://docs.google.com/spreadsheets/d/\(id)")
     }
 
@@ -105,7 +103,7 @@ final class SheetsService {
         }
     }
 
-    /// Returns sheet titles (e.g. ["Categories", "Items", "Wishlist"]).
+    /// Returns sheet titles (e.g. ["Categories", "Items"]).
     func getSheetTitles(spreadsheetId: String) async throws -> [String] {
         let token = try await tokenProvider()
         let url = URL(string: "\(baseURL)/\(spreadsheetId)?fields=sheets(properties(title))")!
@@ -123,29 +121,6 @@ final class SheetsService {
         }
     }
 
-    /// Adds a sheet named "Wishlist" if missing, then appends the header row if the sheet is new/empty.
-    func ensureWishlistSheetExists(spreadsheetId: String) async throws {
-        let titles = try await getSheetTitles(spreadsheetId: spreadsheetId)
-        guard !titles.contains("Wishlist") else { return }
-        let token = try await tokenProvider()
-        let batchURL = URL(string: "\(baseURL)/\(spreadsheetId):batchUpdate")!
-        var request = URLRequest(url: batchURL)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = [
-            "requests": [
-                ["addSheet": ["properties": ["title": "Wishlist"]]]
-            ]
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        request.timeoutInterval = 30
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
-        }
-        try await appendRows(spreadsheetId: spreadsheetId, sheetName: "Wishlist", values: [WishlistItem.columnOrder])
-    }
 }
 
 enum SheetsError: LocalizedError {

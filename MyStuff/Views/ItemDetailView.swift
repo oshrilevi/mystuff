@@ -5,10 +5,8 @@ struct ItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let item: Item
     @State private var showEdit = false
-    @State private var isMovingToWishlist = false
 
     private var inventory: InventoryViewModel { session.inventory }
-    private var wishlist: WishlistViewModel { session.wishlist }
     private var categoryName: String {
         session.categories.categories.first { $0.id == item.categoryId }?.name ?? "—"
     }
@@ -36,13 +34,6 @@ struct ItemDetailView: View {
                         Link("View link", destination: url)
                             .font(.body)
                     }
-                    Button {
-                        Task { await moveToWishlist() }
-                    } label: {
-                        Label("Move to wish list", systemImage: "heart.circle")
-                    }
-                    .disabled(isMovingToWishlist)
-                    .padding(.top, 8)
                 }
                 .padding()
             }
@@ -70,24 +61,6 @@ struct ItemDetailView: View {
                 .foregroundStyle(.secondary)
             Text(value)
                 .font(.body)
-        }
-    }
-
-    private func moveToWishlist() async {
-        isMovingToWishlist = true
-        defer { isMovingToWishlist = false }
-        let wishlistItem = WishlistItem(
-            name: item.name,
-            notes: item.description,
-            price: item.price,
-            link: item.webLink,
-            photoId: item.photoIds.first ?? "",
-            tags: item.tags
-        )
-        await wishlist.add(wishlistItem, imageData: nil)
-        if wishlist.errorMessage == nil {
-            await inventory.deleteItems(ids: [item.id])
-            dismiss()
         }
     }
 }
