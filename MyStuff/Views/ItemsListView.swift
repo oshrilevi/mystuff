@@ -166,7 +166,7 @@ struct ItemsListView: View {
                                                 ItemListRow(
                                                     item: item,
                                                     categoryName: section.name,
-                                                    locationName: session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—"),
+                                                    locationName: Category.isWishlist(section.name) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
                                                     drive: session.drive
                                                 )
                                                 .padding(.top, index == 0 ? 12 : 0)
@@ -239,7 +239,7 @@ struct ItemsListView: View {
                                             ItemListRow(
                                                 item: item,
                                                 categoryName: currentCategoryName,
-                                                locationName: session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—"),
+                                                locationName: Category.isWishlist(currentCategoryName) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
                                                 drive: session.drive
                                             )
                                             .padding(.top, index == 0 ? 12 : 0)

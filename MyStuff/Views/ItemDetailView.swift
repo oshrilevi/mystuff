@@ -31,7 +31,9 @@ struct ItemDetailView: View {
                     detailRow("Name", item.name)
                     detailRow("Description", item.description.isEmpty ? "—" : item.description)
                     detailRow("Category", categoryName)
-                    detailRow("Location", locationName)
+                    if !isWishlist {
+                        detailRow("Location", locationName)
+                    }
                     detailRow("Price", Item.priceInNIS(item.price))
                     if !isWishlist {
                         detailRow("Quantity", "\(item.quantity)")

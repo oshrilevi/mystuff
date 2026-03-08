@@ -500,7 +500,9 @@ struct ItemHoverPopoverContent: View {
             }
             Divider()
             LabeledRow(label: "Category", value: categoryName)
-            LabeledRow(label: "Location", value: locationName)
+            if !Category.isWishlist(categoryName) {
+                LabeledRow(label: "Location", value: locationName)
+            }
             LabeledRow(label: "Price", value: Item.priceInNIS(item.price))
             if !Category.isWishlist(categoryName) {
                 LabeledRow(label: "Quantity", value: "\(item.quantity)")

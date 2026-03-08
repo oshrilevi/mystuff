@@ -45,6 +45,7 @@ struct ItemFormView: View {
     @FocusState private var focusedField: FocusField?
 
     private enum FocusField {
+        case absorbInitialFocus  // used in edit mode so name field never gets auto-focus (and thus no select-all)
         case url
     }
 
@@ -74,9 +75,17 @@ struct ItemFormView: View {
         NavigationStack {
             Form {
                 Section {
+                    // In edit mode, steal initial focus so the name field never gets auto-focused (avoids select-all).
+                    if isEdit {
+                        TextField("", text: .constant(""))
+                            .frame(width: 1, height: 1)
+                            .opacity(0)
+                            .allowsHitTesting(false)
+                            .focused($focusedField, equals: .absorbInitialFocus)
+                    }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Name").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("", text: $name, prompt: Text("Name"))
+                        NameFieldCursorAtEnd(text: $name, placeholder: "Name")
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Description").font(.subheadline).foregroundStyle(.secondary)
@@ -93,15 +102,17 @@ struct ItemFormView: View {
                         }
                         .pickerStyle(.menu)
                     }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Location").font(.subheadline).foregroundStyle(.secondary)
-                        Picker("", selection: $locationId) {
-                            Text("None").tag("")
-                            ForEach(sortedLocations) { loc in
-                                Text(loc.name).tag(loc.id)
+                    if !isWishlistCategory {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Location").font(.subheadline).foregroundStyle(.secondary)
+                            Picker("", selection: $locationId) {
+                                Text("None").tag("")
+                                ForEach(sortedLocations) { loc in
+                                    Text(loc.name).tag(loc.id)
+                                }
                             }
+                            .pickerStyle(.menu)
                         }
-                        .pickerStyle(.menu)
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Price (NIS)").font(.subheadline).foregroundStyle(.secondary)
@@ -351,9 +362,17 @@ struct ItemFormView: View {
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
             }
+            .defaultFocus($focusedField, isEdit ? .absorbInitialFocus : nil)
             .onAppear {
                 fillForm()
-                if !isEdit {
+                if isEdit {
+                    // Steal initial focus so name field is never auto-focused (avoids select-all); then release.
+                    focusedField = .absorbInitialFocus
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
+                        focusedField = nil
+                    }
+                } else {
                     categoryId = inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
                     locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
                     purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
@@ -514,3 +533,99 @@ struct ItemFormView: View {
         }
     }
 }
+
+// MARK: - Name field that places cursor at end on focus (avoids full-text selection when opening edit)
+#if os(iOS)
+private struct NameFieldCursorAtEnd: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+
+    func makeUIView(context: Context) -> UITextField {
+        let field = UITextField()
+        field.placeholder = placeholder
+        field.text = text
+        field.borderStyle = .roundedRect
+        field.delegate = context.coordinator
+        field.addTarget(context.coordinator, action: #selector(Coordinator.textChanged), for: .editingChanged)
+        return field
+    }
+
+    func updateUIView(_ uiView: UITextField, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    class Coordinator: NSObject, UITextFieldDelegate {
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        @objc func textChanged(_ field: UITextField) {
+            text = field.text ?? ""
+        }
+
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            guard let t = textField.text, !t.isEmpty else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                let end = textField.endOfDocument
+                textField.selectedTextRange = textField.textRange(from: end, to: end)
+            }
+        }
+    }
+}
+#elseif os(macOS)
+private struct NameFieldCursorAtEnd: NSViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField()
+        field.placeholderString = placeholder
+        field.stringValue = text
+        field.isBordered = true
+        field.bezelStyle = .roundedBezel
+        field.delegate = context.coordinator
+        field.cell?.sendsActionOnEndEditing = false
+        return field
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func controlTextDidChange(_ obj: Notification) {
+            guard let field = obj.object as? NSTextField else { return }
+            text = field.stringValue
+        }
+
+        func controlTextDidBeginEditing(_ obj: Notification) {
+            guard let field = obj.object as? NSTextField else { return }
+            let s = field.stringValue
+            guard !s.isEmpty else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) {
+                field.currentEditor()?.selectedRange = NSRange(location: s.utf16.count, length: 0)
+            }
+        }
+    }
+}
+#endif
