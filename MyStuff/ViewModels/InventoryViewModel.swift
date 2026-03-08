@@ -43,9 +43,6 @@ final class InventoryViewModel: ObservableObject {
                     || $0.tags.contains { $0.lowercased().contains(q) }
             }
         }
-        if let cid = selectedCategoryId, !cid.isEmpty {
-            list = list.filter { $0.categoryId == cid }
-        }
         return list
     }
 

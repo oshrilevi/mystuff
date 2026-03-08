@@ -358,13 +358,6 @@ struct ItemsListView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    Picker("Category", selection: Binding(get: { inventory.selectedCategoryId }, set: { inventory.selectedCategoryId = $0 })) {
-                        Text("All Categories").tag(nil as String?)
-                        ForEach(categories) { cat in
-                            Text(cat.name).tag(cat.id as String?)
-                        }
-                    }
-                    .pickerStyle(.menu)
                     HStack(spacing: 16) {
                         ItemsListSearchField(text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
                         Rectangle()
