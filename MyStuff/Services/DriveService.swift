@@ -49,6 +49,9 @@ final class DriveService {
         request.httpBody = try JSONSerialization.data(withJSONObject: metadata)
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw DriveError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw DriveError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -77,6 +80,9 @@ final class DriveService {
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
         let (responseData, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw DriveError.unauthorized(String(data: responseData, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw DriveError.requestFailed(String(data: responseData, encoding: .utf8) ?? "Unknown")
         }
@@ -104,6 +110,9 @@ final class DriveService {
         var request = URLRequest(url: URL(string: baseURL + "/files/\(fileId)?alt=media")!)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw DriveError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw DriveError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -165,10 +174,12 @@ final class DriveService {
 enum DriveError: LocalizedError {
     case requestFailed(String)
     case invalidResponse
+    case unauthorized(String)
     var errorDescription: String? {
         switch self {
         case .requestFailed(let msg): return msg
         case .invalidResponse: return "Invalid response"
+        case .unauthorized(let msg): return "Google Drive authorization failed: \(msg)"
         }
     }
 }

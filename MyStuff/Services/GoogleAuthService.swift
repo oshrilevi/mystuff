@@ -89,12 +89,16 @@ public final class GoogleAuthService: ObservableObject {
 
     public func getAccessToken() async throws -> String {
         guard let user = currentUser else { throw AuthError.notSignedIn }
-        let token = user.accessToken
-        if token.tokenString.isEmpty {
+        do {
             let refreshedUser = try await user.refreshTokensIfNeeded()
-            return refreshedUser.accessToken.tokenString
+            // Keep the latest user instance so any refreshed credentials are retained.
+            currentUser = refreshedUser
+            let tokenString = refreshedUser.accessToken.tokenString
+            guard !tokenString.isEmpty else { throw AuthError.noToken }
+            return tokenString
+        } catch {
+            throw AuthError.tokenRefreshFailed(error.localizedDescription)
         }
-        return token.tokenString
     }
 
     #if os(macOS)
@@ -117,11 +121,13 @@ public final class GoogleAuthService: ObservableObject {
 public enum AuthError: LocalizedError {
     case notSignedIn
     case noToken
+    case tokenRefreshFailed(String)
 
     public var errorDescription: String? {
         switch self {
         case .notSignedIn: return "Not signed in"
         case .noToken: return "No access token"
+        case .tokenRefreshFailed(let message): return "Unable to refresh Google session: \(message)"
         }
     }
 }

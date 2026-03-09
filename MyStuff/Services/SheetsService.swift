@@ -27,6 +27,9 @@ final class SheetsService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw SheetsError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -62,6 +65,9 @@ final class SheetsService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw SheetsError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -75,6 +81,9 @@ final class SheetsService {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw SheetsError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -97,6 +106,9 @@ final class SheetsService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw SheetsError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -111,6 +123,9 @@ final class SheetsService {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw SheetsError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw SheetsError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
         }
@@ -160,10 +175,12 @@ final class SheetsService {
 enum SheetsError: LocalizedError {
     case requestFailed(String)
     case invalidResponse
+    case unauthorized(String)
     var errorDescription: String? {
         switch self {
         case .requestFailed(let msg): return msg
         case .invalidResponse: return "Invalid response"
+        case .unauthorized(let msg): return "Google Sheets authorization failed: \(msg)"
         }
     }
 }

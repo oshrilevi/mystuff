@@ -58,6 +58,20 @@ final class InventoryViewModel: ObservableObject {
             if let data = try? JSONEncoder().encode(loaded.map { itemToRow($0) }) {
                 UserDefaults.standard.set(data, forKey: itemsCacheKey)
             }
+        } catch let error as SheetsError {
+            switch error {
+            case .unauthorized:
+                errorMessage = "Your Google session expired. Please sign out and sign in again."
+            default:
+                errorMessage = error.localizedDescription
+            }
+        } catch let error as DriveError {
+            switch error {
+            case .unauthorized:
+                errorMessage = "Your Google session expired. Please sign out and sign in again."
+            default:
+                errorMessage = error.localizedDescription
+            }
         } catch {
             errorMessage = error.localizedDescription
             if let data = UserDefaults.standard.data(forKey: itemsCacheKey),
@@ -73,6 +87,20 @@ final class InventoryViewModel: ObservableObject {
             let rows = try await sheets.getValues(spreadsheetId: sid, range: "Categories!A2:Z500")
             categories = rows.enumerated().compactMap { index, row in
                 parseCategoryRow(row, rowIndex: index + 2)
+            }
+        } catch let error as SheetsError {
+            switch error {
+            case .unauthorized:
+                errorMessage = "Your Google session expired. Please sign out and sign in again."
+            default:
+                errorMessage = error.localizedDescription
+            }
+        } catch let error as DriveError {
+            switch error {
+            case .unauthorized:
+                errorMessage = "Your Google session expired. Please sign out and sign in again."
+            default:
+                errorMessage = error.localizedDescription
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -103,6 +131,13 @@ final class InventoryViewModel: ObservableObject {
         do {
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Items", values: [values])
             await loadItems()
+        } catch let error as SheetsError {
+            switch error {
+            case .unauthorized:
+                errorMessage = "Your Google session expired. Please sign out and sign in again."
+            default:
+                errorMessage = error.localizedDescription
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
