@@ -321,7 +321,7 @@ struct ItemFormView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showCamera) {
-                CameraImagePicker(imageData: $capturedImageData) {
+                CameraImagePicker(capturedImageData: $capturedImageData) {
                     showCamera = false
                     if let data = capturedImageData {
                         imageData.append(data)
