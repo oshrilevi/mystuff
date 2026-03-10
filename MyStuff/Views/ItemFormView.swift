@@ -47,6 +47,11 @@ struct ItemFormView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showDatePicker = false
+    @State private var showDocumentImporter = false
+    @State private var pendingDocumentURL: IdentifiableURL?
+    @State private var pendingDocumentKind: ItemAttachment.Kind = .other
+    @State private var pendingDocumentDisplayName = ""
+    @State private var isAddingDocument = false
     @FocusState private var focusedField: FocusField?
 
     private enum FocusField {
@@ -55,6 +60,7 @@ struct ItemFormView: View {
     }
 
     private var inventory: InventoryViewModel { session.inventory }
+    private var attachments: AttachmentsViewModel { session.attachments }
     private var drive: DriveService { session.drive }
     private var pageMetadata: PageMetadataService { session.pageMetadata }
     private var categories: [Category] { session.categories.categories }
@@ -328,6 +334,63 @@ struct ItemFormView: View {
                     }
                     #endif
                 }
+                if isEdit, let item = existingItem {
+                    Section("Documents") {
+                        if let attErr = attachments.errorMessage {
+                            Text(attErr)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                        ForEach(attachments.attachments(for: item.id)) { att in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(att.displayName.isEmpty ? "Document" : att.displayName)
+                                        .font(.body)
+                                    Text(att.kind.displayTitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button(role: .destructive) {
+                                    Task { await attachments.removeAttachment(id: att.id) }
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        Button {
+                            showDocumentImporter = true
+                        } label: {
+                            Label("Attach document", systemImage: "doc.badge.plus")
+                        }
+                    }
+                    .fileImporter(
+                        isPresented: $showDocumentImporter,
+                        allowedContentTypes: [.pdf, .png, .jpeg],
+                        allowsMultipleSelection: false
+                    ) { result in
+                        Task { @MainActor in
+                            guard case .success(let urls) = result, let url = urls.first else { return }
+                            pendingDocumentURL = IdentifiableURL(url: url)
+                            pendingDocumentDisplayName = url.lastPathComponent
+                            pendingDocumentKind = .other
+                        }
+                    }
+                    .sheet(item: $pendingDocumentURL) { wrapper in
+                        if let item = existingItem {
+                            DocumentOptionsSheetView(
+                                url: wrapper.url,
+                                itemId: item.id,
+                                displayName: $pendingDocumentDisplayName,
+                                kind: $pendingDocumentKind,
+                                onAdd: { pendingDocumentURL = nil },
+                                onCancel: { pendingDocumentURL = nil }
+                            )
+                            .environmentObject(session)
+                        }
+                    }
+                }
                 if let err = errorMessage {
                     Section { Text(err).foregroundStyle(.red) }
                 }
@@ -578,6 +641,98 @@ struct ItemFormView: View {
         } else {
             errorMessage = inventory.errorMessage
         }
+    }
+}
+
+// MARK: - Wrapper so URL can be used with sheet(item:)
+private struct IdentifiableURL: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+// MARK: - Document attach options (kind + display name) sheet
+private struct DocumentOptionsSheetView: View {
+    let url: URL
+    let itemId: String
+    @Binding var displayName: String
+    @Binding var kind: ItemAttachment.Kind
+    var onAdd: () -> Void
+    var onCancel: () -> Void
+    @EnvironmentObject var session: Session
+    @State private var isAdding = false
+
+    private var attachments: AttachmentsViewModel { session.attachments }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let err = attachments.errorMessage {
+                    Section {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+                Section("Document") {
+                    TextField("Display name", text: $displayName)
+                    Picker("Type", selection: $kind) {
+                        ForEach(ItemAttachment.Kind.allCases) { k in
+                            Text(k.displayTitle).tag(k)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            }
+            .navigationTitle("Attach document")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { onCancel() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add") {
+                        Task { await addDocument() }
+                    }
+                    .disabled(isAdding)
+                }
+            }
+        }
+    }
+
+    private func addDocument() async {
+        isAdding = true
+        defer { isAdding = false }
+        let data: Data?
+        #if os(iOS)
+        let needScope = url.startAccessingSecurityScopedResource()
+        defer { if needScope { url.stopAccessingSecurityScopedResource() } }
+        #endif
+        data = try? Data(contentsOf: url)
+        guard let fileData = data else {
+            return
+        }
+        let mimeType = mimeTypeForPathExtension(url.pathExtension)
+        let filename = url.lastPathComponent
+        await attachments.addAttachment(
+            itemId: itemId,
+            fileData: fileData,
+            mimeType: mimeType,
+            filename: filename,
+            kind: kind,
+            displayName: displayName.trimmingCharacters(in: .whitespaces)
+        )
+        onAdd()
+    }
+}
+
+private func mimeTypeForPathExtension(_ ext: String) -> String {
+    switch ext.lowercased() {
+    case "pdf": return "application/pdf"
+    case "png": return "image/png"
+    case "jpg", "jpeg": return "image/jpeg"
+    default: return "application/octet-stream"
     }
 }
 

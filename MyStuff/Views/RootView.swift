@@ -103,6 +103,7 @@ struct RootView: View {
                     await session.locations.load()
                     await session.stores.load()
                     await session.sources.load()
+                    await session.attachments.load()
                     await session.inventory.refresh()
                     initialLoadComplete = true
                 }
@@ -111,7 +112,8 @@ struct RootView: View {
         .animation(.easeInOut, value: authService.isSignedIn)
         .task(id: session != nil) {
             guard let session = session else { return }
-            if session.appState.spreadsheetId == nil, session.appState.bootstrapError == nil {
+            let needsBootstrap = session.appState.spreadsheetId == nil || session.appState.driveDocumentsFolderId == nil
+            if needsBootstrap, session.appState.bootstrapError == nil {
                 await session.bootstrap()
             }
         }

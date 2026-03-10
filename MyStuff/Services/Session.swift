@@ -19,6 +19,7 @@ final class Session: ObservableObject {
     let locations: LocationsViewModel
     let stores: StoresViewModel
     let sources: SourcesViewModel
+    let attachments: AttachmentsViewModel
 
     private let authService: GoogleAuthService
     private var cancellables = Set<AnyCancellable>()
@@ -33,7 +34,8 @@ final class Session: ObservableObject {
             try await authService?.getAccessToken() ?? ""
         })
         self.pageMetadata = PageMetadataService()
-        self.inventory = InventoryViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
+        self.attachments = AttachmentsViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState)
+        self.inventory = InventoryViewModel(sheets: self.sheets, drive: self.drive, appState: self.appState, attachments: self.attachments)
         self.categories = CategoriesViewModel(sheets: self.sheets, appState: self.appState)
         self.locations = LocationsViewModel(sheets: self.sheets, appState: self.appState)
         self.stores = StoresViewModel(sheets: self.sheets, appState: self.appState)
@@ -63,6 +65,10 @@ final class Session: ObservableObject {
         sources.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        attachments.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] (_: Any) in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
 
@@ -99,6 +105,7 @@ final class Session: ObservableObject {
                     await self.locations.load()
                     await self.stores.load()
                     await self.sources.load()
+                    await self.attachments.load()
                 }
                 return true
             }

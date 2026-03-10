@@ -4,7 +4,7 @@ Reference for the Google Sheets and Drive layout. When you add or reorder column
 
 ## Google Spreadsheet
 
-Created on first run via `SheetsService.createSpreadsheet`. Five sheets:
+Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 
 ### Sheet: **Categories**
 
@@ -82,10 +82,27 @@ Created on first run via `SheetsService.createSpreadsheet`. Five sheets:
 - `UserSource.columnOrder` in code: `["id", "name", "url", "order"]`.
 - For existing spreadsheets created before Sources existed, the app adds the "Sources" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `SourcesViewModel.load()`). No default seed rows; user adds sources in Settings → Sources.
 
+### Sheet: **Attachments**
+
+| Column index | Name       | Type   | Notes                                        |
+|--------------|------------|--------|----------------------------------------------|
+| A (0)        | id         | String | UUID                                         |
+| B (1)        | itemId     | String | FK to Items id                                |
+| C (2)        | driveFileId| String | Drive file ID (in MyStuff Documents folder)  |
+| D (3)        | kind       | String | `invoice`, `proofOfPurchase`, or `other`     |
+| E (4)        | displayName| String | User-facing label                            |
+| F (5)        | createdAt  | String | ISO8601                                      |
+
+- Row 1 is the header row (`id`, `itemId`, `driveFileId`, `kind`, `displayName`, `createdAt`). Data starts at row 2.
+- `ItemAttachment.columnOrder` in code: `["id", "itemId", "driveFileId", "kind", "displayName", "createdAt"]`.
+- For existing spreadsheets created before Attachments existed, the app adds the "Attachments" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `AttachmentsViewModel.load()`).
+
 ## Google Drive
 
-- **Folder:** One folder per user, name **"MyStuff Photos"**, created in bootstrap via `DriveService.createFolder`.
-- **Files:** Photos are uploaded with a generated filename; the **file ID** is stored in the Items sheet in `photoIds` (comma-separated). No subfolders; all photos live in that single folder.
+- **Folders:** Two folders per user, both created in bootstrap via `DriveService.createFolder`:
+  - **"MyStuff Photos"** – item photos; file IDs stored in the Items sheet in `photoIds` (comma-separated).
+  - **"MyStuff Documents"** – item documents (invoices, proof of purchase, etc.); file IDs and metadata stored in the Attachments sheet.
+- **Files:** Photos and documents are uploaded with a generated or user-chosen filename. No subfolders; photos and documents each live in their single folder.
 
 ## Local persistence (UserDefaults)
 
@@ -93,6 +110,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Five sheets:
 |-----------------------------|----------------------------------|
 | `mystuff_spreadsheet_id`    | Current user’s spreadsheet ID    |
 | `mystuff_drive_folder_id`  | Current user’s photo folder ID   |
+| `mystuff_drive_documents_folder_id` | Current user’s documents folder ID (MyStuff Documents) |
 | `mystuff_items_cache`      | Offline cache of items (encoded)  |
 | `mystuff_categories_cache` | Offline cache of categories       |
 | `mystuff_pinned_category_ids` | Pinned category IDs (Set)     |

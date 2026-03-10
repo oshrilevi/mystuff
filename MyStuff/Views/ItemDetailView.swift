@@ -17,6 +17,7 @@ struct ItemDetailView: View {
     }
 
     private var inventory: InventoryViewModel { session.inventory }
+    private var itemAttachments: [ItemAttachment] { session.attachments.attachments(for: currentItem.id) }
     private var categoryName: String {
         session.categories.categories.first { $0.id == currentItem.categoryId }?.name ?? "—"
     }
@@ -82,6 +83,7 @@ struct ItemDetailView: View {
                             if !currentItem.tags.isEmpty {
                                 detailRow("Tags", currentItem.tags.joined(separator: ", "))
                             }
+                            documentsSection
                             HStack(spacing: 16) {
                                 if !currentItem.webLink.isEmpty, let url = URL(string: currentItem.webLink) {
                                     Button("Visit Product") {
@@ -139,6 +141,49 @@ struct ItemDetailView: View {
         #if os(iOS)
         .presentationDetents([.large])
         #endif
+    }
+
+    @ViewBuilder
+    private var documentsSection: some View {
+        if !itemAttachments.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Documents")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(itemAttachments) { att in
+                        Button {
+                            if let url = URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view") {
+                                #if os(iOS)
+                                UIApplication.shared.open(url)
+                                #elseif os(macOS)
+                                NSWorkspace.shared.open(url)
+                                #endif
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "doc.fill")
+                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(att.displayName.isEmpty ? "Document" : att.displayName)
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                    Text(att.kind.displayTitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 
     private func detailRow(_ label: String, _ value: String) -> some View {

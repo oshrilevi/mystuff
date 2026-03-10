@@ -54,6 +54,8 @@
 		B00100000000000000000035 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002D /* ExportService.swift */; };
 		B00100000000000000000036 /* ExportMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002E /* ExportMenuView.swift */; };
 		B00100000000000000000037 /* PDFExportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002F /* PDFExportBuilder.swift */; };
+		B00100000000000000000038 /* ItemAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000038 /* ItemAttachment.swift */; };
+		B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000039 /* AttachmentsViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -104,6 +106,8 @@
 		F0010000000000000000002D /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
 		F0010000000000000000002E /* ExportMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportMenuView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002F /* PDFExportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportBuilder.swift; sourceTree = "<group>"; };
+		F00100000000000000000038 /* ItemAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemAttachment.swift; sourceTree = "<group>"; };
+		F00100000000000000000039 /* AttachmentsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentsViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +136,7 @@
 			children = (
 				F00100000000000000000002 /* Category.swift */,
 				F00100000000000000000003 /* Item.swift */,
+				F00100000000000000000038 /* ItemAttachment.swift */,
 				F0010000000000000000001C /* Location.swift */,
 				F00100000000000000000021 /* UserStore.swift */,
 				F00100000000000000000027 /* UserSource.swift */,
@@ -156,6 +161,7 @@
 		G00100000000000000000003 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				F00100000000000000000039 /* AttachmentsViewModel.swift */,
 				F00100000000000000000009 /* CategoriesViewModel.swift */,
 				F0010000000000000000000A /* InventoryViewModel.swift */,
 				F0010000000000000000001D /* LocationsViewModel.swift */,
@@ -343,6 +349,8 @@
 				B00100000000000000000035 /* ExportService.swift in Sources */,
 				B00100000000000000000036 /* ExportMenuView.swift in Sources */,
 				B00100000000000000000037 /* PDFExportBuilder.swift in Sources */,
+				B00100000000000000000038 /* ItemAttachment.swift in Sources */,
+				B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

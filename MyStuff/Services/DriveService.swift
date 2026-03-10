@@ -91,6 +91,11 @@ final class DriveService {
         return id
     }
 
+    /// Uploads any file (e.g. PDF, images) to Drive. For images prefer uploadImage; this is for documents.
+    func uploadFile(data: Data, mimeType: String, filename: String, parentFolderId: String) async throws -> String {
+        try await uploadImage(data: data, mimeType: mimeType, filename: filename, parentFolderId: parentFolderId)
+    }
+
     func thumbnailURL(fileId: String) -> URL? {
         URL(string: "https://drive.google.com/thumbnail?id=\(fileId)&sz=w400")
     }

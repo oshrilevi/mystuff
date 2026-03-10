@@ -25,12 +25,14 @@ final class InventoryViewModel: ObservableObject {
     private var spreadsheetId: String? { appState.spreadsheetId }
     private var driveFolderId: String? { appState.driveFolderId }
     private let appState: AppState
+    private weak var attachments: AttachmentsViewModel?
     private let itemsCacheKey = "mystuff_items_cache"
 
-    init(sheets: SheetsService, drive: DriveService, appState: AppState) {
+    init(sheets: SheetsService, drive: DriveService, appState: AppState, attachments: AttachmentsViewModel? = nil) {
         self.sheets = sheets
         self.drive = drive
         self.appState = appState
+        self.attachments = attachments
     }
 
     var filteredItems: [Item] {
@@ -178,6 +180,7 @@ final class InventoryViewModel: ObservableObject {
                 let rows = updated.map { itemToRow($0) }
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Items", values: rows)
             }
+            await attachments?.removeAttachments(forItemIds: idSet)
             await loadItems()
         } catch {
             errorMessage = error.localizedDescription
