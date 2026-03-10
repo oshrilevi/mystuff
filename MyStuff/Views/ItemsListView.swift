@@ -424,6 +424,15 @@ struct ItemsListView: View {
                     inventory.hasAppliedInitialCategoryCollapse = true
                 }
             }
+            .onChange(of: inventory.searchText) { _, newSearch in
+                guard !newSearch.isEmpty else { return }
+                let idsWithMatches = Set(inventory.filteredItems.map { $0.categoryId })
+                if !idsWithMatches.isEmpty {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        inventory.categorySectionCollapsedIds.subtract(idsWithMatches)
+                    }
+                }
+            }
         }
     }
 }
