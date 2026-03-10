@@ -166,7 +166,7 @@ struct GalleryView: View {
         let list = inventory.filteredItems
         let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
         var sections: [CategorySection] = []
-        let sortedCats = categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let sortedCats = categories.sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
         for cat in sortedCats {
             guard let items = byCategory[cat.id], !items.isEmpty else { continue }
             let total = items.reduce(0.0) { sum, item in
@@ -182,8 +182,8 @@ struct GalleryView: View {
             }
             sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, color: nil))
         }
-        let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }
+        let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }
         return pinned + unpinned
     }
 

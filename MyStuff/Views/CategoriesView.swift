@@ -68,11 +68,14 @@ struct CategoriesView: View {
     @State private var newCategoryName = ""
     @State private var showAdd = false
     @State private var editingCategory: Category?
+    #if os(iOS)
+    @State private var editMode: EditMode = .inactive
+    #endif
 
     private var categoriesVM: CategoriesViewModel { session.categories }
 
     private var sortedCategories: [Category] {
-        categoriesVM.categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        categoriesVM.categories.sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
     }
 
     var body: some View {
@@ -101,6 +104,7 @@ struct CategoriesView: View {
                             .contentShape(Rectangle())
                             .onTapGesture { beginEdit(cat) }
                         }
+                        .onMove(perform: moveCategories)
                         .onDelete(perform: deleteCategories)
                     }
                     .refreshable { await categoriesVM.load() }
@@ -109,6 +113,10 @@ struct CategoriesView: View {
             .navigationTitle("Categories")
             .toolbar {
                 #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
+                        .environment(\.editMode, $editMode)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
@@ -126,6 +134,9 @@ struct CategoriesView: View {
                 }
                 #endif
             }
+            #if os(iOS)
+            .environment(\.editMode, $editMode)
+            #endif
             .alert("New category", isPresented: $showAdd) {
                 TextField("Name", text: $newCategoryName)
                 Button("Cancel", role: .cancel) { newCategoryName = "" }
@@ -152,6 +163,16 @@ struct CategoriesView: View {
 
     private func beginEdit(_ cat: Category) {
         editingCategory = cat
+    }
+
+    private func moveCategories(from source: IndexSet, to destination: Int) {
+        var arr = sortedCategories
+        let from = source.first!
+        let item = arr.remove(at: from)
+        var to = destination
+        if from < destination { to -= 1 }
+        arr.insert(item, at: to)
+        Task { await categoriesVM.reorderCategories(to: arr) }
     }
 
     private func deleteCategories(at offsets: IndexSet) {

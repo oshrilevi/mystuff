@@ -131,4 +131,30 @@ final class CategoriesViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    /// Updates category order from a reordered list; persists to Sheets and cache.
+    func reorderCategories(to newOrder: [Category]) async {
+        guard let sid = spreadsheetId else { return }
+        let reordered: [Category] = newOrder.enumerated().map { index, cat in
+            var c = cat
+            c.order = index
+            return c
+        }
+        categories = reordered
+        do {
+            try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
+            let header = [["id", "name", "order", "color"]]
+            try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
+            let rows = reordered.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }
+            if !rows.isEmpty {
+                try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
+            }
+            if let data = try? JSONEncoder().encode(reordered.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }) {
+                UserDefaults.standard.set(data, forKey: categoriesCacheKey)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            await load()
+        }
+    }
 }
