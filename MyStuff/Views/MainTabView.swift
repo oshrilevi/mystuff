@@ -15,6 +15,7 @@ enum MainSidebarSelection: Hashable {
 struct MainTabView: View {
     @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: MainSidebarSelection = .items
     @State private var itemViewMode: ItemViewMode = .grid
     var body: some View {
@@ -49,6 +50,11 @@ struct MainTabView: View {
             if let sel = newValue {
                 selection = sel
                 session.requestedSidebarSelection = nil
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await session.prefetchWishlistPricesIfNeeded() }
             }
         }
         #else
@@ -125,6 +131,11 @@ struct MainTabView: View {
                     selection = sel
                     session.requestedSidebarSelection = nil
                 }
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await session.prefetchWishlistPricesIfNeeded() }
             }
         }
         #endif
@@ -290,6 +301,7 @@ private struct SourcesTabContent: View {
 #endif
 
 struct ItemsTabView: View {
+    @EnvironmentObject var session: Session
     @Binding var viewMode: ItemViewMode
 
     var body: some View {
@@ -299,6 +311,9 @@ struct ItemsTabView: View {
             } else {
                 ItemsListView(viewMode: $viewMode)
             }
+        }
+        .task {
+            await session.prefetchWishlistPricesIfNeeded()
         }
     }
 }

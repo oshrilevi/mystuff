@@ -167,7 +167,11 @@ struct ItemsListView: View {
                                                     item: item,
                                                     categoryName: section.name,
                                                     locationName: Category.isWishlist(section.name) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
-                                                    drive: session.drive
+                                                    drive: session.drive,
+                                                    currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
+                                                    isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
+                                                    isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
+                                                    hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil
                                                 )
                                                 .padding(.top, index == 0 ? 12 : 0)
                                                 .padding(.bottom, index == sortedItemsForSection.count - 1 ? 12 : 0)
@@ -246,7 +250,11 @@ struct ItemsListView: View {
                                                 item: item,
                                                 categoryName: currentCategoryName,
                                                 locationName: Category.isWishlist(currentCategoryName) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
-                                                drive: session.drive
+                                                drive: session.drive,
+                                                currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
+                                                isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
+                                                isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
+                                                hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil
                                             )
                                             .padding(.top, index == 0 ? 12 : 0)
                                             .padding(.bottom, index == singleCategorySorted.count - 1 ? 12 : 0)
@@ -333,6 +341,9 @@ struct ItemsListView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 StatusBar(totalWorth: totalWorth, itemCount: inventory.filteredItems.count)
+            }
+            .task {
+                await session.prefetchWishlistPricesIfNeeded()
             }
             #if os(iOS)
             .navigationTitle("")
@@ -462,10 +473,19 @@ private struct ItemListRow: View {
     let categoryName: String
     let locationName: String
     let drive: DriveService
+    /// When set (wishlist item with cached store price), shown next to the entered price.
+    var currentStorePrice: String? = nil
+    /// True while this item's URL is being fetched for current price.
+    var isPriceFetching: Bool = false
+    /// True when fetch was attempted and failed (show red dash only then).
+    var isPriceFailed: Bool = false
+    /// True when item has a valid web link (so we show fetching/price/dash); when false for wishlist, show nothing.
+    var hasValidWebLink: Bool = true
 
     @State private var fillColor: Color?
 
     private let thumbSize: CGFloat = 44
+    private var isWishlist: Bool { Category.isWishlist(categoryName) }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -490,9 +510,35 @@ private struct ItemListRow: View {
                     .font(.body)
                     .fontWeight(.medium)
                 HStack(spacing: 8) {
-                    Text(Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
+                    Text(Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: isWishlist))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if isWishlist, hasValidWebLink, isPriceFetching || currentStorePrice != nil || isPriceFailed {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        if isPriceFetching {
+                            Text("Fetching…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if let current = currentStorePrice, !current.isEmpty {
+                            let trend = Item.priceTrend(entered: item.price, current: current)
+                            HStack(spacing: 2) {
+                                Text("Current: \(Item.formattedPrice(price: current, priceCurrency: item.priceCurrency, isWishlist: true))")
+                                    .font(.caption)
+                                    .foregroundStyle(trend == .higher ? .red : (trend == .lower ? .green : .secondary))
+                                if trend != .same {
+                                    Image(systemName: trend == .higher ? "arrow.up" : "arrow.down")
+                                        .font(.caption2)
+                                        .foregroundStyle(trend == .higher ? .red : .green)
+                                }
+                            }
+                        } else if isPriceFailed {
+                            Text("—")
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
                     Text("·")
                         .font(.caption)
                         .foregroundStyle(.tertiary)

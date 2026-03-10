@@ -106,6 +106,7 @@ struct RootView: View {
                     await session.attachments.load()
                     await session.inventory.refresh()
                     initialLoadComplete = true
+                    Task { await session.prefetchWishlistPricesIfNeeded() }
                 }
             }
         }

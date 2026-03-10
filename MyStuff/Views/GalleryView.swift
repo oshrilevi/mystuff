@@ -410,6 +410,9 @@ struct GalleryView: View {
 
                 StatusBar(totalWorth: totalWorth, itemCount: inventory.filteredItems.count)
             }
+            .task {
+                await session.prefetchWishlistPricesIfNeeded()
+            }
             #if os(iOS)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
@@ -508,9 +511,14 @@ struct GalleryView: View {
 
 /// Compact popover content showing all item fields after 1s hover.
 struct ItemHoverPopoverContent: View {
+    @EnvironmentObject var session: Session
     let item: Item
     let categoryName: String
     let locationName: String
+
+    private var currentStorePrice: String? {
+        session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -529,6 +537,37 @@ struct ItemHoverPopoverContent: View {
                 LabeledRow(label: "Location", value: locationName)
             }
             LabeledRow(label: "Price", value: Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
+            if Category.isWishlist(categoryName) {
+                if let current = currentStorePrice, !current.isEmpty {
+                    let trend = Item.priceTrend(entered: item.price, current: current)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("Current")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 80, alignment: .leading)
+                        HStack(spacing: 4) {
+                            Text(Item.formattedPrice(price: current, priceCurrency: item.priceCurrency, isWishlist: true))
+                                .font(.caption)
+                                .foregroundStyle(trend == .higher ? .red : (trend == .lower ? .green : .secondary))
+                            if trend != .same {
+                                Image(systemName: trend == .higher ? "arrow.up" : "arrow.down")
+                                    .font(.caption2)
+                                    .foregroundStyle(trend == .higher ? .red : .green)
+                            }
+                        }
+                    }
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("Current")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 80, alignment: .leading)
+                        Text("—")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
             if !Category.isWishlist(categoryName) {
                 LabeledRow(label: "Quantity", value: "\(item.quantity)")
                 LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
@@ -575,7 +614,17 @@ struct ItemCardWithHoverPopover: View {
     private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
 
     var body: some View {
-        ItemCard(item: item, drive: drive, photoId: item.photoIds.first, categoryName: categoryName, thumbnailSize: thumbnailSize)
+        ItemCard(
+            item: item,
+            drive: drive,
+            photoId: item.photoIds.first,
+            categoryName: categoryName,
+            thumbnailSize: thumbnailSize,
+            currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
+            isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
+            isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
+            hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil
+        )
             .overlay(alignment: .topLeading) {
                 Color.clear
                     .frame(width: thumbDimension, height: thumbDimension)
@@ -608,6 +657,14 @@ struct ItemCard: View {
     let photoId: String?
     let categoryName: String
     var thumbnailSize: ThumbnailSize = .medium
+    /// When set (wishlist item with cached store price), shown next to the entered price.
+    var currentStorePrice: String? = nil
+    /// True while this item's URL is being fetched for current price.
+    var isPriceFetching: Bool = false
+    /// True when fetch was attempted and failed (show red dash only then).
+    var isPriceFailed: Bool = false
+    /// True when item has a valid web link (so we show fetching/price/dash).
+    var hasValidWebLink: Bool = true
 
     @State private var fillColor: Color?
 
@@ -661,6 +718,32 @@ struct ItemCard: View {
                 Text(Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
                     .font(priceFont)
                     .foregroundStyle(.secondary)
+                if Category.isWishlist(categoryName), hasValidWebLink, isPriceFetching || currentStorePrice != nil || isPriceFailed {
+                    Text("·")
+                        .font(priceFont)
+                        .foregroundStyle(.tertiary)
+                    if isPriceFetching {
+                        Text("Fetching…")
+                            .font(priceFont)
+                            .foregroundStyle(.secondary)
+                    } else if let current = currentStorePrice, !current.isEmpty {
+                        let trend = Item.priceTrend(entered: item.price, current: current)
+                        HStack(spacing: 2) {
+                            Text("Current: \(Item.formattedPrice(price: current, priceCurrency: item.priceCurrency, isWishlist: true))")
+                                .font(priceFont)
+                                .foregroundStyle(trend == .higher ? .red : (trend == .lower ? .green : .secondary))
+                            if trend != .same {
+                                Image(systemName: trend == .higher ? "arrow.up" : "arrow.down")
+                                    .font(.caption2)
+                                    .foregroundStyle(trend == .higher ? .red : .green)
+                            }
+                        }
+                    } else if isPriceFailed {
+                        Text("—")
+                            .font(priceFont)
+                            .foregroundStyle(.red)
+                    }
+                }
                 if item.quantity > 1 {
                     Text("× \(item.quantity)")
                         .font(priceFont)

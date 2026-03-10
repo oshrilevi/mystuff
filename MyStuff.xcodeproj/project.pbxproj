@@ -16,6 +16,7 @@
 		B00100000000000000000007 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000007 /* Session.swift */; };
 		B00100000000000000000008 /* SheetsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000008 /* SheetsService.swift */; };
 		B00100000000000000000017 /* PageMetadataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000017 /* PageMetadataService.swift */; };
+		B0010000000000000000003A /* BrowserPriceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000040 /* BrowserPriceService.swift */; };
 		B00100000000000000000009 /* CategoriesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000009 /* CategoriesViewModel.swift */; };
 		B0010000000000000000000A /* InventoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000A /* InventoryViewModel.swift */; };
 		B0010000000000000000000B /* CategoriesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000B /* CategoriesView.swift */; };
@@ -68,6 +69,7 @@
 		F00100000000000000000007 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		F00100000000000000000008 /* SheetsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SheetsService.swift; sourceTree = "<group>"; };
 		F00100000000000000000017 /* PageMetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageMetadataService.swift; sourceTree = "<group>"; };
+		F00100000000000000000040 /* BrowserPriceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserPriceService.swift; sourceTree = "<group>"; };
 		F00100000000000000000009 /* CategoriesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesViewModel.swift; sourceTree = "<group>"; };
 		F0010000000000000000000A /* InventoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryViewModel.swift; sourceTree = "<group>"; };
 		F0010000000000000000000B /* CategoriesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoriesView.swift; sourceTree = "<group>"; };
@@ -152,6 +154,7 @@
 				F0010000000000000000002D /* ExportService.swift */,
 				F00100000000000000000006 /* GoogleAuthService.swift */,
 				F00100000000000000000017 /* PageMetadataService.swift */,
+				F00100000000000000000040 /* BrowserPriceService.swift */,
 				F00100000000000000000007 /* Session.swift */,
 				F00100000000000000000008 /* SheetsService.swift */,
 			);
@@ -314,6 +317,7 @@
 				B00100000000000000000007 /* Session.swift in Sources */,
 				B00100000000000000000008 /* SheetsService.swift in Sources */,
 				B00100000000000000000017 /* PageMetadataService.swift in Sources */,
+				B0010000000000000000003A /* BrowserPriceService.swift in Sources */,
 				B00100000000000000000009 /* CategoriesViewModel.swift in Sources */,
 				B0010000000000000000000A /* InventoryViewModel.swift in Sources */,
 				B0010000000000000000000B /* CategoriesView.swift in Sources */,

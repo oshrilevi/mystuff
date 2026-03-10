@@ -117,6 +117,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 | `mystuff_default_location_id` | Default location ID for new items |
 | `mystuff_browser_<storeId>`   | Last-visited URL per store (in-app browser); storeId from Stores sheet |
 | `mystuff_browser_source_<id>` | Last-visited URL per source (in-app browser); id from Sources sheet   |
+| `mystuff_wishlist_price_last_prefetch_date` | Date of last wishlist current-price prefetch; used to refetch at most once per 24h when app becomes active |
 
 **Caches directory (not UserDefaults):**
 

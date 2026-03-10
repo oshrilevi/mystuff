@@ -70,6 +70,21 @@ struct Item: Identifiable, Equatable {
         return priceInNIS(price)
     }
 
+    /// Compare entered (your) price with current store price for trend display. Used for wishlist price coloring and arrow.
+    enum PriceTrend {
+        case higher   // current > entered (red, arrow up)
+        case lower    // current < entered (green, arrow down)
+        case same     // equal or unparseable
+    }
+    static func priceTrend(entered: String, current: String) -> PriceTrend {
+        let a = Double(entered.trimmingCharacters(in: .whitespaces))
+        let b = Double(current.trimmingCharacters(in: .whitespaces))
+        guard let ea = a, let cb = b else { return .same }
+        if cb > ea { return .higher }
+        if cb < ea { return .lower }
+        return .same
+    }
+
     static let columnOrder = [
         "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
         "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId", "priceCurrency"

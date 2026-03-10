@@ -9,6 +9,9 @@ struct ItemDetailView: View {
     @State private var isEditing = false
     @State private var currentItem: Item
     @State private var showDeleteConfirmation = false
+    @State private var currentStorePrice: String?
+    @State private var currentPriceLoading = false
+    @State private var currentPriceError: String?
 
     init(item: Item, onDismiss: (() -> Void)? = nil) {
         self.item = item
@@ -27,6 +30,11 @@ struct ItemDetailView: View {
     }
 
     private var isWishlist: Bool { Category.isWishlist(categoryName) }
+    private var webLinkURL: URL? {
+        let s = currentItem.webLink.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty, let u = URL(string: s), u.scheme == "https" || u.scheme == "http" else { return nil }
+        return u
+    }
 
     private func dismissSheet() {
         onDismiss?()
@@ -75,7 +83,7 @@ struct ItemDetailView: View {
                             if !isWishlist {
                                 detailRow("Location", locationName)
                             }
-                            detailRow("Price", Item.formattedPrice(price: currentItem.price, priceCurrency: currentItem.priceCurrency, isWishlist: isWishlist))
+                            priceSection
                             if !isWishlist {
                                 detailRow("Quantity", "\(currentItem.quantity)")
                                 detailRow("Purchase date", currentItem.purchaseDate.isEmpty ? "—" : currentItem.purchaseDate)
@@ -104,6 +112,9 @@ struct ItemDetailView: View {
                             }
                         }
                         .padding()
+                    }
+                    .task(id: currentItem.webLink) {
+                        await fetchCurrentStorePriceIfNeeded()
                     }
                     .navigationTitle(currentItem.name)
                     .toolbar {
@@ -141,6 +152,91 @@ struct ItemDetailView: View {
         #if os(iOS)
         .presentationDetents([.large])
         #endif
+    }
+
+    @ViewBuilder
+    private var priceSection: some View {
+        if isWishlist {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Price")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(Item.formattedPrice(price: currentItem.price, priceCurrency: currentItem.priceCurrency, isWishlist: true))
+                    .font(.body)
+                currentStorePriceLine
+            }
+        } else {
+            detailRow("Price", Item.formattedPrice(price: currentItem.price, priceCurrency: currentItem.priceCurrency, isWishlist: false))
+        }
+    }
+
+    @ViewBuilder
+    private var currentStorePriceLine: some View {
+        if !isWishlist { EmptyView() }
+        else if currentItem.webLink.trimmingCharacters(in: .whitespaces).isEmpty {
+            Text("Add a product URL in Edit to see current store price.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if webLinkURL == nil {
+            Text("Current price: — (invalid URL)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if currentPriceLoading {
+            Text("Checking price…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if let error = currentPriceError {
+            Text("Current price: —")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(error)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        } else if let current = currentStorePrice, !current.isEmpty {
+            let formatted = Item.formattedPrice(price: current, priceCurrency: currentItem.priceCurrency, isWishlist: true)
+            let trend = Item.priceTrend(entered: currentItem.price, current: current)
+            HStack(spacing: 6) {
+                Text("Current on store: \(formatted)")
+                    .font(.caption)
+                    .foregroundStyle(trend == .higher ? .red : (trend == .lower ? .green : .secondary))
+                if trend != .same {
+                    Image(systemName: trend == .higher ? "arrow.up" : "arrow.down")
+                        .font(.caption2)
+                        .foregroundStyle(trend == .higher ? .red : .green)
+                }
+            }
+        } else {
+            Text("Current price: —")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func fetchCurrentStorePriceIfNeeded() async {
+        guard isWishlist, let url = webLinkURL else {
+            await MainActor.run {
+                currentStorePrice = nil
+                currentPriceError = nil
+                currentPriceLoading = false
+            }
+            return
+        }
+        await MainActor.run {
+            currentPriceLoading = true
+            currentStorePrice = nil
+            currentPriceError = nil
+        }
+        let price = await session.fetchAndCacheStorePrice(for: url)
+        await MainActor.run {
+            currentPriceLoading = false
+            if let p = price, !p.isEmpty {
+                currentStorePrice = p
+                currentPriceError = nil
+            } else {
+                currentStorePrice = nil
+                currentPriceError = nil
+            }
+        }
     }
 
     @ViewBuilder
