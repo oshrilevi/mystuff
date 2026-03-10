@@ -672,24 +672,33 @@ struct ItemCardWithHoverPopover: View {
                     .onTapGesture { onTap() }
                     .contextMenu {
                         if !item.webLink.isEmpty, let url = URL(string: item.webLink) {
-                            Button("Visit Product Page") {
+                            Button {
                                 #if os(iOS)
                                 UIApplication.shared.open(url)
                                 #elseif os(macOS)
                                 NSWorkspace.shared.open(url)
                                 #endif
+                            } label: {
+                                Label("Open product page", systemImage: "safari")
                             }
                         }
-                        Button("Search On YouTube") {
-                            session.youtubeSearchQuery = item.name
-                            session.requestedSidebarSelection = .youtube
+                        let trimmedName = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmedName.isEmpty {
+                            Button {
+                                session.youtubeSearchQuery = trimmedName
+                                session.requestedSidebarSelection = .youtube
+                            } label: {
+                                Label("Search on YouTube", systemImage: "play.rectangle")
+                            }
                         }
-                        Button("Search similar products on Amazon") {
-                            if let query = amazonSearchQuery(for: item) {
+                        if let query = amazonSearchQuery(for: item) {
+                            Button {
                                 session.amazonSearchQuery = query
-                            }
-                            if let amazonStore = session.stores.stores.first(where: { $0.startURL.lowercased().contains("amazon.com") }) {
-                                session.requestedSidebarSelection = .store(amazonStore)
+                                if let amazonStore = session.stores.stores.first(where: { $0.startURL.lowercased().contains("amazon.com") }) {
+                                    session.requestedSidebarSelection = .store(amazonStore)
+                                }
+                            } label: {
+                                Label("Search for similar items on Amazon", systemImage: "cart")
                             }
                         }
                     }
