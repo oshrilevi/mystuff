@@ -634,6 +634,25 @@ struct ItemCardWithHoverPopover: View {
 
     private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
 
+    /// Builds an Amazon search query from the item's tags, falling back to the item name.
+    /// Tags that contain “amazon” or “amazon.com” are removed to avoid vendor noise.
+    private func amazonSearchQuery(for item: Item) -> String? {
+        let cleanedTags = item.tags.filter { tag in
+            let lower = tag.lowercased()
+            return !lower.contains("amazon.com") && !lower.contains("amazon")
+        }
+        let terms: [String]
+        if !cleanedTags.isEmpty {
+            terms = cleanedTags
+        } else {
+            let name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return nil }
+            terms = [name]
+        }
+        let query = terms.joined(separator: " ")
+        return query.isEmpty ? nil : query
+    }
+
     var body: some View {
         ItemCard(
             item: item,
@@ -664,6 +683,14 @@ struct ItemCardWithHoverPopover: View {
                         Button("Search On YouTube") {
                             session.youtubeSearchQuery = item.name
                             session.requestedSidebarSelection = .youtube
+                        }
+                        Button("Search similar products on Amazon") {
+                            if let query = amazonSearchQuery(for: item) {
+                                session.amazonSearchQuery = query
+                            }
+                            if let amazonStore = session.stores.stores.first(where: { $0.startURL.lowercased().contains("amazon.com") }) {
+                                session.requestedSidebarSelection = .store(amazonStore)
+                            }
                         }
                     }
             }

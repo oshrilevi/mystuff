@@ -355,8 +355,19 @@ struct StoreBrowserView: View {
     @State private var isQuickAddingToWishlist = false
     @State private var wishlistToastMessage: String?
 
+    private var isAmazonStore: Bool {
+        store.startURLAsURL.host?.lowercased().contains("amazon.") == true
+    }
+
     private var initialURL: URL {
-        (UserDefaults.standard.string(forKey: store.persistedURLKey)).flatMap { URL(string: $0) } ?? store.startURLAsURL
+        if isAmazonStore,
+           let query = session.amazonSearchQuery,
+           !query.isEmpty,
+           let encoded = query.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&="))),
+           let url = URL(string: "https://www.amazon.com/s?k=\(encoded)") {
+            return url
+        }
+        return (UserDefaults.standard.string(forKey: store.persistedURLKey)).flatMap { URL(string: $0) } ?? store.startURLAsURL
     }
 
     /// Current page URL if it is valid http(s), for the "Open in Chrome" button.
@@ -397,6 +408,9 @@ struct StoreBrowserView: View {
         }
         .onAppear {
             urlBarText = webViewState.currentURLString ?? initialURL.absoluteString
+            if isAmazonStore, session.amazonSearchQuery != nil {
+                session.amazonSearchQuery = nil
+            }
         }
     }
 

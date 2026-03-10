@@ -9,6 +9,8 @@ final class Session: ObservableObject {
     @Published var requestedSidebarSelection: MainSidebarSelection?
     /// Optional search query for the YouTube section; consumed by YouTubeSearchView on appear.
     @Published var youtubeSearchQuery: String?
+    /// Optional search query for the Amazon store; consumed by StoreBrowserView when opening the Amazon store.
+    @Published var amazonSearchQuery: String?
 
     /// Cache of current store prices keyed by product URL (absolute string). Filled on app load for wishlist items and when opening item detail.
     @Published var storePriceCache: [String: String] = [:]

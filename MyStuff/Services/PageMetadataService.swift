@@ -125,6 +125,11 @@ final class PageMetadataService {
 
         tags = tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         tags = Array(Set(tags))
+        // Remove vendor-noise tags from Amazon so tags stay focused on the product itself.
+        tags = tags.filter { tag in
+            let lower = tag.lowercased()
+            return !lower.contains("amazon.com") && !lower.contains("amazon")
+        }
 
         // Fallback: derive tags from title and URL when no meta tags found (many sites omit keywords)
         if tags.isEmpty {
