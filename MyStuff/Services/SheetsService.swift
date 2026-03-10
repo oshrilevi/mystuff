@@ -38,7 +38,7 @@ final class SheetsService {
         try await appendRows(spreadsheetId: id, sheetName: "Categories", values: [["id", "name", "order", "color"]])
         try await appendRows(spreadsheetId: id, sheetName: "Items", values: [[
             "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
-            "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId"
+            "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId", "priceCurrency"
         ]])
         try await appendRows(spreadsheetId: id, sheetName: "Locations", values: [["id", "name", "order"]])
         try await appendRows(spreadsheetId: id, sheetName: "Stores", values: [["id", "name", "startURL", "order", "systemImage"]])

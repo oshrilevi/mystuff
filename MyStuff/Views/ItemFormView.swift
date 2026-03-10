@@ -31,6 +31,7 @@ struct ItemFormView: View {
     @State private var webLink = ""
     @State private var tagsText = "" // Comma-separated tags
     @State private var locationId = ""
+    @State private var priceCurrency = "NIS"
     @State private var isExtracting = false
     #if os(iOS)
     @State private var selectedPhotos: [PhotosPickerItem] = []
@@ -70,6 +71,10 @@ struct ItemFormView: View {
     private var initialCategoryIdForAdd: String? { if case .add(_, let cid) = mode { return cid } else { return nil } }
     private var isWishlistCategory: Bool {
         Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
+    }
+    private var priceLabel: String {
+        if isWishlistCategory { return "Price (\(priceCurrency))" }
+        return "Price (NIS)"
     }
 
     private var showCurrentPhoto: Bool {
@@ -119,8 +124,18 @@ struct ItemFormView: View {
                             .pickerStyle(.menu)
                         }
                     }
+                    if isWishlistCategory {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Currency").font(.subheadline).foregroundStyle(.secondary)
+                            Picker("", selection: $priceCurrency) {
+                                Text("NIS").tag("NIS")
+                                Text("USD").tag("USD")
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Price (NIS)").font(.subheadline).foregroundStyle(.secondary)
+                        Text(priceLabel).font(.subheadline).foregroundStyle(.secondary)
                         TextField("", text: $price, prompt: Text("Price"))
                             #if os(iOS)
                             .keyboardType(.decimalPad)
@@ -439,6 +454,7 @@ struct ItemFormView: View {
             description = item.description
             categoryId = item.categoryId
             price = item.price
+            priceCurrency = item.priceCurrency.isEmpty ? "NIS" : item.priceCurrency
             purchaseDateValue = Self.dateFormatter.date(from: item.purchaseDate) ?? Date()
             quantity = item.quantity
             quantityText = "\(item.quantity)"
@@ -505,12 +521,14 @@ struct ItemFormView: View {
         let link = webLink.trimmingCharacters(in: .whitespaces)
         let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
         let tags = parsedTags()
+        let resolvedPriceCurrency = isWishlistCategory ? priceCurrency : ""
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)
             updated.description = description
             updated.categoryId = categoryId
             updated.price = price
+            updated.priceCurrency = resolvedPriceCurrency
             updated.purchaseDate = purchaseDateString
             updated.condition = existing.condition
             updated.quantity = quantity
@@ -530,7 +548,8 @@ struct ItemFormView: View {
                 quantity: quantity,
                 webLink: link,
                 tags: tags,
-                locationId: locationId
+                locationId: locationId,
+                priceCurrency: resolvedPriceCurrency
             )
             await inventory.addItem(newItem, imageData: imageData)
             if inventory.errorMessage == nil {
@@ -546,6 +565,7 @@ struct ItemFormView: View {
                 updated.description = description
                 updated.categoryId = categoryId
                 updated.price = price
+                updated.priceCurrency = resolvedPriceCurrency
                 updated.purchaseDate = Self.dateFormatter.string(from: purchaseDateValue)
                 updated.quantity = quantity
                 updated.webLink = webLink.trimmingCharacters(in: .whitespaces)

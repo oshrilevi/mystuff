@@ -40,7 +40,7 @@ private struct ItemPDFPageView: View {
 
             row("Category", categoryName)
             row("Description", item.description.isEmpty ? "—" : item.description)
-            row("Price", item.price.isEmpty ? "—" : item.price)
+            row("Price", Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
             row("Purchase date", item.purchaseDate.isEmpty ? "—" : String(item.purchaseDate.prefix(10)))
             row("Quantity", String(item.quantity))
 

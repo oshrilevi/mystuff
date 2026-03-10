@@ -283,6 +283,9 @@ struct GalleryView: View {
                                                       item.categoryId != section.id else { return }
                                                 var updated = item
                                                 updated.categoryId = section.id
+                                                if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
+                                                    updated.priceCurrency = ""
+                                                }
                                                 Task { await inventory.updateItem(updated) }
                                             }
                                         )
@@ -314,6 +317,9 @@ struct GalleryView: View {
                                                           item.categoryId != section.id else { return false }
                                                     var updated = item
                                                     updated.categoryId = section.id
+                                                    if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
+                                                        updated.priceCurrency = ""
+                                                    }
                                                     Task { await inventory.updateItem(updated) }
                                                     return true
                                                 }
@@ -359,6 +365,9 @@ struct GalleryView: View {
                                                   item.categoryId != singleCategoryId else { return }
                                             var updated = item
                                             updated.categoryId = singleCategoryId
+                                            if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(currentCategoryName) {
+                                                updated.priceCurrency = ""
+                                            }
                                             Task { await inventory.updateItem(updated) }
                                         },
                                         showSearchField: false
@@ -384,6 +393,9 @@ struct GalleryView: View {
                                               item.categoryId != singleCategoryId else { return false }
                                         var updated = item
                                         updated.categoryId = singleCategoryId
+                                        if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(currentCategoryName) {
+                                            updated.priceCurrency = ""
+                                        }
                                         Task { await inventory.updateItem(updated) }
                                         return true
                                     }
@@ -516,7 +528,7 @@ struct ItemHoverPopoverContent: View {
             if !Category.isWishlist(categoryName) {
                 LabeledRow(label: "Location", value: locationName)
             }
-            LabeledRow(label: "Price", value: Item.priceInNIS(item.price))
+            LabeledRow(label: "Price", value: Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
             if !Category.isWishlist(categoryName) {
                 LabeledRow(label: "Quantity", value: "\(item.quantity)")
                 LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
@@ -563,7 +575,7 @@ struct ItemCardWithHoverPopover: View {
     private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
 
     var body: some View {
-        ItemCard(item: item, drive: drive, photoId: item.photoIds.first, thumbnailSize: thumbnailSize)
+        ItemCard(item: item, drive: drive, photoId: item.photoIds.first, categoryName: categoryName, thumbnailSize: thumbnailSize)
             .overlay(alignment: .topLeading) {
                 Color.clear
                     .frame(width: thumbDimension, height: thumbDimension)
@@ -594,6 +606,7 @@ struct ItemCard: View {
     let item: Item
     let drive: DriveService
     let photoId: String?
+    let categoryName: String
     var thumbnailSize: ThumbnailSize = .medium
 
     @State private var fillColor: Color?
@@ -645,7 +658,7 @@ struct ItemCard: View {
                 .fontWeight(.medium)
                 .lineLimit(1)
             HStack(spacing: 4) {
-                Text(Item.priceInNIS(item.price))
+                Text(Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
                     .font(priceFont)
                     .foregroundStyle(.secondary)
                 if item.quantity > 1 {

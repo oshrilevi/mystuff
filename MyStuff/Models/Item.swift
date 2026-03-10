@@ -16,6 +16,8 @@ struct Item: Identifiable, Equatable {
     var webLink: String
     var tags: [String]
     var locationId: String
+    /// Currency for price when item is in Wishlist: "NIS", "USD", or "" (treated as NIS). Ignored for non-Wishlist categories.
+    var priceCurrency: String
 
     init(
         id: String = UUID().uuidString,
@@ -31,7 +33,8 @@ struct Item: Identifiable, Equatable {
         photoIds: [String] = [],
         webLink: String = "",
         tags: [String] = [],
-        locationId: String = ""
+        locationId: String = "",
+        priceCurrency: String = ""
     ) {
         self.id = id
         self.name = name
@@ -47,6 +50,7 @@ struct Item: Identifiable, Equatable {
         self.webLink = webLink
         self.tags = tags
         self.locationId = locationId
+        self.priceCurrency = priceCurrency
     }
 
     static let conditionPresets = ["New", "Like new", "Good", "Fair", "Poor"]
@@ -58,8 +62,16 @@ struct Item: Identifiable, Equatable {
         return "₪ \(trimmed)"
     }
 
+    /// Returns price string for display: USD symbol when wishlist and priceCurrency is USD, otherwise NIS.
+    static func formattedPrice(price: String, priceCurrency: String, isWishlist: Bool) -> String {
+        let trimmed = price.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "—" }
+        if isWishlist && priceCurrency == "USD" { return "$ \(trimmed)" }
+        return priceInNIS(price)
+    }
+
     static let columnOrder = [
         "id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity",
-        "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId"
+        "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId", "priceCurrency"
     ]
 }

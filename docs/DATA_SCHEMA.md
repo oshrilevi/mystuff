@@ -36,9 +36,10 @@ Created on first run via `SheetsService.createSpreadsheet`. Five sheets:
 | L (11)       | webLink     | String | URL                                        |
 | M (12)       | tags        | String | Comma-separated tags                       |
 | N (13)       | locationId  | String | FK to Locations id (optional)             |
+| O (14)       | priceCurrency | String | For Wishlist only: "NIS", "USD", or empty (NIS). Ignored for other categories. |
 
 - Row 1 is the header row. Data starts at row 2.
-- `Item.columnOrder` in code: `["id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity", "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId"]`.
+- `Item.columnOrder` in code: `["id", "name", "description", "categoryId", "price", "purchaseDate", "condition", "quantity", "createdAt", "updatedAt", "photoIds", "webLink", "tags", "locationId", "priceCurrency"]`.
 - **Parsing:** `InventoryViewModel.parseItemRow` supports older spreadsheets with fewer columns (e.g. without quantity, webLink, tags, locationId). New rows are written with the full column set via `itemToRow`.
 
 ### Sheet: **Locations**

@@ -197,7 +197,8 @@ final class InventoryViewModel: ObservableObject {
             item.photoIds.joined(separator: ","),
             item.webLink,
             item.tags.joined(separator: ","),
-            item.locationId
+            item.locationId,
+            item.priceCurrency
         ]
     }
 
@@ -224,6 +225,7 @@ final class InventoryViewModel: ObservableObject {
             ? row[12].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             : []
         let locationId = row.count > 13 ? row[13] : ""
+        let priceCurrency = row.count > 14 ? row[14] : ""
         return Item(
             id: row[0],
             name: row.count > 1 ? row[1] : "",
@@ -238,7 +240,8 @@ final class InventoryViewModel: ObservableObject {
             photoIds: photoIds,
             webLink: webLink,
             tags: tags,
-            locationId: locationId
+            locationId: locationId,
+            priceCurrency: priceCurrency
         )
     }
 

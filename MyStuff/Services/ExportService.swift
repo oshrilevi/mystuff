@@ -13,7 +13,7 @@ enum ExportService {
     ) -> Data {
         let sorted = sortItemsByCategoryThenName(items: items, categories: categories)
         let header = [
-            "name", "description", "categoryName", "price", "purchaseDate", "quantity", "locationName"
+            "name", "description", "categoryName", "price", "priceCurrency", "purchaseDate", "quantity", "locationName"
         ]
         var rows: [[String]] = [header]
         for item in sorted {
@@ -24,6 +24,7 @@ enum ExportService {
                 item.description,
                 catName,
                 item.price,
+                item.priceCurrency,
                 item.purchaseDate,
                 String(item.quantity),
                 locName

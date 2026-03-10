@@ -181,6 +181,9 @@ struct ItemsListView: View {
                                                       item.categoryId != section.id else { return false }
                                                 var updated = item
                                                 updated.categoryId = section.id
+                                                if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
+                                                    updated.priceCurrency = ""
+                                                }
                                                 Task { await inventory.updateItem(updated) }
                                                 return true
                                             }
@@ -223,6 +226,9 @@ struct ItemsListView: View {
                                                       item.categoryId != section.id else { return }
                                                 var updated = item
                                                 updated.categoryId = section.id
+                                                if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
+                                                    updated.priceCurrency = ""
+                                                }
                                                 Task { await inventory.updateItem(updated) }
                                             }
                                         )
@@ -254,6 +260,9 @@ struct ItemsListView: View {
                                                   item.categoryId != singleCategoryId else { return false }
                                             var updated = item
                                             updated.categoryId = singleCategoryId
+                                            if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(currentCategoryName) {
+                                                updated.priceCurrency = ""
+                                            }
                                             Task { await inventory.updateItem(updated) }
                                             return true
                                         }
@@ -293,6 +302,9 @@ struct ItemsListView: View {
                                                   item.categoryId != singleCategoryId else { return }
                                             var updated = item
                                             updated.categoryId = singleCategoryId
+                                            if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(currentCategoryName) {
+                                                updated.priceCurrency = ""
+                                            }
                                             Task { await inventory.updateItem(updated) }
                                         },
                                         showSearchField: false
@@ -478,7 +490,7 @@ private struct ItemListRow: View {
                     .font(.body)
                     .fontWeight(.medium)
                 HStack(spacing: 8) {
-                    Text(Item.priceInNIS(item.price))
+                    Text(Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("·")

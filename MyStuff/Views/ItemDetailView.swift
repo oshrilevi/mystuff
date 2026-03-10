@@ -74,7 +74,7 @@ struct ItemDetailView: View {
                             if !isWishlist {
                                 detailRow("Location", locationName)
                             }
-                            detailRow("Price", Item.priceInNIS(currentItem.price))
+                            detailRow("Price", Item.formattedPrice(price: currentItem.price, priceCurrency: currentItem.priceCurrency, isWishlist: isWishlist))
                             if !isWishlist {
                                 detailRow("Quantity", "\(currentItem.quantity)")
                                 detailRow("Purchase date", currentItem.purchaseDate.isEmpty ? "—" : currentItem.purchaseDate)

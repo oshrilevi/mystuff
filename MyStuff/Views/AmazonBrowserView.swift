@@ -454,7 +454,8 @@ struct StoreBrowserView: View {
                 quantity: 1,
                 webLink: webLink,
                 tags: tags,
-                locationId: ""
+                locationId: "",
+                priceCurrency: ""
             )
             await session.inventory.addItem(newItem, imageData: [])
             await MainActor.run {
