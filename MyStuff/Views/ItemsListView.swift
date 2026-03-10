@@ -466,14 +466,26 @@ private struct ItemsListSectionSpacingModifier: ViewModifier {
 private struct ItemsListSearchField: View {
     @Binding var text: String
     var body: some View {
-        TextField("Search items", text: $text)
-            .padding(.leading, 8)
-            .textFieldStyle(.roundedBorder)
-            .frame(minWidth: 120, maxWidth: 200)
-            .help("Search items")
-        #if os(iOS)
-            .focusEffectDisabled()
-        #endif
+        ZStack(alignment: .trailing) {
+            TextField("Search items", text: $text)
+                .padding(.leading, 8)
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: 120, maxWidth: 200)
+                .help("Search items")
+            #if os(iOS)
+                .focusEffectDisabled()
+            #endif
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 8)
+            }
+        }
     }
 }
 

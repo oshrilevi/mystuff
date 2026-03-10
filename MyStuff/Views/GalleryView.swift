@@ -462,14 +462,26 @@ struct GalleryView: View {
                     .pickerStyle(.segmented)
                     .help("Display: Compact, Medium, Large, or List")
                     HStack(spacing: 16) {
-                        TextField("Search items", text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
-                            .padding(.leading, 8)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(minWidth: 120, maxWidth: 200)
-                            .help("Search items")
-                            #if os(iOS)
-                            .focusEffectDisabled()
-                            #endif
+                        ZStack(alignment: .trailing) {
+                            TextField("Search items", text: Binding(get: { inventory.searchText }, set: { inventory.searchText = $0 }))
+                                .padding(.leading, 8)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(minWidth: 120, maxWidth: 200)
+                                .help("Search items")
+                                #if os(iOS)
+                                .focusEffectDisabled()
+                                #endif
+                            if !inventory.searchText.isEmpty {
+                                Button {
+                                    inventory.searchText = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 8)
+                            }
+                        }
                         Rectangle()
                             .fill(.tertiary)
                             .frame(width: 1, height: 20)
@@ -886,12 +898,24 @@ struct CategorySectionHeader: View {
                     .buttonStyle(.plain)
                 }
                 if showSearchField {
-                    TextField("Filter in \(name)", text: $sectionSearchText)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(minWidth: 100, maxWidth: 180)
-                    #if os(iOS)
-                    .focusEffectDisabled()
-                    #endif
+                    ZStack(alignment: .trailing) {
+                        TextField("Filter in \(name)", text: $sectionSearchText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(minWidth: 100, maxWidth: 180)
+                        #if os(iOS)
+                        .focusEffectDisabled()
+                        #endif
+                        if !sectionSearchText.isEmpty {
+                            Button {
+                                sectionSearchText = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 8)
+                        }
+                    }
                 }
             }
         }
