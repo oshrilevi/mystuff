@@ -28,6 +28,7 @@ struct ItemsListView: View {
     @Binding var viewMode: ItemViewMode
     @AppStorage("thumbnailSize") private var thumbnailSizeRaw: String = ThumbnailSize.medium.rawValue
     @State private var selectedItem: Item?
+    @State private var selectedAttachment: ItemAttachment?
     @State private var showAddItem = false
     @State private var sectionSearchTexts: [String: String] = [:]
     @State private var sectionSortOrders: [String: ItemSortOrder] = [:]
@@ -163,16 +164,25 @@ struct ItemsListView: View {
                                     Section {
                                         if !collapsedSectionIds.contains(section.id) {
                                             ForEach(Array(sortedItemsForSection.enumerated()), id: \.element.id) { index, item in
-                                                ItemListRow(
-                                                    item: item,
-                                                    categoryName: section.name,
-                                                    locationName: Category.isWishlist(section.name) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
-                                                    drive: session.drive,
-                                                    currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
-                                                    isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
-                                                    isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
-                                                    hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil
-                                                )
+                                            ItemListRow(
+                                                item: item,
+                                                categoryName: section.name,
+                                                locationName: Category.isWishlist(section.name) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
+                                                drive: session.drive,
+                                                currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
+                                                isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
+                                                isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
+                                                hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil,
+                                                onOpenAttachment: { att in
+                                                    #if os(iOS)
+                                                    selectedAttachment = att
+                                                    #elseif os(macOS)
+                                                    Task {
+                                                        await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
+                                                    }
+                                                    #endif
+                                                }
+                                            )
                                                 .padding(.top, index == 0 ? 12 : 0)
                                                 .padding(.bottom, index == sortedItemsForSection.count - 1 ? 12 : 0)
                                                 .contentShape(Rectangle())
@@ -254,7 +264,16 @@ struct ItemsListView: View {
                                                 currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
                                                 isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
                                                 isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
-                                                hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil
+                                                hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil,
+                                                onOpenAttachment: { att in
+                                                    #if os(iOS)
+                                                    selectedAttachment = att
+                                                    #elseif os(macOS)
+                                                    Task {
+                                                        await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
+                                                    }
+                                                    #endif
+                                                }
                                             )
                                             .padding(.top, index == 0 ? 12 : 0)
                                             .padding(.bottom, index == singleCategorySorted.count - 1 ? 12 : 0)
@@ -406,6 +425,18 @@ struct ItemsListView: View {
                 ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                     .environmentObject(session)
             }
+            #if os(iOS)
+            .sheet(item: $selectedAttachment) { att in
+                DocumentPreviewView(
+                    drive: session.drive,
+                    driveFileId: att.driveFileId,
+                    itemName: att.displayName.isEmpty ? (selectedItem?.name ?? "") : att.displayName,
+                    documentType: att.kind.displayTitle,
+                    driveWebViewURL: URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view")!,
+                    onDismiss: { selectedAttachment = nil }
+                )
+            }
+            #endif
             .sheet(isPresented: $showAddItem) {
                 ItemFormView(mode: .add(initialWebLink: nil, initialCategoryId: nil))
                     .environmentObject(session)
@@ -490,6 +521,7 @@ private struct ItemsListSearchField: View {
 }
 
 private struct ItemListRow: View {
+    @EnvironmentObject var session: Session
     let item: Item
     let categoryName: String
     let locationName: String
@@ -507,6 +539,7 @@ private struct ItemListRow: View {
 
     private let thumbSize: CGFloat = 44
     private var isWishlist: Bool { Category.isWishlist(categoryName) }
+    var onOpenAttachment: (ItemAttachment) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -584,5 +617,13 @@ private struct ItemListRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            ItemContextMenuContent(
+                item: item,
+                categoryName: categoryName,
+                session: session,
+                onOpenAttachment: onOpenAttachment
+            )
+        }
     }
 }

@@ -159,7 +159,8 @@ struct ItemFormView: View {
     #endif
 
     // MARK: - macOS body (custom ScrollView layout for consistent alignment)
-
+    
+    #if os(macOS)
     private var macOSBody: some View {
         NavigationStack {
             ScrollView {
@@ -219,6 +220,7 @@ struct ItemFormView: View {
             }
         }
     }
+    #endif
 
     // MARK: - Shared form fields
 

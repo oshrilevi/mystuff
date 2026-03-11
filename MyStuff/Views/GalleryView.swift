@@ -98,6 +98,7 @@ struct GalleryView: View {
     @Binding var viewMode: ItemViewMode
     @AppStorage("thumbnailSize") private var thumbnailSizeRaw: String = ThumbnailSize.medium.rawValue
     @State private var selectedItem: Item?
+    @State private var selectedAttachment: ItemAttachment?
     @State private var showAddItem = false
     /// Per-category section search text (key = category section id); filters items within that section.
     @State private var sectionSearchTexts: [String: String] = [:]
@@ -299,13 +300,22 @@ struct GalleryView: View {
                                             } else {
                                                 LazyVGrid(columns: gridColumns, spacing: 16) {
                                                     ForEach(sortedItemsForSection) { item in
-                                                        ItemCardWithHoverPopover(
-                                                            item: item,
-                                                            categoryName: section.name,
-                                                            drive: session.drive,
-                                                            thumbnailSize: thumbnailSize,
-                                                            onTap: { selectedItem = item }
-                                                        )
+                                                ItemCardWithHoverPopover(
+                                                    item: item,
+                                                    categoryName: section.name,
+                                                    drive: session.drive,
+                                                    thumbnailSize: thumbnailSize,
+                                                    onTap: { selectedItem = item },
+                                                    onOpenAttachment: { att in
+                                                        #if os(iOS)
+                                                        selectedAttachment = att
+                                                        #elseif os(macOS)
+                                                        Task {
+                                                            await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
+                                                        }
+                                                        #endif
+                                                    }
+                                                )
                                                         .draggable(item.id)
                                                     }
                                                 }
@@ -380,7 +390,16 @@ struct GalleryView: View {
                                                 categoryName: currentCategoryName,
                                                 drive: session.drive,
                                                 thumbnailSize: thumbnailSize,
-                                                onTap: { selectedItem = item }
+                                                onTap: { selectedItem = item },
+                                                onOpenAttachment: { att in
+                                                    #if os(iOS)
+                                                    selectedAttachment = att
+                                                    #elseif os(macOS)
+                                                    Task {
+                                                        await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
+                                                    }
+                                                    #endif
+                                                }
                                             )
                                             .draggable(item.id)
                                         }
@@ -493,6 +512,18 @@ struct GalleryView: View {
                 ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                     .environmentObject(session)
             }
+            #if os(iOS)
+            .sheet(item: $selectedAttachment) { att in
+                DocumentPreviewView(
+                    drive: session.drive,
+                    driveFileId: att.driveFileId,
+                    itemName: att.displayName.isEmpty ? (selectedItem?.name ?? "") : att.displayName,
+                    documentType: att.kind.displayTitle,
+                    driveWebViewURL: URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view")!,
+                    onDismiss: { selectedAttachment = nil }
+                )
+            }
+            #endif
             .sheet(isPresented: $showAddItem) {
                 ItemFormView(mode: .add(initialWebLink: nil, initialCategoryId: nil))
                     .environmentObject(session)
@@ -636,27 +667,9 @@ struct ItemCardWithHoverPopover: View {
     let drive: DriveService
     var thumbnailSize: ThumbnailSize = .medium
     var onTap: () -> Void
+    var onOpenAttachment: (ItemAttachment) -> Void
 
     private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
-
-    /// Builds an Amazon search query from the item's tags, falling back to the item name.
-    /// Tags that contain “amazon” or “amazon.com” are removed to avoid vendor noise.
-    private func amazonSearchQuery(for item: Item) -> String? {
-        let cleanedTags = item.tags.filter { tag in
-            let lower = tag.lowercased()
-            return !lower.contains("amazon.com") && !lower.contains("amazon")
-        }
-        let terms: [String]
-        if !cleanedTags.isEmpty {
-            terms = cleanedTags
-        } else {
-            let name = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !name.isEmpty else { return nil }
-            terms = [name]
-        }
-        let query = terms.joined(separator: " ")
-        return query.isEmpty ? nil : query
-    }
 
     var body: some View {
         ItemCard(
@@ -676,38 +689,130 @@ struct ItemCardWithHoverPopover: View {
                     .contentShape(Rectangle())
                     .onTapGesture { onTap() }
                     .contextMenu {
-                        if !item.webLink.isEmpty, let url = URL(string: item.webLink) {
-                            Button {
-                                #if os(iOS)
-                                UIApplication.shared.open(url)
-                                #elseif os(macOS)
-                                NSWorkspace.shared.open(url)
-                                #endif
-                            } label: {
-                                Label("Open product page", systemImage: "safari")
-                            }
-                        }
-                        let trimmedName = item.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !trimmedName.isEmpty {
-                            Button {
-                                session.youtubeSearchQuery = trimmedName
-                                session.requestedSidebarSelection = .youtube
-                            } label: {
-                                Label("Search on YouTube", systemImage: "play.rectangle")
-                            }
-                        }
-                        if let query = amazonSearchQuery(for: item) {
-                            Button {
-                                session.amazonSearchQuery = query
-                                if let amazonStore = session.stores.stores.first(where: { $0.startURL.lowercased().contains("amazon.com") }) {
-                                    session.requestedSidebarSelection = .store(amazonStore)
-                                }
-                            } label: {
-                                Label("Search for similar items on Amazon", systemImage: "cart")
-                            }
-                        }
+                        ItemContextMenuContent(
+                            item: item,
+                            categoryName: categoryName,
+                            session: session,
+                            onOpenAttachment: onOpenAttachment
+                        )
                     }
             }
+    }
+}
+
+struct ItemContextMenuContent: View {
+    let item: Item
+    let categoryName: String
+    @ObservedObject var session: Session
+    var onOpenAttachment: (ItemAttachment) -> Void
+
+    private var attachments: [ItemAttachment] {
+        session.attachments.attachments(for: item.id)
+    }
+
+    private var trimmedName: String {
+        item.name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var productURL: URL? {
+        let s = item.webLink.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty, let u = URL(string: s) else { return nil }
+        return u
+    }
+
+    /// Builds an Amazon search query from the item's tags, falling back to the item name.
+    /// Tags that contain “amazon” or “amazon.com” are removed to avoid vendor noise.
+    private var amazonSearchQuery: String? {
+        let cleanedTags = item.tags.filter { tag in
+            let lower = tag.lowercased()
+            return !lower.contains("amazon.com") && !lower.contains("amazon")
+        }
+        let terms: [String]
+        if !cleanedTags.isEmpty {
+            terms = cleanedTags
+        } else {
+            let name = trimmedName
+            guard !name.isEmpty else { return nil }
+            terms = [name]
+        }
+        let query = terms.joined(separator: " ")
+        return query.isEmpty ? nil : query
+    }
+
+    private var hasSearchActions: Bool {
+        productURL != nil || !trimmedName.isEmpty || amazonSearchQuery != nil
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Header: item info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                Text(categoryName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Divider()
+
+            // Search section
+            if hasSearchActions {
+                Text("Search")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                if let url = productURL {
+                    Button {
+                        #if os(iOS)
+                        UIApplication.shared.open(url)
+                        #elseif os(macOS)
+                        NSWorkspace.shared.open(url)
+                        #endif
+                    } label: {
+                        Label("Open product page", systemImage: "safari")
+                    }
+                }
+
+                if !trimmedName.isEmpty {
+                    Button {
+                        session.youtubeSearchQuery = trimmedName
+                        session.requestedSidebarSelection = .youtube
+                    } label: {
+                        Label("Search on YouTube", systemImage: "play.rectangle")
+                    }
+                }
+
+                if let query = amazonSearchQuery {
+                    Button {
+                        session.amazonSearchQuery = query
+                        if let amazonStore = session.stores.stores.first(where: { $0.startURL.lowercased().contains("amazon.com") }) {
+                            session.requestedSidebarSelection = .store(amazonStore)
+                        }
+                    } label: {
+                        Label("Search for similar items on Amazon", systemImage: "cart")
+                    }
+                }
+            }
+
+            // Documents section
+            if !attachments.isEmpty {
+                Divider()
+
+                Text("Documents")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                ForEach(attachments) { att in
+                    Button {
+                        onOpenAttachment(att)
+                    } label: {
+                        Label(att.kind.displayTitle, systemImage: "doc.fill")
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -1,6 +1,60 @@
 import SwiftUI
+
 #if os(macOS)
 import AppKit
+
+enum AttachmentOpener {
+    static func open(
+        _ attachment: ItemAttachment,
+        itemName: String,
+        drive: DriveService
+    ) async {
+        do {
+            let data = try await drive.fetchFileData(fileId: attachment.driveFileId)
+
+            let ext: String
+            if data.count >= 4 &&
+                data[data.startIndex] == 0x25 &&
+                data[data.startIndex.advanced(by: 1)] == 0x50 &&
+                data[data.startIndex.advanced(by: 2)] == 0x44 &&
+                data[data.startIndex.advanced(by: 3)] == 0x46 {
+                ext = "pdf"
+            } else if data.count >= 3 &&
+                        data[data.startIndex] == 0xFF &&
+                        data[data.startIndex.advanced(by: 1)] == 0xD8 &&
+                        data[data.startIndex.advanced(by: 2)] == 0xFF {
+                ext = "jpg"
+            } else if data.count >= 8 &&
+                        data[data.startIndex] == 0x89 &&
+                        data[data.startIndex.advanced(by: 1)] == 0x50 &&
+                        data[data.startIndex.advanced(by: 2)] == 0x4E &&
+                        data[data.startIndex.advanced(by: 3)] == 0x47 &&
+                        data[data.startIndex.advanced(by: 4)] == 0x0D &&
+                        data[data.startIndex.advanced(by: 5)] == 0x0A &&
+                        data[data.startIndex.advanced(by: 6)] == 0x1A &&
+                        data[data.startIndex.advanced(by: 7)] == 0x0A {
+                ext = "png"
+            } else {
+                ext = "dat"
+            }
+
+            let displayName = attachment.displayName.isEmpty ? itemName : attachment.displayName
+            let safeName = displayName
+                .replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let baseName = safeName.isEmpty ? "document" : safeName
+            let fileName = "\(baseName).\(ext)"
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+            try data.write(to: tempURL, options: .atomic)
+            _ = NSWorkspace.shared.open(tempURL)
+        } catch {
+            // Intentionally no UI; rely on system logging if needed.
+        }
+    }
+}
 #endif
 
 struct ItemDetailView: View {
@@ -256,7 +310,7 @@ struct ItemDetailView: View {
                             selectedAttachment = att
                             #elseif os(macOS)
                             Task {
-                                await openAttachmentInDefaultApp(att)
+                                await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
                             }
                             #endif
                         } label: {
@@ -292,52 +346,4 @@ struct ItemDetailView: View {
         }
     }
 
-    #if os(macOS)
-    private func openAttachmentInDefaultApp(_ attachment: ItemAttachment) async {
-        do {
-            let data = try await session.drive.fetchFileData(fileId: attachment.driveFileId)
-
-            let ext: String
-            if data.count >= 4 &&
-                data[data.startIndex] == 0x25 &&
-                data[data.startIndex.advanced(by: 1)] == 0x50 &&
-                data[data.startIndex.advanced(by: 2)] == 0x44 &&
-                data[data.startIndex.advanced(by: 3)] == 0x46 {
-                ext = "pdf"
-            } else if data.count >= 3 &&
-                        data[data.startIndex] == 0xFF &&
-                        data[data.startIndex.advanced(by: 1)] == 0xD8 &&
-                        data[data.startIndex.advanced(by: 2)] == 0xFF {
-                ext = "jpg"
-            } else if data.count >= 8 &&
-                        data[data.startIndex] == 0x89 &&
-                        data[data.startIndex.advanced(by: 1)] == 0x50 &&
-                        data[data.startIndex.advanced(by: 2)] == 0x4E &&
-                        data[data.startIndex.advanced(by: 3)] == 0x47 &&
-                        data[data.startIndex.advanced(by: 4)] == 0x0D &&
-                        data[data.startIndex.advanced(by: 5)] == 0x0A &&
-                        data[data.startIndex.advanced(by: 6)] == 0x1A &&
-                        data[data.startIndex.advanced(by: 7)] == 0x0A {
-                ext = "png"
-            } else {
-                ext = "dat"
-            }
-
-            let displayName = attachment.displayName.isEmpty ? item.name : attachment.displayName
-            let safeName = displayName
-                .replacingOccurrences(of: "/", with: "-")
-                .replacingOccurrences(of: ":", with: "-")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-
-            let baseName = safeName.isEmpty ? "document" : safeName
-            let fileName = "\(baseName).\(ext)"
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-
-            try data.write(to: tempURL, options: .atomic)
-            _ = NSWorkspace.shared.open(tempURL)
-        } catch {
-            // Intentionally no UI; rely on system logging if needed.
-        }
-    }
-    #endif
 }
