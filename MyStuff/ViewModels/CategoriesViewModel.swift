@@ -27,6 +27,37 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
+    /// Top-level categories (no parent), ordered by `order` then name.
+    var topLevelCategories: [Category] {
+        categories
+            .filter { ($0.parentId ?? "").isEmpty }
+            .sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
+    }
+
+    /// Children grouped by parent id, each group ordered by `order` then name.
+    var childrenByParentId: [String: [Category]] {
+        var result: [String: [Category]] = [:]
+        for cat in categories {
+            guard let pid = cat.parentId, !pid.isEmpty else { continue }
+            result[pid, default: []].append(cat)
+        }
+        for (pid, list) in result {
+            result[pid] = list.sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
+        }
+        return result
+    }
+
+    /// Valid parent candidates for a given child (or for a new category when `childId` is nil).
+    /// Parents must be top-level, not Wishlist, and not the child itself.
+    func validParents(forChildId childId: String? = nil) -> [Category] {
+        let child = childId.flatMap { id in categories.first(where: { $0.id == id }) }
+        return topLevelCategories.filter { candidate in
+            if let child, candidate.id == child.id { return false }
+            if Category.isWishlist(candidate.name) { return false }
+            return true
+        }
+    }
+
     func togglePinned(categoryId: String) {
         if pinnedCategoryIds.contains(categoryId) {
             pinnedCategoryIds.remove(categoryId)
@@ -49,10 +80,11 @@ final class CategoriesViewModel: ObservableObject {
                 guard row.count >= 2 else { return nil }
                 let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
                 let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
-                return Category(id: row[0], name: row[1], order: order, color: color)
+                let parentId = row.count > 4 && !row[4].isEmpty ? row[4] : nil
+                return Category(id: row[0], name: row[1], order: order, color: color, parentId: parentId)
             }
             categories = loaded
-            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }) {
+            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
             applyWishlistPinnedByDefault()
@@ -64,7 +96,8 @@ final class CategoriesViewModel: ObservableObject {
                     guard row.count >= 2 else { return nil }
                     let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
                     let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
-                    return Category(id: row[0], name: row[1], order: order, color: color)
+                    let parentId = row.count > 4 && !row[4].isEmpty ? row[4] : nil
+                    return Category(id: row[0], name: row[1], order: order, color: color, parentId: parentId)
                 }
                 categories = cached
                 applyWishlistPinnedByDefault()
@@ -82,10 +115,10 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func addCategory(name: String, color: String? = nil) async {
+    func addCategory(name: String, color: String? = nil, parentId: String? = nil) async {
         guard let sid = spreadsheetId else { return }
-        let category = Category(name: name, order: categories.count, color: color)
-        let values = [[category.id, category.name, "\(category.order)", category.color ?? ""]]
+        let category = Category(name: name, order: categories.count, color: color, parentId: parentId)
+        let values = [[category.id, category.name, "\(category.order)", category.color ?? "", category.parentId ?? ""]]
         do {
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: values)
             await load()
@@ -94,17 +127,18 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func updateCategory(id: String, name: String, color: String? = nil) async {
+    func updateCategory(id: String, name: String, color: String? = nil, parentId: String? = nil) async {
         guard let sid = spreadsheetId else { return }
         guard let index = categories.firstIndex(where: { $0.id == id }) else { return }
         var updated = categories
         updated[index].name = name
         updated[index].color = color
+        updated[index].parentId = parentId
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
-            let header = [["id", "name", "order", "color"]]
+            let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -114,15 +148,61 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
+    /// Returns false when assigning `newParentId` would violate hierarchy rules (depth > 2, Wishlist constraints, etc.).
+    private func canSetParent(childId: String, newParentId: String?) -> Bool {
+        guard let child = categories.first(where: { $0.id == childId }) else { return false }
+        // Keep Wishlist as top-level only; it cannot be a parent or child.
+        if Category.isWishlist(child.name) { return false }
+
+        // Clearing parent is always allowed.
+        guard let newParentId else { return true }
+
+        if newParentId == childId { return false }
+        guard let parent = categories.first(where: { $0.id == newParentId }) else { return false }
+        if Category.isWishlist(parent.name) { return false }
+        // Parents must be top-level.
+        if let parentParentId = parent.parentId, !parentParentId.isEmpty { return false }
+        // A category that already has children cannot itself become a child (would create depth 3).
+        if let children = childrenByParentId[child.id], !children.isEmpty { return false }
+        return true
+    }
+
+    /// Assigns or clears a parent for a category, enforcing a maximum depth of 2.
+    func setParent(childId: String, parentId: String?) async {
+        guard let sid = spreadsheetId else { return }
+        guard canSetParent(childId: childId, newParentId: parentId) else { return }
+        guard let index = categories.firstIndex(where: { $0.id == childId }) else { return }
+
+        var updated = categories
+        updated[index].parentId = parentId
+        categories = updated
+
+        do {
+            try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
+            let header = [Category.columnOrder]
+            try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            if !rows.isEmpty {
+                try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
+            }
+            if let data = try? JSONEncoder().encode(rows) {
+                UserDefaults.standard.set(data, forKey: categoriesCacheKey)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            await load()
+        }
+    }
+
     func deleteCategory(ids: [String]) async {
         guard let sid = spreadsheetId else { return }
         let idSet = Set(ids)
-        var updated = categories.filter { !idSet.contains($0.id) }
+        let updated = categories.filter { !idSet.contains($0.id) }
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
-            let header = [["id", "name", "order", "color"]]
+            let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -133,23 +213,56 @@ final class CategoriesViewModel: ObservableObject {
     }
 
     /// Updates category order from a reordered list; persists to Sheets and cache.
+    /// `newOrder` should contain the desired ordering of top-level categories; children keep their relative order.
     func reorderCategories(to newOrder: [Category]) async {
         guard let sid = spreadsheetId else { return }
-        let reordered: [Category] = newOrder.enumerated().map { index, cat in
-            var c = cat
-            c.order = index
-            return c
+        var updated = categories
+        // Update order only for the provided top-level categories.
+        for (index, cat) in newOrder.enumerated() {
+            if let i = updated.firstIndex(where: { $0.id == cat.id }) {
+                updated[i].order = index
+            }
         }
-        categories = reordered
+        categories = updated
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
-            let header = [["id", "name", "order", "color"]]
+            let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = reordered.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
-            if let data = try? JSONEncoder().encode(reordered.map { [$0.id, $0.name, "\($0.order)", $0.color ?? ""] }) {
+            if let data = try? JSONEncoder().encode(rows) {
+                UserDefaults.standard.set(data, forKey: categoriesCacheKey)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            await load()
+        }
+    }
+
+    /// Reorders child categories within a single parent, preserving other categories.
+    func reorderChildCategories(parentId: String, to newOrder: [Category]) async {
+        guard let sid = spreadsheetId else { return }
+        var updated = categories
+
+        // Update order only for the provided children of this parent.
+        for (index, cat) in newOrder.enumerated() {
+            if let i = updated.firstIndex(where: { $0.id == cat.id }) {
+                updated[i].order = index
+            }
+        }
+        categories = updated
+
+        do {
+            try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
+            let header = [Category.columnOrder]
+            try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            if !rows.isEmpty {
+                try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
+            }
+            if let data = try? JSONEncoder().encode(rows) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
         } catch {

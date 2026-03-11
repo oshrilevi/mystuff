@@ -91,6 +91,62 @@ struct ItemsListView: View {
         return pinned + unpinned
     }
 
+    private struct ListCategoryGroup: Identifiable {
+        let id: String
+        let name: String
+        let color: String?
+        var sections: [CategorySection]
+    }
+
+    private var listCategoryGroups: [ListCategoryGroup] {
+        var groups: [String: ListCategoryGroup] = [:]
+
+        for section in categorySections {
+            // Uncategorized has no Category model; treat as its own group.
+            guard !section.id.isEmpty,
+                  let cat = categories.first(where: { $0.id == section.id }) else {
+                let key = section.id
+                var group = groups[key] ?? ListCategoryGroup(id: key, name: section.name, color: section.color, sections: [])
+                group.sections.append(section)
+                groups[key] = group
+                continue
+            }
+
+            let parentId = (cat.parentId?.isEmpty == false) ? cat.parentId! : cat.id
+            let parentCat = categories.first(where: { $0.id == parentId }) ?? cat
+            let key = parentId
+            var group = groups[key] ?? ListCategoryGroup(id: key, name: parentCat.name, color: parentCat.color, sections: [])
+            group.sections.append(section)
+            groups[key] = group
+        }
+
+        // Sort sections within each group: pinned children first, then by category order/name.
+        for (key, group) in groups {
+            var sorted = group.sections
+            sorted.sort { a, b in
+                let aPinned = pinnedCategoryIds.contains(a.id)
+                let bPinned = pinnedCategoryIds.contains(b.id)
+                if aPinned != bPinned { return aPinned && !bPinned }
+                let aOrder = categories.first(where: { $0.id == a.id })?.order ?? Int.max
+                let bOrder = categories.first(where: { $0.id == b.id })?.order ?? Int.max
+                return (aOrder, a.name.lowercased()) < (bOrder, b.name.lowercased())
+            }
+            groups[key]?.sections = sorted
+        }
+
+        // Sort parent groups: pinned parents first, then by parent category order/name.
+        var result = Array(groups.values)
+        result.sort { lhs, rhs in
+            let lhsPinned = pinnedCategoryIds.contains(lhs.id)
+            let rhsPinned = pinnedCategoryIds.contains(rhs.id)
+            if lhsPinned != rhsPinned { return lhsPinned && !rhsPinned }
+            let lhsOrder = categories.first(where: { $0.id == lhs.id })?.order ?? Int.max
+            let rhsOrder = categories.first(where: { $0.id == rhs.id })?.order ?? Int.max
+            return (lhsOrder, lhs.name.lowercased()) < (rhsOrder, rhs.name.lowercased())
+        }
+        return result
+    }
+
     private var isShowingAllCategories: Bool {
         guard let id = inventory.selectedCategoryId else { return true }
         return id.isEmpty
@@ -146,108 +202,125 @@ struct ItemsListView: View {
                                 }
                             }
                             if isShowingAllCategories && !categorySections.isEmpty {
-                                ForEach(categorySections) { section in
-                                    let searchText = sectionSearchTexts[section.id] ?? ""
-                                    let filteredItems = searchText.isEmpty
-                                        ? section.items
-                                        : section.items.filter {
-                                            let q = searchText.lowercased()
-                                            return $0.name.lowercased().contains(q)
-                                                || $0.description.lowercased().contains(q)
-                                                || $0.tags.contains { $0.lowercased().contains(q) }
+                                ForEach(listCategoryGroups) { group in
+                                    // Show a parent label only when group has multiple sections (i.e. a parent with subcategories).
+                                    if group.sections.count > 1 {
+                                        Section {
+                                            EmptyView()
+                                        } header: {
+                                            HStack {
+                                                Text(group.name)
+                                                    .font(.headline)
+                                                    .padding(.vertical, 8)
+                                                Spacer()
+                                            }
+                                            .padding(.horizontal, 16)
                                         }
-                                    let sortedItemsForSection = sortedItems(filteredItems, sectionId: section.id)
-                                    let filteredTotal = sortedItemsForSection.reduce(0.0) { sum, item in
-                                        let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
-                                        return sum + p * Double(item.quantity)
+                                        .listSectionSeparator(.hidden)
                                     }
-                                    Section {
-                                        if !collapsedSectionIds.contains(section.id) {
-                                            ForEach(Array(sortedItemsForSection.enumerated()), id: \.element.id) { index, item in
-                                            ItemListRow(
-                                                item: item,
-                                                categoryName: section.name,
-                                                locationName: Category.isWishlist(section.name) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
-                                                drive: session.drive,
-                                                currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
-                                                isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
-                                                isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
-                                                hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil,
-                                                onOpenAttachment: { att in
-                                                    #if os(iOS)
-                                                    selectedAttachment = att
-                                                    #elseif os(macOS)
-                                                    Task {
-                                                        await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
-                                                    }
-                                                    #endif
-                                                },
-                                                onView: { selectedItem = item }
-                                            )
-                                                .padding(.top, index == 0 ? 12 : 0)
-                                                .padding(.bottom, index == sortedItemsForSection.count - 1 ? 12 : 0)
-                                                .contentShape(Rectangle())
-                                                .onTapGesture { selectedItem = item }
-                                                .draggable(item.id)
+                                    ForEach(group.sections) { section in
+                                        let searchText = sectionSearchTexts[section.id] ?? ""
+                                        let filteredItems = searchText.isEmpty
+                                            ? section.items
+                                            : section.items.filter {
+                                                let q = searchText.lowercased()
+                                                return $0.name.lowercased().contains(q)
+                                                    || $0.description.lowercased().contains(q)
+                                                    || $0.tags.contains { $0.lowercased().contains(q) }
                                             }
-                                            .dropDestination(for: String.self) { itemIds, _ in
-                                                guard let itemId = itemIds.first,
-                                                      let item = inventory.items.first(where: { $0.id == itemId }),
-                                                      item.categoryId != section.id else { return false }
-                                                var updated = item
-                                                updated.categoryId = section.id
-                                                if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
-                                                    updated.priceCurrency = ""
-                                                }
-                                                Task { await inventory.updateItem(updated) }
-                                                return true
-                                            }
+                                        let sortedItemsForSection = sortedItems(filteredItems, sectionId: section.id)
+                                        let filteredTotal = sortedItemsForSection.reduce(0.0) { sum, item in
+                                            let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
+                                            return sum + p * Double(item.quantity)
                                         }
-                                    } header: {
-                                        CategorySectionHeader(
-                                            name: section.name,
-                                            itemCount: sortedItemsForSection.count,
-                                            totalValue: filteredTotal,
-                                            sectionSearchText: Binding(
-                                                get: { sectionSearchTexts[section.id] ?? "" },
-                                                set: { sectionSearchTexts[section.id] = $0 }
-                                            ),
-                                            sortOrder: Binding(
-                                                get: { sortOrder(forSectionId: section.id) },
-                                                set: { sectionSortOrders[section.id] = $0 }
-                                            ),
-                                            sectionId: section.id,
-                                            categoryColor: Color(hex: section.color),
-                                            isPinned: pinnedCategoryIds.contains(section.id),
-                                            isCollapsed: collapsedSectionIds.contains(section.id),
-                                            onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
-                                            onTap: {
-                                                withAnimation(.easeInOut(duration: 0.2)) {
-                                                    var next = inventory.categorySectionCollapsedIds
-                                                    if next.contains(section.id) {
-                                                        next.remove(section.id)
-                                                    } else {
-                                                        next.insert(section.id)
+                                        Section {
+                                            if !collapsedSectionIds.contains(section.id) {
+                                                ForEach(Array(sortedItemsForSection.enumerated()), id: \.element.id) { index, item in
+                                                    ItemListRow(
+                                                        item: item,
+                                                        categoryName: section.name,
+                                                        locationName: Category.isWishlist(section.name) ? "" : (session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")),
+                                                        drive: session.drive,
+                                                        currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
+                                                        isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
+                                                        isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
+                                                        hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil,
+                                                        onOpenAttachment: { att in
+                                                            #if os(iOS)
+                                                            selectedAttachment = att
+                                                            #elseif os(macOS)
+                                                            Task {
+                                                                await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
+                                                            }
+                                                            #endif
+                                                        },
+                                                        onView: { selectedItem = item }
+                                                    )
+                                                    .padding(.top, index == 0 ? 12 : 0)
+                                                    .padding(.bottom, index == sortedItemsForSection.count - 1 ? 12 : 0)
+                                                    .contentShape(Rectangle())
+                                                    .onTapGesture { selectedItem = item }
+                                                    .draggable(item.id)
+                                                }
+                                                .dropDestination(for: String.self) { itemIds, _ in
+                                                    guard let itemId = itemIds.first,
+                                                          let item = inventory.items.first(where: { $0.id == itemId }),
+                                                          item.categoryId != section.id else { return false }
+                                                    var updated = item
+                                                    updated.categoryId = section.id
+                                                    if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
+                                                        updated.priceCurrency = ""
                                                     }
-                                                    inventory.categorySectionCollapsedIds = next
+                                                    Task { await inventory.updateItem(updated) }
+                                                    return true
                                                 }
-                                            },
-                                            onAddItem: {
-                                                inventory.lastNewItemCategoryId = section.id
-                                                showAddItem = true
-                                            },
-                                            onDropItem: { itemId in
-                                                guard let item = inventory.items.first(where: { $0.id == itemId }),
-                                                      item.categoryId != section.id else { return }
-                                                var updated = item
-                                                updated.categoryId = section.id
-                                                if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
-                                                    updated.priceCurrency = ""
-                                                }
-                                                Task { await inventory.updateItem(updated) }
                                             }
-                                        )
-                                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                                        } header: {
+                                            CategorySectionHeader(
+                                                name: section.name,
+                                                itemCount: sortedItemsForSection.count,
+                                                totalValue: filteredTotal,
+                                                sectionSearchText: Binding(
+                                                    get: { sectionSearchTexts[section.id] ?? "" },
+                                                    set: { sectionSearchTexts[section.id] = $0 }
+                                                ),
+                                                sortOrder: Binding(
+                                                    get: { sortOrder(forSectionId: section.id) },
+                                                    set: { sectionSortOrders[section.id] = $0 }
+                                                ),
+                                                sectionId: section.id,
+                                                categoryColor: Color(hex: section.color),
+                                                isPinned: pinnedCategoryIds.contains(section.id),
+                                                isCollapsed: collapsedSectionIds.contains(section.id),
+                                                onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
+                                                onTap: {
+                                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                                        var next = inventory.categorySectionCollapsedIds
+                                                        if next.contains(section.id) {
+                                                            next.remove(section.id)
+                                                        } else {
+                                                            next.insert(section.id)
+                                                        }
+                                                        inventory.categorySectionCollapsedIds = next
+                                                    }
+                                                },
+                                                onAddItem: {
+                                                    inventory.lastNewItemCategoryId = section.id
+                                                    showAddItem = true
+                                                },
+                                                onDropItem: { itemId in
+                                                    guard let item = inventory.items.first(where: { $0.id == itemId }),
+                                                          item.categoryId != section.id else { return }
+                                                    var updated = item
+                                                    updated.categoryId = section.id
+                                                    if Category.isWishlist(categories.first(where: { $0.id == item.categoryId })?.name ?? "") && !Category.isWishlist(section.name) {
+                                                        updated.priceCurrency = ""
+                                                    }
+                                                    Task { await inventory.updateItem(updated) }
+                                                }
+                                            )
+                                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                                        }
                                     }
                                 }
                                 .listSectionSeparator(.hidden)
