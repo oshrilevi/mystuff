@@ -7,6 +7,7 @@ struct ExportMenuView: View {
     @EnvironmentObject var session: Session
     @State private var shareItem: ShareableExport?
     @State private var isExportingPDF = false
+    @State private var isExportingZIP = false
 
     var body: some View {
         Menu {
@@ -24,6 +25,15 @@ struct ExportMenuView: View {
             } label: {
                 Label("Export as PDF", systemImage: "doc.richtext")
             }
+            Button {
+                isExportingZIP = true
+                Task {
+                    await exportZIP()
+                    await MainActor.run { isExportingZIP = false }
+                }
+            } label: {
+                Label("Export as ZIP", systemImage: "archivebox")
+            }
         } label: {
             Image(systemName: "square.and.arrow.up")
         }
@@ -36,6 +46,15 @@ struct ExportMenuView: View {
                 ProgressView()
                     .scaleEffect(1.2)
                 Text("Generating PDF…")
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .sheet(isPresented: $isExportingZIP) {
+            VStack(spacing: 12) {
+                ProgressView()
+                    .scaleEffect(1.2)
+                Text("Preparing ZIP export…")
                     .font(.headline)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -64,6 +83,24 @@ struct ExportMenuView: View {
         try? data.write(to: tempURL)
         await MainActor.run {
             shareItem = ShareableExport(url: tempURL)
+        }
+    }
+
+    private func exportZIP() async {
+        do {
+            let zipURL = try await ExportService.makeZIPArchiveURL(
+                items: session.inventory.items,
+                categories: session.categories.categories,
+                locations: session.locations.locations,
+                attachments: session.attachments.attachments,
+                drive: session.drive
+            )
+            await MainActor.run {
+                shareItem = ShareableExport(url: zipURL)
+            }
+        } catch {
+            // For now, we silently fail and dismiss the progress view.
+            // Future improvement: surface an alert to the user.
         }
     }
 }

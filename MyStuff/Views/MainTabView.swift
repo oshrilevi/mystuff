@@ -1,5 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 enum MainSidebarSelection: Hashable {
     case items
@@ -147,6 +150,7 @@ private struct SettingsMenuButton: View {
     @Binding var selection: MainSidebarSelection
     @EnvironmentObject var session: Session
     @State private var isExportingPDF = false
+    @State private var isExportingZIP = false
 
     var body: some View {
         Menu {
@@ -179,6 +183,14 @@ private struct SettingsMenuButton: View {
                         await MainActor.run { isExportingPDF = false }
                     }
                 } label: { Label("Export as PDF", systemImage: "doc.richtext") }
+
+                Button {
+                    isExportingZIP = true
+                    Task {
+                        await exportZIP()
+                        await MainActor.run { isExportingZIP = false }
+                    }
+                } label: { Label("Export as ZIP", systemImage: "archivebox") }
             }
         } label: {
             Image(systemName: "gearshape")
@@ -194,6 +206,15 @@ private struct SettingsMenuButton: View {
                     .font(.headline)
             }
             .frame(width: 200, height: 100)
+        }
+        .sheet(isPresented: $isExportingZIP) {
+            VStack(spacing: 12) {
+                ProgressView()
+                    .scaleEffect(1.2)
+                Text("Preparing ZIP export…")
+                    .font(.headline)
+            }
+            .frame(width: 220, height: 100)
         }
     }
 
@@ -234,6 +255,43 @@ private struct SettingsMenuButton: View {
                 }
             }
         }
+    }
+
+    private func exportZIP() async {
+        do {
+            let zipURL = try await ExportService.makeZIPArchiveURL(
+                items: session.inventory.items,
+                categories: session.categories.categories,
+                locations: session.locations.locations,
+                attachments: session.attachments.attachments,
+                drive: session.drive
+            )
+            await MainActor.run {
+                let fm = FileManager.default
+                if let downloads = fm.urls(for: .downloadsDirectory, in: .userDomainMask).first {
+                    let dest = downloads.appendingPathComponent("MyStuffBackup.zip")
+                    // Overwrite any existing backup with the latest export.
+                    try? fm.removeItem(at: dest)
+                    do {
+                        try fm.copyItem(at: zipURL, to: dest)
+                        showBackupCompletedToast(destination: dest)
+                    } catch {
+                        // If copy fails, we silently ignore for now.
+                    }
+                }
+            }
+        } catch {
+            // Ignore for now; progress sheet will dismiss.
+        }
+    }
+
+    private func showBackupCompletedToast(destination: URL) {
+        #if os(macOS)
+        let notification = NSUserNotification()
+        notification.title = "MyStuff Backup Complete"
+        notification.informativeText = "Saved to Downloads/\(destination.lastPathComponent)"
+        NSUserNotificationCenter.default.deliver(notification)
+        #endif
     }
 }
 #endif
