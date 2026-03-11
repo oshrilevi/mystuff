@@ -12,6 +12,7 @@ struct ItemDetailView: View {
     @State private var currentStorePrice: String?
     @State private var currentPriceLoading = false
     @State private var currentPriceError: String?
+    @State private var selectedAttachment: ItemAttachment?
 
     init(item: Item, onDismiss: (() -> Void)? = nil) {
         self.item = item
@@ -144,6 +145,15 @@ struct ItemDetailView: View {
                     } message: {
                         Text("This cannot be undone. The item will be removed from your inventory.")
                     }
+                    .sheet(item: $selectedAttachment) { att in
+                        DocumentPreviewView(
+                            drive: session.drive,
+                            driveFileId: att.driveFileId,
+                            displayName: att.displayName.isEmpty ? "Document" : att.displayName,
+                            driveWebViewURL: URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view")!,
+                            onDismiss: { selectedAttachment = nil }
+                        )
+                    }
                 }
                 .transition(Self.modeTransition)
             }
@@ -249,13 +259,7 @@ struct ItemDetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(itemAttachments) { att in
                         Button {
-                            if let url = URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view") {
-                                #if os(iOS)
-                                UIApplication.shared.open(url)
-                                #elseif os(macOS)
-                                NSWorkspace.shared.open(url)
-                                #endif
-                            }
+                            selectedAttachment = att
                         } label: {
                             HStack {
                                 Image(systemName: "doc.fill")

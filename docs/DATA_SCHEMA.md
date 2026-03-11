@@ -124,6 +124,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 | Location                    | Purpose                                                                 |
 |-----------------------------|-------------------------------------------------------------------------|
 | `Caches/MyStuffThumbnails/` | Disk cache for Drive image bytes (item photos). Eviction when total size exceeds 300 MB (oldest files by modification date removed first). In-memory cache (NSCache) also used; no TTL. |
+| `Caches/MyStuffDocuments/`  | Disk cache for Drive document bytes (invoices, PDFs) used for in-app preview. Eviction when total size exceeds 100 MB (oldest files by modification date removed first). In-memory cache (NSCache) also used; no TTL. |
 
 Clearing spreadsheet/folder IDs (e.g. for debugging or “start fresh”) is done via `AppState.clearStoredIds()`.
 

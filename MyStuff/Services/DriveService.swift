@@ -25,6 +25,21 @@ final class DriveService {
     private let diskQueue = DispatchQueue(label: "mystuff.drive.diskcache")
     private let maxDiskCacheBytes = 300 * 1024 * 1024 // 300 MB
 
+    /// In-memory cache for document file data (e.g. PDFs); separate from image cache.
+    private let documentMemoryCache: NSCache<NSString, NSData> = {
+        let c = NSCache<NSString, NSData>()
+        c.countLimit = 50
+        c.totalCostLimit = 50 * 1024 * 1024 // 50 MB
+        return c
+    }()
+    /// Disk cache for documents: Caches/MyStuffDocuments. Separate from thumbnails.
+    private let documentCacheURL: URL = {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("MyStuffDocuments", isDirectory: true)
+    }()
+    private let documentDiskQueue = DispatchQueue(label: "mystuff.drive.documentcache")
+    private let maxDocumentCacheBytes = 100 * 1024 * 1024 // 100 MB
+
     init(tokenProvider: @escaping () async throws -> String) {
         self.tokenProvider = tokenProvider
     }
@@ -126,6 +141,31 @@ final class DriveService {
         return data
     }
 
+    /// Fetches file bytes for documents (PDF, images in Documents folder). Uses separate document cache so previews don't evict photo cache.
+    func fetchFileData(fileId: String) async throws -> Data {
+        let key = fileId as NSString
+        if let cached = documentMemoryCache.object(forKey: key) {
+            return cached as Data
+        }
+        if let diskData = await readDocumentFromDisk(fileId: fileId) {
+            documentMemoryCache.setObject(diskData as NSData, forKey: key, cost: diskData.count)
+            return diskData
+        }
+        let token = try await tokenProvider()
+        var request = URLRequest(url: URL(string: baseURL + "/files/\(fileId)?alt=media")!)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 401 {
+            throw DriveError.unauthorized(String(data: data, encoding: .utf8) ?? "Unauthorized")
+        }
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw DriveError.requestFailed(String(data: data, encoding: .utf8) ?? "Unknown")
+        }
+        documentMemoryCache.setObject(data as NSData, forKey: key, cost: data.count)
+        await writeDocumentToDisk(fileId: fileId, data: data)
+        return data
+    }
+
     private func readFromDisk(fileId: String) async -> Data? {
         await withCheckedContinuation { continuation in
             diskQueue.async { [weak self] in
@@ -168,6 +208,50 @@ final class DriveService {
             try? FileManager.default.removeItem(at: url)
             total -= size
             if total <= maxDiskCacheBytes { break }
+        }
+    }
+
+    private func readDocumentFromDisk(fileId: String) async -> Data? {
+        await withCheckedContinuation { continuation in
+            documentDiskQueue.async { [weak self] in
+                guard let self else { continuation.resume(returning: nil); return }
+                let url = self.documentCacheURL.appendingPathComponent(Self.sanitizedFileId(fileId), isDirectory: false)
+                let data = try? Data(contentsOf: url)
+                continuation.resume(returning: data)
+            }
+        }
+    }
+
+    private func writeDocumentToDisk(fileId: String, data: Data) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            documentDiskQueue.async { [weak self] in
+                guard let self else { continuation.resume(); return }
+                try? FileManager.default.createDirectory(at: self.documentCacheURL, withIntermediateDirectories: true)
+                let url = self.documentCacheURL.appendingPathComponent(Self.sanitizedFileId(fileId), isDirectory: false)
+                try? data.write(to: url)
+                self.evictDocumentCacheIfNeeded()
+                continuation.resume()
+            }
+        }
+    }
+
+    private func evictDocumentCacheIfNeeded() {
+        guard let urls = try? FileManager.default.contentsOfDirectory(at: documentCacheURL, includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey], options: .skipsHiddenFiles) else { return }
+        var total = 0
+        var byDate: [(URL, Date, Int)] = []
+        for url in urls {
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+                  let size = attrs[.size] as? Int,
+                  let date = attrs[.modificationDate] as? Date else { continue }
+            total += size
+            byDate.append((url, date, size))
+        }
+        guard total > maxDocumentCacheBytes else { return }
+        byDate.sort { $0.1 < $1.1 }
+        for (url, _, size) in byDate {
+            try? FileManager.default.removeItem(at: url)
+            total -= size
+            if total <= maxDocumentCacheBytes { break }
         }
     }
 
