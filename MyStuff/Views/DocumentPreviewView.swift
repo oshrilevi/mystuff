@@ -28,7 +28,8 @@ private func sniffDocumentType(_ data: Data) -> DocumentContentType {
 struct DocumentPreviewView: View {
     let drive: DriveService
     let driveFileId: String
-    let displayName: String
+    let itemName: String
+    let documentType: String
     let driveWebViewURL: URL
     var onDismiss: () -> Void
 
@@ -73,7 +74,7 @@ struct DocumentPreviewView: View {
                     }
                 }
             }
-            .navigationTitle(displayName.isEmpty ? "Document" : displayName)
+            .navigationTitle("\(itemName) - \(documentType)")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

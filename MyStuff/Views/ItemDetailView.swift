@@ -149,7 +149,8 @@ struct ItemDetailView: View {
                         DocumentPreviewView(
                             drive: session.drive,
                             driveFileId: att.driveFileId,
-                            displayName: att.displayName.isEmpty ? "Document" : att.displayName,
+                            itemName: currentItem.name,
+                            documentType: att.kind.displayTitle,
                             driveWebViewURL: URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view")!,
                             onDismiss: { selectedAttachment = nil }
                         )
