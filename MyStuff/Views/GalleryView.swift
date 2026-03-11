@@ -697,6 +697,7 @@ struct ItemCardWithHoverPopover: View {
                             categoryName: categoryName,
                             session: session,
                             onOpenAttachment: onOpenAttachment,
+                            onView: onTap,
                             onEdit: { isEditingFromMenu = true },
                             onDelete: { showDeleteConfirmationFromMenu = true }
                         )
@@ -733,6 +734,7 @@ struct ItemContextMenuContent: View {
     let categoryName: String
     @ObservedObject var session: Session
     var onOpenAttachment: (ItemAttachment) -> Void
+    var onView: () -> Void
     var onEdit: () -> Void
     var onDelete: () -> Void
 
@@ -861,9 +863,14 @@ struct ItemContextMenuContent: View {
                 }
             }
             Divider()
-            Text("Actions")
+            Text("Item Actions")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
+            Button {
+                onView()
+            } label: {
+                Label("View", systemImage: "eye")
+            }
             Button {
                 onEdit()
             } label: {

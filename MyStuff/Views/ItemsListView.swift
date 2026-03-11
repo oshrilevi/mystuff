@@ -181,7 +181,8 @@ struct ItemsListView: View {
                                                         await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
                                                     }
                                                     #endif
-                                                }
+                                                },
+                                                onView: { selectedItem = item }
                                             )
                                                 .padding(.top, index == 0 ? 12 : 0)
                                                 .padding(.bottom, index == sortedItemsForSection.count - 1 ? 12 : 0)
@@ -273,7 +274,8 @@ struct ItemsListView: View {
                                                         await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
                                                     }
                                                     #endif
-                                                }
+                                                },
+                                                onView: { selectedItem = item }
                                             )
                                             .padding(.top, index == 0 ? 12 : 0)
                                             .padding(.bottom, index == singleCategorySorted.count - 1 ? 12 : 0)
@@ -543,6 +545,7 @@ private struct ItemListRow: View {
     private let thumbSize: CGFloat = 44
     private var isWishlist: Bool { Category.isWishlist(categoryName) }
     var onOpenAttachment: (ItemAttachment) -> Void
+    var onView: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -626,6 +629,7 @@ private struct ItemListRow: View {
                 categoryName: categoryName,
                 session: session,
                 onOpenAttachment: onOpenAttachment,
+                onView: onView,
                 onEdit: { isEditingFromMenu = true },
                 onDelete: { showDeleteConfirmationFromMenu = true }
             )
