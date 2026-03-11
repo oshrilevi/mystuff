@@ -49,7 +49,7 @@ final class AttachmentsViewModel: ObservableObject {
         }
         do {
             let driveFileId = try await drive.uploadFile(data: fileData, mimeType: mimeType, filename: filename, parentFolderId: fid)
-            let attachment = ItemAttachment(itemId: itemId, driveFileId: driveFileId, kind: kind, displayName: displayName.isEmpty ? filename : displayName)
+            let attachment = ItemAttachment(itemId: itemId, driveFileId: driveFileId, kind: kind, displayName: "")
             let row = attachmentToRow(attachment)
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Attachments", values: [row])
             await load()

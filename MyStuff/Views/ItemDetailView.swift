@@ -264,12 +264,9 @@ struct ItemDetailView: View {
                                 Image(systemName: "doc.fill")
                                     .foregroundStyle(.secondary)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(att.displayName.isEmpty ? "Document" : att.displayName)
+                                    Text(att.kind.displayTitle)
                                         .font(.body)
                                         .foregroundStyle(.primary)
-                                    Text(att.kind.displayTitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 Image(systemName: "arrow.up.right")

@@ -514,11 +514,8 @@ struct ItemFormView: View {
                 ForEach(attachments.attachments(for: item.id)) { att in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(att.displayName.isEmpty ? "Document" : att.displayName)
-                                .font(.body)
                             Text(att.kind.displayTitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.body)
                         }
                         Spacer()
                         Button(role: .destructive) {
@@ -543,7 +540,7 @@ struct ItemFormView: View {
                 Task { @MainActor in
                     guard case .success(let urls) = result, let url = urls.first else { return }
                     pendingDocumentURL = IdentifiableURL(url: url)
-                    pendingDocumentDisplayName = url.lastPathComponent
+                    pendingDocumentDisplayName = ""
                     pendingDocumentKind = .other
                 }
             }
@@ -776,7 +773,6 @@ private struct DocumentOptionsSheetView: View {
                     }
                 }
                 Section("Document") {
-                    TextField("Display name", text: $displayName)
                     Picker("Type", selection: $kind) {
                         ForEach(ItemAttachment.Kind.allCases) { k in
                             Text(k.displayTitle).tag(k)
