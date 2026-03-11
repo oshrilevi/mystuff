@@ -16,7 +16,11 @@ final class InventoryViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     /// Category section IDs that are collapsed in Items/Gallery; persists across tab switches.
-    @Published var categorySectionCollapsedIds: Set<String> = []
+    @Published var categorySectionCollapsedIds: Set<String> = [] {
+        didSet {
+            saveCategorySectionCollapsedIds()
+        }
+    }
     /// When true, initial "all collapsed" has been applied once; avoids overwriting user's expand/collapse.
     @Published var hasAppliedInitialCategoryCollapse = false
 
@@ -27,12 +31,18 @@ final class InventoryViewModel: ObservableObject {
     private let appState: AppState
     private weak var attachments: AttachmentsViewModel?
     private let itemsCacheKey = "mystuff_items_cache"
+    private let categorySectionCollapsedIdsKey = "mystuff_category_section_collapsed_ids"
 
     init(sheets: SheetsService, drive: DriveService, appState: AppState, attachments: AttachmentsViewModel? = nil) {
         self.sheets = sheets
         self.drive = drive
         self.appState = appState
         self.attachments = attachments
+        if let data = UserDefaults.standard.data(forKey: categorySectionCollapsedIdsKey),
+           let ids = try? JSONDecoder().decode(Set<String>.self, from: data) {
+            categorySectionCollapsedIds = ids
+            hasAppliedInitialCategoryCollapse = true
+        }
     }
 
     var filteredItems: [Item] {
@@ -190,6 +200,12 @@ final class InventoryViewModel: ObservableObject {
     func thumbnailURL(for item: Item) -> URL? {
         guard let first = item.photoIds.first else { return nil }
         return drive.thumbnailURL(fileId: first)
+    }
+
+    private func saveCategorySectionCollapsedIds() {
+        if let data = try? JSONEncoder().encode(categorySectionCollapsedIds) {
+            UserDefaults.standard.set(data, forKey: categorySectionCollapsedIdsKey)
+        }
     }
 
     private func itemToRow(_ item: Item) -> [String] {
