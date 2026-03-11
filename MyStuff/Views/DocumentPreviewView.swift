@@ -24,6 +24,12 @@ private func sniffDocumentType(_ data: Data) -> DocumentContentType {
     return .unknown
 }
 
+#if os(macOS)
+private let documentZoomMinMultiplier: Double = 0.25
+private let documentZoomMaxMultiplier: Double = 4.0
+private let documentZoomStep: Double = 0.25
+#endif
+
 /// In-app preview for item documents (PDF or image). Fetches file from Drive, sniffs type, shows PDFView or image with "Open in Drive" and Done.
 struct DocumentPreviewView: View {
     let drive: DriveService
@@ -36,6 +42,9 @@ struct DocumentPreviewView: View {
     @State private var fileData: Data?
     @State private var loadError: String?
     @State private var isLoading = true
+    #if os(macOS)
+    @State private var zoomMultiplier: Double = 1.0
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -63,7 +72,11 @@ struct DocumentPreviewView: View {
                 } else if let data = fileData {
                     switch sniffDocumentType(data) {
                     case .pdf:
+                        #if os(macOS)
+                        PDFPreviewRepresentable(data: data, zoomMultiplier: $zoomMultiplier)
+                        #else
                         PDFPreviewRepresentable(data: data)
+                        #endif
                     case .image:
                         imagePreview(data: data)
                     case .unknown:
@@ -83,6 +96,28 @@ struct DocumentPreviewView: View {
                     Button("Done") { onDismiss() }
                         .help("Close")
                 }
+                #if os(macOS)
+                ToolbarItemGroup(placement: .automatic) {
+                    Button(action: zoomOut) {
+                        Image(systemName: "minus.magnifyingglass")
+                    }
+                    .keyboardShortcut("-", modifiers: [.command])
+
+                    Button(action: resetZoom) {
+                        Text("Fit")
+                    }
+                    .keyboardShortcut("0", modifiers: [.command])
+
+                    Button(action: zoomIn) {
+                        Image(systemName: "plus.magnifyingglass")
+                    }
+                    .keyboardShortcut("=", modifiers: [.command])
+
+                    Text("\(Int(zoomMultiplier * 100))%")
+                        .monospacedDigit()
+                        .frame(minWidth: 40, alignment: .trailing)
+                }
+                #endif
                 ToolbarItem(placement: .primaryAction) {
                     Button("Open in Drive") {
                         #if os(iOS)
@@ -120,9 +155,26 @@ struct DocumentPreviewView: View {
 
     @ViewBuilder
     private func imagePreview(data: Data) -> some View {
+        #if os(macOS)
+        if zoomMultiplier == 1.0 {
+            // Fit: show the entire image sized to the preview container with no scrolling/zoom.
+            imageFromData(data)
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            // Zoomed: allow panning within a scroll view.
+            ScrollView([.horizontal, .vertical]) {
+                imageFromData(data)
+                    .scaledToFit()
+                    .scaleEffect(zoomMultiplier)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        #else
         imageFromData(data)
             .scaledToFit()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        #endif
     }
 
     @ViewBuilder
@@ -149,6 +201,20 @@ struct DocumentPreviewView: View {
         Image(systemName: "photo")
         #endif
     }
+
+    #if os(macOS)
+    private func zoomIn() {
+        zoomMultiplier = min(documentZoomMaxMultiplier, zoomMultiplier + documentZoomStep)
+    }
+
+    private func zoomOut() {
+        zoomMultiplier = max(documentZoomMinMultiplier, zoomMultiplier - documentZoomStep)
+    }
+
+    private func resetZoom() {
+        zoomMultiplier = 1.0
+    }
+    #endif
 }
 
 // MARK: - PDF preview (PDFKit)
@@ -191,9 +257,19 @@ private struct PDFPreviewRepresentable: UIViewRepresentable {
 private struct PDFPreviewRepresentable: NSViewRepresentable {
     let data: Data
 
+    @Binding var zoomMultiplier: Double
+
+    final class Coordinator {
+        var baseScale: CGFloat?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> PDFView {
         let pdfView = PDFView()
-        pdfView.autoScales = false
+        pdfView.autoScales = true
         pdfView.displayDirection = .vertical
         if let doc = PDFDocument(data: data) {
             pdfView.document = doc
@@ -202,22 +278,42 @@ private struct PDFPreviewRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ pdfView: PDFView, context: Context) {
-        pdfView.document = PDFDocument(data: data)
-        applyFitScaleWhenReady(pdfView)
+        let currentDocumentData = pdfView.document?.dataRepresentation()
+        if currentDocumentData != data {
+            pdfView.document = PDFDocument(data: data)
+            context.coordinator.baseScale = nil
+            pdfView.autoScales = true
+        }
+        applyScale(pdfView, context: context)
     }
 
-    private func applyFitScaleWhenReady(_ pdfView: PDFView) {
+    private func applyScale(_ pdfView: PDFView, context: Context) {
         func apply() {
             pdfView.layoutSubtreeIfNeeded()
             let b = pdfView.bounds.size
             guard b.width >= 50, b.height >= 50 else { return }
-            let fit = pdfView.scaleFactorForSizeToFit
-            guard fit > 0 else { return }
-            pdfView.scaleFactor = fit
+            // Establish the base (fit-to-container) scale from PDFView once.
+            if context.coordinator.baseScale == nil {
+                let current = pdfView.scaleFactor
+                guard current > 0 else { return }
+                context.coordinator.baseScale = current
+            }
+            guard let base = context.coordinator.baseScale else { return }
+
+            let clampedMultiplier = max(documentZoomMinMultiplier, min(documentZoomMaxMultiplier, zoomMultiplier))
+
+            if clampedMultiplier == 1.0 {
+                // Fit: let PDFKit manage scaling and align to the base fit scale.
+                pdfView.autoScales = true
+                pdfView.scaleFactor = base
+            } else {
+                // Custom zoom around the base fit scale.
+                pdfView.autoScales = false
+                pdfView.scaleFactor = base * CGFloat(clampedMultiplier)
+            }
         }
         DispatchQueue.main.async {
             apply()
-            DispatchQueue.main.async { apply() }
         }
     }
 }
