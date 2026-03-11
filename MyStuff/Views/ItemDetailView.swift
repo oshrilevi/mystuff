@@ -90,7 +90,12 @@ struct ItemDetailView: View {
                                 detailRow("Purchase date", currentItem.purchaseDate.isEmpty ? "—" : currentItem.purchaseDate)
                             }
                             if !currentItem.tags.isEmpty {
-                                detailRow("Tags", currentItem.tags.joined(separator: ", "))
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Tags")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    TagChipsView(tags: currentItem.tags)
+                                }
                             }
                             documentsSection
                         }

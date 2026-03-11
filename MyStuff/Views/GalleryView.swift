@@ -594,7 +594,12 @@ struct ItemHoverPopoverContent: View {
                 LabeledRow(label: "Purchase date", value: item.purchaseDate.isEmpty ? "—" : item.purchaseDate)
             }
             if !item.tags.isEmpty {
-                LabeledRow(label: "Tags", value: item.tags.joined(separator: ", "))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Tags")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    TagChipsView(tags: item.tags)
+                }
             }
             if !item.webLink.isEmpty {
                 LabeledRow(label: "Link", value: item.webLink)

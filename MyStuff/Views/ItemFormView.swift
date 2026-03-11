@@ -29,7 +29,7 @@ struct ItemFormView: View {
     @State private var quantity = 1
     @State private var quantityText = "1"
     @State private var webLink = ""
-    @State private var tagsText = "" // Comma-separated tags
+    @State private var tags: [String] = []
     @State private var locationId = ""
     @State private var priceCurrency = "NIS"
     @State private var isExtracting = false
@@ -88,315 +88,22 @@ struct ItemFormView: View {
     }
 
     var body: some View {
+        #if os(macOS)
+        macOSBody
+        #else
+        iOSBody
+        #endif
+    }
+
+    // MARK: - iOS body (keeps existing Form-based layout)
+
+    #if os(iOS)
+    private var iOSBody: some View {
         NavigationStack {
             Form {
-                Section {
-                    // In edit mode, steal initial focus so the name field never gets auto-focused (avoids select-all).
-                    if isEdit {
-                        TextField("", text: .constant(""))
-                            .frame(width: 1, height: 1)
-                            .opacity(0)
-                            .allowsHitTesting(false)
-                            .focused($focusedField, equals: .absorbInitialFocus)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Name").font(.subheadline).foregroundStyle(.secondary)
-                        NameFieldCursorAtEnd(text: $name, placeholder: "Name")
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Description").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("", text: $description, prompt: Text("Description"), axis: .vertical)
-                            .lineLimit(3...6)
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Category").font(.subheadline).foregroundStyle(.secondary)
-                        Picker("", selection: $categoryId) {
-                            Text("None").tag("")
-                            ForEach(sortedCategories) { cat in
-                                Text(cat.name).tag(cat.id)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                    }
-                    if !isWishlistCategory {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Location").font(.subheadline).foregroundStyle(.secondary)
-                            Picker("", selection: $locationId) {
-                                Text("None").tag("")
-                                ForEach(sortedLocations) { loc in
-                                    Text(loc.name).tag(loc.id)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
-                    }
-                    if isWishlistCategory {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Currency").font(.subheadline).foregroundStyle(.secondary)
-                            Picker("", selection: $priceCurrency) {
-                                Text("NIS").tag("NIS")
-                                Text("USD").tag("USD")
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(priceLabel).font(.subheadline).foregroundStyle(.secondary)
-                        TextField("", text: $price, prompt: Text("Price"))
-                            #if os(iOS)
-                            .keyboardType(.decimalPad)
-                            #endif
-                    }
-                    if !isWishlistCategory {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Purchase Date").font(.subheadline).foregroundStyle(.secondary)
-                            Button {
-                                showDatePicker = true
-                            } label: {
-                                HStack {
-                                    Text(Self.dateFormatter.string(from: purchaseDateValue))
-                                    Spacer()
-                                    Image(systemName: "calendar")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .sheet(isPresented: $showDatePicker) {
-                                NavigationStack {
-                                    DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
-                                        #if os(iOS)
-                                        .datePickerStyle(.graphical)
-                                        #endif
-                                        .padding()
-                                        .onChange(of: purchaseDateValue) { _, _ in
-                                            showDatePicker = false
-                                        }
-                                        .toolbar {
-                                            ToolbarItem(placement: .confirmationAction) {
-                                                Button("Done") { showDatePicker = false }
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
-                            HStack(spacing: 12) {
-                                TextField("", text: $quantityText, prompt: Text("1"))
-                                    .onChange(of: quantityText) { _, new in
-                                        let parsed = Int(new.filter { $0.isNumber }) ?? 0
-                                        quantity = min(999, max(1, parsed))
-                                        if parsed != quantity {
-                                            quantityText = "\(quantity)"
-                                        }
-                                    }
-                                    #if os(iOS)
-                                    .keyboardType(.numberPad)
-                                    #endif
-                                HStack(spacing: 4) {
-                                    Button {
-                                        let next = min(999, quantity + 1)
-                                        quantity = next
-                                        quantityText = "\(next)"
-                                    } label: {
-                                        Image(systemName: "chevron.up")
-                                            .font(.body.weight(.semibold))
-                                            .frame(minWidth: 36, minHeight: 36)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-                                    Button {
-                                        let next = max(1, quantity - 1)
-                                        quantity = next
-                                        quantityText = "\(next)"
-                                    } label: {
-                                        Image(systemName: "chevron.down")
-                                            .font(.body.weight(.semibold))
-                                            .frame(minWidth: 36, minHeight: 36)
-                                            .contentShape(Rectangle())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-                Section("Web link") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("URL").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("", text: $webLink, prompt: Text("https://…"))
-                            .focused($focusedField, equals: .url)
-                            #if os(iOS)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            #endif
-                    }
-                    Button {
-                        Task { await extractFromLink() }
-                    } label: {
-                        if isExtracting {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                    .scaleEffect(0.9)
-                                Text("Extracting…")
-                            }
-                        } else {
-                            Label("Extract from link", systemImage: "link.badge.plus")
-                        }
-                    }
-                    .disabled(webLink.trimmingCharacters(in: .whitespaces).isEmpty || isExtracting)
-                }
-                Section("Tags") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Tags (comma-separated)").font(.subheadline).foregroundStyle(.secondary)
-                        TextField("", text: $tagsText, prompt: Text("e.g. Nikon, camera, lens"))
-                            .lineLimit(1...3)
-                    }
-                }
-                Section("Photos") {
-                    if showCurrentPhoto, let fileId = existingItem?.photoIds.first {
-                        VStack(alignment: .leading, spacing: 8) {
-                            DriveImageView(drive: drive, fileId: fileId, contentMode: .fit)
-                                .frame(maxWidth: .infinity, maxHeight: 220)
-                                .clipped()
-                                .cornerRadius(8)
-                            HStack(spacing: 12) {
-                                Button("Remove photo") {
-                                    removedPhoto = true
-                                    imageData = []
-                                    #if os(iOS)
-                                    selectedPhotos = []
-                                    #endif
-                                }
-                                .foregroundStyle(.red)
-                                Button("Replace photo") {
-                                    removedPhoto = false
-                                    #if os(iOS)
-                                    // Picker is below; user selects and we set imageData
-                                    #elseif os(macOS)
-                                    showImagePicker = true
-                                    #endif
-                                }
-                            }
-                        }
-                    }
-                    #if os(iOS)
-                    if isEdit && showCurrentPhoto {
-                        Text("Or pick new photos to replace:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 12) {
-                        PhotosPicker(
-                            selection: $selectedPhotos,
-                            maxSelectionCount: 10,
-                            matching: .images
-                        ) {
-                            Label(isEdit && showCurrentPhoto ? "Pick new photos to replace" : "Pick photos", systemImage: "photo.on.rectangle.angled")
-                        }
-                        .onChange(of: selectedPhotos) { _, new in
-                            removedPhoto = false
-                            Task { await loadPhotos(new) }
-                        }
-                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                            Button {
-                                showCamera = true
-                            } label: {
-                                Label("Take photo", systemImage: "camera")
-                            }
-                        }
-                    }
-                    #elseif os(macOS)
-                    HStack(spacing: 12) {
-                        Button {
-                            showCamera = true
-                        } label: {
-                            Label("Take photo", systemImage: "camera")
-                        }
-                        if !showCurrentPhoto || !imageData.isEmpty {
-                            Button("Choose images…") { showImagePicker = true }
-                            .fileImporter(
-                                isPresented: $showImagePicker,
-                                allowedContentTypes: [.image, .jpeg, .png],
-                                allowsMultipleSelection: true
-                            ) { result in
-                                guard case .success(let urls) = result else { return }
-                                removedPhoto = false
-                                imageData = urls.compactMap { try? Data(contentsOf: $0) }
-                            }
-                        }
-                    }
-                    if !imageData.isEmpty {
-                        Text("\(imageData.count) image(s) selected")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    #endif
-                }
-                if isEdit, let item = existingItem {
-                    Section("Documents") {
-                        if let attErr = attachments.errorMessage {
-                            Text(attErr)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                        }
-                        ForEach(attachments.attachments(for: item.id)) { att in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(att.displayName.isEmpty ? "Document" : att.displayName)
-                                        .font(.body)
-                                    Text(att.kind.displayTitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button(role: .destructive) {
-                                    Task { await attachments.removeAttachment(id: att.id) }
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        Button {
-                            showDocumentImporter = true
-                        } label: {
-                            Label("Attach document", systemImage: "doc.badge.plus")
-                        }
-                    }
-                    .fileImporter(
-                        isPresented: $showDocumentImporter,
-                        allowedContentTypes: [.pdf, .png, .jpeg],
-                        allowsMultipleSelection: false
-                    ) { result in
-                        Task { @MainActor in
-                            guard case .success(let urls) = result, let url = urls.first else { return }
-                            pendingDocumentURL = IdentifiableURL(url: url)
-                            pendingDocumentDisplayName = url.lastPathComponent
-                            pendingDocumentKind = .other
-                        }
-                    }
-                    .sheet(item: $pendingDocumentURL) { wrapper in
-                        if let item = existingItem {
-                            DocumentOptionsSheetView(
-                                url: wrapper.url,
-                                itemId: item.id,
-                                displayName: $pendingDocumentDisplayName,
-                                kind: $pendingDocumentKind,
-                                onAdd: { pendingDocumentURL = nil },
-                                onCancel: { pendingDocumentURL = nil }
-                            )
-                            .environmentObject(session)
-                        }
-                    }
-                }
-                if let err = errorMessage {
-                    Section { Text(err).foregroundStyle(.red) }
-                }
+                formFields
             }
             .padding(20)
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showCamera) {
                 CameraImagePicker(capturedImageData: $capturedImageData) {
@@ -409,18 +116,6 @@ struct ItemFormView: View {
                     capturedImageData = nil
                 }
             }
-            #elseif os(macOS)
-            .sheet(isPresented: $showCamera) {
-                MacCameraCaptureView(capturedImageData: $capturedImageData) {
-                    showCamera = false
-                    if let data = capturedImageData {
-                        imageData.append(data)
-                        removedPhoto = false
-                    }
-                    capturedImageData = nil
-                }
-            }
-            #endif
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(isEdit ? "Edit item" : "New item")
@@ -454,34 +149,447 @@ struct ItemFormView: View {
                 }
             }
             .defaultFocus($focusedField, isEdit ? .absorbInitialFocus : nil)
-            .onAppear {
-                fillForm()
-                if isEdit {
-                    // Steal initial focus so name field is never auto-focused (avoids select-all); then release.
-                    focusedField = .absorbInitialFocus
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 50_000_000) // 0.05s
-                        focusedField = nil
+            .onAppear(perform: handleOnAppear)
+            .task {
+                guard session.appState.spreadsheetId != nil, locations.isEmpty else { return }
+                await session.locations.load()
+            }
+        }
+    }
+    #endif
+
+    // MARK: - macOS body (custom ScrollView layout for consistent alignment)
+
+    private var macOSBody: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    formFields
+                }
+                .padding(20)
+                .frame(maxWidth: 520, alignment: .leading)
+            }
+            .sheet(isPresented: $showCamera) {
+                MacCameraCaptureView(capturedImageData: $capturedImageData) {
+                    showCamera = false
+                    if let data = capturedImageData {
+                        imageData.append(data)
+                        removedPhoto = false
+                    }
+                    capturedImageData = nil
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(isEdit ? "Edit item" : "New item")
+                        .font(.headline)
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        if let onCancel {
+                            onCancel()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .help("Cancel")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Group {
+                        if isSaving {
+                            HStack(spacing: 6) {
+                                ProgressView()
+                                    .scaleEffect(0.85)
+                                Text("Saving…")
+                                    .font(.body)
+                            }
+                        } else {
+                            Button("Save") { Task { await save() } }
+                                .help("Save")
+                        }
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+                }
+            }
+            .defaultFocus($focusedField, isEdit ? .absorbInitialFocus : nil)
+            .onAppear(perform: handleOnAppear)
+            .task {
+                guard session.appState.spreadsheetId != nil, locations.isEmpty else { return }
+                await session.locations.load()
+            }
+        }
+    }
+
+    // MARK: - Shared form fields
+
+    @ViewBuilder
+    private var formFields: some View {
+        Section {
+            if isEdit {
+                TextField("", text: .constant(""))
+                    .frame(width: 1, height: 1)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .focused($focusedField, equals: .absorbInitialFocus)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Name").font(.subheadline).foregroundStyle(.secondary)
+                NameFieldCursorAtEnd(text: $name, placeholder: "Name")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Description").font(.subheadline).foregroundStyle(.secondary)
+                TextField("", text: $description, prompt: Text("Description"), axis: .vertical)
+                    .lineLimit(3...6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    #if os(macOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Category").font(.subheadline).foregroundStyle(.secondary)
+                Picker("", selection: $categoryId) {
+                    Text("None").tag("")
+                    ForEach(sortedCategories) { cat in
+                        Text(cat.name).tag(cat.id)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !isWishlistCategory {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Location").font(.subheadline).foregroundStyle(.secondary)
+                    Picker("", selection: $locationId) {
+                        Text("None").tag("")
+                        ForEach(sortedLocations) { loc in
+                            Text(loc.name).tag(loc.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if isWishlistCategory {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Currency").font(.subheadline).foregroundStyle(.secondary)
+                    Picker("", selection: $priceCurrency) {
+                        Text("NIS").tag("NIS")
+                        Text("USD").tag("USD")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(priceLabel).font(.subheadline).foregroundStyle(.secondary)
+                TextField("", text: $price, prompt: Text("Price"))
+                    #if os(iOS)
+                    .keyboardType(.decimalPad)
+                    #endif
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    #if os(macOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !isWishlistCategory {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Purchase Date").font(.subheadline).foregroundStyle(.secondary)
+                    Button {
+                        showDatePicker = true
+                    } label: {
+                        HStack {
+                            Text(Self.dateFormatter.string(from: purchaseDateValue))
+                            Spacer()
+                            Image(systemName: "calendar")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .sheet(isPresented: $showDatePicker) {
+                        NavigationStack {
+                            DatePicker("", selection: $purchaseDateValue, displayedComponents: .date)
+                                #if os(iOS)
+                                .datePickerStyle(.graphical)
+                                #endif
+                                .padding()
+                                .onChange(of: purchaseDateValue) { _, _ in
+                                    showDatePicker = false
+                                }
+                                .toolbar {
+                                    ToolbarItem(placement: .confirmationAction) {
+                                        Button("Done") { showDatePicker = false }
+                                    }
+                                }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Quantity").font(.subheadline).foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        TextField("", text: $quantityText, prompt: Text("1"))
+                            .onChange(of: quantityText) { _, new in
+                                let parsed = Int(new.filter { $0.isNumber }) ?? 0
+                                quantity = min(999, max(1, parsed))
+                                if parsed != quantity {
+                                    quantityText = "\(quantity)"
+                                }
+                            }
+                            #if os(iOS)
+                            .keyboardType(.numberPad)
+                            #endif
+                        HStack(spacing: 4) {
+                            Button {
+                                let next = min(999, quantity + 1)
+                                quantity = next
+                                quantityText = "\(next)"
+                            } label: {
+                                Image(systemName: "chevron.up")
+                                    .font(.body.weight(.semibold))
+                                    .frame(minWidth: 36, minHeight: 36)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            Button {
+                                let next = max(1, quantity - 1)
+                                quantity = next
+                                quantityText = "\(next)"
+                            } label: {
+                                Image(systemName: "chevron.down")
+                                    .font(.body.weight(.semibold))
+                                    .frame(minWidth: 36, minHeight: 36)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+
+        Section("Web link") {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("URL").font(.subheadline).foregroundStyle(.secondary)
+                TextField("", text: $webLink, prompt: Text("https://…"))
+                    .focused($focusedField, equals: .url)
+                    #if os(iOS)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    #endif
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    #if os(macOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                Task { await extractFromLink() }
+            } label: {
+                if isExtracting {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.9)
+                        Text("Extracting…")
                     }
                 } else {
-                    categoryId = initialCategoryIdForAdd ?? inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
-                    locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
-                    purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
-                    if let url = initialWebLinkForAdd, !url.trimmingCharacters(in: .whitespaces).isEmpty {
-                        webLink = url.trimmingCharacters(in: .whitespaces)
-                        Task { await extractFromLink() }
-                    } else {
-                        pasteURLFromClipboardAndExtract()
-                        Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 350_000_000)
-                            focusedField = .url
+                    Label("Extract from link", systemImage: "link.badge.plus")
+                }
+            }
+            .disabled(webLink.trimmingCharacters(in: .whitespaces).isEmpty || isExtracting)
+        }
+
+        Section("Tags") {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Tags").font(.subheadline).foregroundStyle(.secondary)
+                TagChipsEditor(tags: $tags)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+
+        Section("Photos") {
+            if showCurrentPhoto, let fileId = existingItem?.photoIds.first {
+                VStack(alignment: .leading, spacing: 8) {
+                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: 220)
+                        .clipped()
+                        .cornerRadius(8)
+                    HStack(spacing: 12) {
+                        Button("Remove photo") {
+                            removedPhoto = true
+                            imageData = []
+                            #if os(iOS)
+                            selectedPhotos = []
+                            #endif
+                        }
+                        .foregroundStyle(.red)
+                        Button("Replace photo") {
+                            removedPhoto = false
+                            #if os(iOS)
+                            // Picker is below; user selects and we set imageData
+                            #elseif os(macOS)
+                            showImagePicker = true
+                            #endif
                         }
                     }
                 }
             }
-            .task {
-                guard session.appState.spreadsheetId != nil, locations.isEmpty else { return }
-                await session.locations.load()
+            #if os(iOS)
+            if isEdit && showCurrentPhoto {
+                Text("Or pick new photos to replace:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 12) {
+                PhotosPicker(
+                    selection: $selectedPhotos,
+                    maxSelectionCount: 10,
+                    matching: .images
+                ) {
+                    Label(isEdit && showCurrentPhoto ? "Pick new photos to replace" : "Pick photos", systemImage: "photo.on.rectangle.angled")
+                }
+                .onChange(of: selectedPhotos) { _, new in
+                    removedPhoto = false
+                    Task { await loadPhotos(new) }
+                }
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("Take photo", systemImage: "camera")
+                    }
+                }
+            }
+            #elseif os(macOS)
+            HStack(spacing: 12) {
+                Button {
+                    showCamera = true
+                } label: {
+                    Label("Take photo", systemImage: "camera")
+                }
+                if !showCurrentPhoto || !imageData.isEmpty {
+                    Button("Choose images…") { showImagePicker = true }
+                    .fileImporter(
+                        isPresented: $showImagePicker,
+                        allowedContentTypes: [.image, .jpeg, .png],
+                        allowsMultipleSelection: true
+                    ) { result in
+                        guard case .success(let urls) = result else { return }
+                        removedPhoto = false
+                        imageData = urls.compactMap { try? Data(contentsOf: $0) }
+                    }
+                }
+            }
+            if !imageData.isEmpty {
+                Text("\(imageData.count) image(s) selected")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            #endif
+        }
+
+        if isEdit, let item = existingItem {
+            Section("Documents") {
+                if let attErr = attachments.errorMessage {
+                    Text(attErr)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                ForEach(attachments.attachments(for: item.id)) { att in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(att.displayName.isEmpty ? "Document" : att.displayName)
+                                .font(.body)
+                            Text(att.kind.displayTitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            Task { await attachments.removeAttachment(id: att.id) }
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Button {
+                    showDocumentImporter = true
+                } label: {
+                    Label("Attach document", systemImage: "doc.badge.plus")
+                }
+            }
+            .fileImporter(
+                isPresented: $showDocumentImporter,
+                allowedContentTypes: [.pdf, .png, .jpeg],
+                allowsMultipleSelection: false
+            ) { result in
+                Task { @MainActor in
+                    guard case .success(let urls) = result, let url = urls.first else { return }
+                    pendingDocumentURL = IdentifiableURL(url: url)
+                    pendingDocumentDisplayName = url.lastPathComponent
+                    pendingDocumentKind = .other
+                }
+            }
+            .sheet(item: $pendingDocumentURL) { wrapper in
+                if let item = existingItem {
+                    DocumentOptionsSheetView(
+                        url: wrapper.url,
+                        itemId: item.id,
+                        displayName: $pendingDocumentDisplayName,
+                        kind: $pendingDocumentKind,
+                        onAdd: { pendingDocumentURL = nil },
+                        onCancel: { pendingDocumentURL = nil }
+                    )
+                    .environmentObject(session)
+                }
+            }
+        }
+
+        if let err = errorMessage {
+            Section { Text(err).foregroundStyle(.red) }
+        }
+    }
+
+    // MARK: - Shared onAppear logic
+
+    private func handleOnAppear() {
+        fillForm()
+        if isEdit {
+            focusedField = .absorbInitialFocus
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                focusedField = nil
+            }
+        } else {
+            categoryId = initialCategoryIdForAdd ?? inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
+            locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
+            purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
+            if let url = initialWebLinkForAdd, !url.trimmingCharacters(in: .whitespaces).isEmpty {
+                webLink = url.trimmingCharacters(in: .whitespaces)
+                Task { await extractFromLink() }
+            } else {
+                pasteURLFromClipboardAndExtract()
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    focusedField = .url
+                }
             }
         }
     }
@@ -522,15 +630,9 @@ struct ItemFormView: View {
             quantity = item.quantity
             quantityText = "\(item.quantity)"
             webLink = item.webLink
-            tagsText = item.tags.joined(separator: ", ")
+            tags = item.tags
             locationId = item.locationId
         }
-    }
-
-    private func parsedTags() -> [String] {
-        tagsText.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
     }
 
     private func extractFromLink() async {
@@ -551,7 +653,7 @@ struct ItemFormView: View {
             if let d = metadata.description, !d.isEmpty { description = d }
             if let p = metadata.price, !p.isEmpty { price = p }
             if !metadata.tags.isEmpty {
-                tagsText = metadata.tags.joined(separator: ", ")
+                tags = metadata.tags
             }
         } catch {
             if case PageMetadataError.badStatus(let code) = error {
@@ -583,7 +685,7 @@ struct ItemFormView: View {
         defer { isSaving = false }
         let link = webLink.trimmingCharacters(in: .whitespaces)
         let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
-        let tags = parsedTags()
+        let resolvedTags = tags
         let resolvedPriceCurrency = isWishlistCategory ? priceCurrency : ""
         if isEdit, let existing = existingItem {
             var updated = existing
@@ -596,7 +698,7 @@ struct ItemFormView: View {
             updated.condition = existing.condition
             updated.quantity = quantity
             updated.webLink = link
-            updated.tags = tags
+            updated.tags = resolvedTags
             updated.locationId = locationId
             let replacePhotos = removedPhoto || !imageData.isEmpty
             await inventory.updateItem(updated, newImageData: imageData, replaceExistingPhotos: replacePhotos)
@@ -610,7 +712,7 @@ struct ItemFormView: View {
                 condition: "",
                 quantity: quantity,
                 webLink: link,
-                tags: tags,
+                tags: resolvedTags,
                 locationId: locationId,
                 priceCurrency: resolvedPriceCurrency
             )
@@ -632,7 +734,7 @@ struct ItemFormView: View {
                 updated.purchaseDate = Self.dateFormatter.string(from: purchaseDateValue)
                 updated.quantity = quantity
                 updated.webLink = webLink.trimmingCharacters(in: .whitespaces)
-                updated.tags = parsedTags()
+                updated.tags = resolvedTags
                 updated.locationId = locationId
                 onSaveSuccess(updated)
             } else {
@@ -747,6 +849,8 @@ private struct NameFieldCursorAtEnd: UIViewRepresentable {
         field.placeholder = placeholder
         field.text = text
         field.borderStyle = .roundedRect
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = context.coordinator
         field.addTarget(context.coordinator, action: #selector(Coordinator.textChanged), for: .editingChanged)
         return field
@@ -793,6 +897,8 @@ private struct NameFieldCursorAtEnd: NSViewRepresentable {
         field.stringValue = text
         field.isBordered = true
         field.bezelStyle = .roundedBezel
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         field.delegate = context.coordinator
         field.cell?.sendsActionOnEndEditing = false
         return field
