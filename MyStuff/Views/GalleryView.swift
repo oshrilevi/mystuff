@@ -669,6 +669,9 @@ struct ItemCardWithHoverPopover: View {
     var onTap: () -> Void
     var onOpenAttachment: (ItemAttachment) -> Void
 
+    @State private var isEditingFromMenu = false
+    @State private var showDeleteConfirmationFromMenu = false
+
     private var thumbDimension: CGFloat { thumbnailSize.thumbnailDimension }
 
     var body: some View {
@@ -693,10 +696,35 @@ struct ItemCardWithHoverPopover: View {
                             item: item,
                             categoryName: categoryName,
                             session: session,
-                            onOpenAttachment: onOpenAttachment
+                            onOpenAttachment: onOpenAttachment,
+                            onEdit: { isEditingFromMenu = true },
+                            onDelete: { showDeleteConfirmationFromMenu = true }
                         )
                     }
             }
+        .sheet(isPresented: $isEditingFromMenu) {
+            ItemFormView(
+                mode: .edit(item),
+                onSaveSuccess: { _ in
+                    isEditingFromMenu = false
+                    Task { await session.inventory.refresh() }
+                },
+                onCancel: {
+                    isEditingFromMenu = false
+                }
+            )
+            .environmentObject(session)
+        }
+        .confirmationDialog("Delete item?", isPresented: $showDeleteConfirmationFromMenu, titleVisibility: .visible) {
+            Button("Delete \"\(item.name.count > 75 ? String(item.name.prefix(75)) + "…" : item.name)\"", role: .destructive) {
+                Task {
+                    await session.inventory.deleteItems(ids: [item.id])
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone. The item will be removed from your inventory.")
+        }
     }
 }
 
@@ -705,6 +733,8 @@ struct ItemContextMenuContent: View {
     let categoryName: String
     @ObservedObject var session: Session
     var onOpenAttachment: (ItemAttachment) -> Void
+    var onEdit: () -> Void
+    var onDelete: () -> Void
 
     private var attachments: [ItemAttachment] {
         session.attachments.attachments(for: item.id)
@@ -744,17 +774,35 @@ struct ItemContextMenuContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let isWishlist = Category.isWishlist(categoryName)
+        let locationName: String = {
+            if isWishlist { return "" }
+            return session.locations.locations.first { $0.id == item.locationId }?.name ?? (item.locationId.isEmpty ? "" : "—")
+        }()
+        let priceText = Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: isWishlist)
+        let categoryLine: String = {
+            var parts: [String] = [categoryName]
+            if !locationName.isEmpty {
+                parts.append(locationName)
+            }
+            parts.append(priceText)
+            return parts.joined(separator: " - ")
+        }()
+
+        return VStack(alignment: .leading, spacing: 4) {
             // Header: item info
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
                     .font(.headline)
                     .lineLimit(2)
                     .truncationMode(.tail)
-                Text(categoryName)
+                Text(categoryLine)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            .frame(width: 150, alignment: .leading)
+            .multilineTextAlignment(.leading)
+
             Divider()
 
             // Search section
@@ -812,6 +860,21 @@ struct ItemContextMenuContent: View {
                     }
                 }
             }
+            Divider()
+            Text("Actions")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Button {
+                onEdit()
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            .tint(.red)
         }
     }
 }

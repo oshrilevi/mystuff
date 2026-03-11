@@ -537,6 +537,9 @@ private struct ItemListRow: View {
 
     @State private var fillColor: Color?
 
+    @State private var isEditingFromMenu = false
+    @State private var showDeleteConfirmationFromMenu = false
+
     private let thumbSize: CGFloat = 44
     private var isWishlist: Bool { Category.isWishlist(categoryName) }
     var onOpenAttachment: (ItemAttachment) -> Void
@@ -622,8 +625,33 @@ private struct ItemListRow: View {
                 item: item,
                 categoryName: categoryName,
                 session: session,
-                onOpenAttachment: onOpenAttachment
+                onOpenAttachment: onOpenAttachment,
+                onEdit: { isEditingFromMenu = true },
+                onDelete: { showDeleteConfirmationFromMenu = true }
             )
+        }
+        .sheet(isPresented: $isEditingFromMenu) {
+            ItemFormView(
+                mode: .edit(item),
+                onSaveSuccess: { _ in
+                    isEditingFromMenu = false
+                    Task { await session.inventory.refresh() }
+                },
+                onCancel: {
+                    isEditingFromMenu = false
+                }
+            )
+            .environmentObject(session)
+        }
+        .confirmationDialog("Delete item?", isPresented: $showDeleteConfirmationFromMenu, titleVisibility: .visible) {
+            Button("Delete \"\(item.name.count > 75 ? String(item.name.prefix(75)) + "…" : item.name)\"", role: .destructive) {
+                Task {
+                    await session.inventory.deleteItems(ids: [item.id])
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone. The item will be removed from your inventory.")
         }
     }
 }
