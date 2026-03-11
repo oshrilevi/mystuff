@@ -44,9 +44,67 @@ struct DocumentPreviewView: View {
     @State private var isLoading = true
     #if os(macOS)
     @State private var zoomMultiplier: Double = 1.0
+    @State private var isOpening = true
+    @State private var openError: String?
     #endif
 
     var body: some View {
+        #if os(macOS)
+        NavigationStack {
+            Group {
+                if isOpening {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Opening document…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = openError {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text(error)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        HStack(spacing: 16) {
+                            Button("Open in Drive") {
+                                NSWorkspace.shared.open(driveWebViewURL)
+                            }
+                            Button("Close") {
+                                onDismiss()
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    // We attempted to open the document; nothing more to show.
+                    Color.clear
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle("\(itemName) - \(documentType)")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { onDismiss() }
+                        .help("Close")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Open in Drive") {
+                        NSWorkspace.shared.open(driveWebViewURL)
+                    }
+                    .help("Open in Google Drive")
+                }
+            }
+        }
+        .task(id: driveFileId) {
+            await openInDefaultApp()
+        }
+        #else
         NavigationStack {
             Group {
                 if isLoading {
@@ -72,11 +130,7 @@ struct DocumentPreviewView: View {
                 } else if let data = fileData {
                     switch sniffDocumentType(data) {
                     case .pdf:
-                        #if os(macOS)
-                        PDFPreviewRepresentable(data: data, zoomMultiplier: $zoomMultiplier)
-                        #else
                         PDFPreviewRepresentable(data: data)
-                        #endif
                     case .image:
                         imagePreview(data: data)
                     case .unknown:
@@ -88,43 +142,15 @@ struct DocumentPreviewView: View {
                 }
             }
             .navigationTitle("\(itemName) - \(documentType)")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { onDismiss() }
                         .help("Close")
                 }
-                #if os(macOS)
-                ToolbarItemGroup(placement: .automatic) {
-                    Button(action: zoomOut) {
-                        Image(systemName: "minus.magnifyingglass")
-                    }
-                    .keyboardShortcut("-", modifiers: [.command])
-
-                    Button(action: resetZoom) {
-                        Text("Fit")
-                    }
-                    .keyboardShortcut("0", modifiers: [.command])
-
-                    Button(action: zoomIn) {
-                        Image(systemName: "plus.magnifyingglass")
-                    }
-                    .keyboardShortcut("=", modifiers: [.command])
-
-                    Text("\(Int(zoomMultiplier * 100))%")
-                        .monospacedDigit()
-                        .frame(minWidth: 40, alignment: .trailing)
-                }
-                #endif
                 ToolbarItem(placement: .primaryAction) {
                     Button("Open in Drive") {
-                        #if os(iOS)
                         UIApplication.shared.open(driveWebViewURL)
-                        #elseif os(macOS)
-                        NSWorkspace.shared.open(driveWebViewURL)
-                        #endif
                     }
                     .help("Open in Google Drive")
                 }
@@ -133,6 +159,7 @@ struct DocumentPreviewView: View {
         .task(id: driveFileId) {
             await loadFile()
         }
+        #endif
     }
 
     private func loadFile() async {
@@ -155,26 +182,9 @@ struct DocumentPreviewView: View {
 
     @ViewBuilder
     private func imagePreview(data: Data) -> some View {
-        #if os(macOS)
-        if zoomMultiplier == 1.0 {
-            // Fit: show the entire image sized to the preview container with no scrolling/zoom.
-            imageFromData(data)
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            // Zoomed: allow panning within a scroll view.
-            ScrollView([.horizontal, .vertical]) {
-                imageFromData(data)
-                    .scaledToFit()
-                    .scaleEffect(zoomMultiplier)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        #else
         imageFromData(data)
             .scaledToFit()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        #endif
     }
 
     @ViewBuilder
@@ -203,6 +213,53 @@ struct DocumentPreviewView: View {
     }
 
     #if os(macOS)
+    private func openInDefaultApp() async {
+        isOpening = true
+        openError = nil
+        do {
+            let data = try await drive.fetchFileData(fileId: driveFileId)
+
+            let ext: String
+            switch sniffDocumentType(data) {
+            case .pdf:
+                ext = "pdf"
+            case .image:
+                ext = "jpg"
+            case .unknown:
+                ext = "dat"
+            }
+
+            let safeItemName = itemName
+                .replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let baseName = safeItemName.isEmpty ? "document" : safeItemName
+            let fileName = "\(baseName)-\(documentType).\(ext)"
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+            try data.write(to: tempURL, options: .atomic)
+
+            let opened = NSWorkspace.shared.open(tempURL)
+            if !opened {
+                throw NSError(domain: "DocumentPreviewView", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not open the document with the default app."])
+            }
+
+            await MainActor.run {
+                isOpening = false
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                onDismiss()
+            }
+        } catch {
+            await MainActor.run {
+                isOpening = false
+                openError = error.localizedDescription
+            }
+        }
+    }
+
     private func zoomIn() {
         zoomMultiplier = min(documentZoomMaxMultiplier, zoomMultiplier + documentZoomStep)
     }
