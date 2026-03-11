@@ -64,8 +64,79 @@ struct ItemFormView: View {
     private var drive: DriveService { session.drive }
     private var pageMetadata: PageMetadataService { session.pageMetadata }
     private var categories: [Category] { session.categories.categories }
-    private var sortedCategories: [Category] {
-        categories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    private var wishlistCategoryId: String? {
+        categories.first(where: { Category.isWishlist($0.name) })?.id
+    }
+    /// Top-level categories (no parent), ordered by `order` then name.
+    private var topLevelCategories: [Category] {
+        categories
+            .filter { ($0.parentId ?? "").isEmpty }
+            .sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
+    }
+    /// Children grouped by parent id, ordered by `order` then name.
+    private var childrenByParentId: [String: [Category]] {
+        var result: [String: [Category]] = [:]
+        for cat in categories {
+            guard let pid = cat.parentId, !pid.isEmpty else { continue }
+            result[pid, default: []].append(cat)
+        }
+        for (pid, list) in result {
+            result[pid] = list.sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
+        }
+        return result
+    }
+    /// Flattened rows for the category picker: parents as group headers (not selectable when they have children),
+    /// and subcategories as indented, selectable rows.
+    private struct CategoryPickerRow: Identifiable {
+        let id: String
+        let category: Category
+        let isChild: Bool
+        let indentLevel: Int
+        let isSelectable: Bool
+    }
+    private var categoryPickerRows: [CategoryPickerRow] {
+        var rows: [CategoryPickerRow] = []
+        for parent in topLevelCategories {
+            let children = childrenByParentId[parent.id] ?? []
+            let isWishlist = wishlistCategoryId == parent.id
+
+            if children.isEmpty {
+                // No children: only Wishlist may be assigned directly; other parents are headers only.
+                rows.append(
+                    CategoryPickerRow(
+                        id: parent.id,
+                        category: parent,
+                        isChild: false,
+                        indentLevel: 0,
+                        isSelectable: isWishlist
+                    )
+                )
+            } else {
+                // Parent with subcategories: show as a group header.
+                // Wishlist parent remains selectable; other parents are not.
+                rows.append(
+                    CategoryPickerRow(
+                        id: parent.id,
+                        category: parent,
+                        isChild: false,
+                        indentLevel: 0,
+                        isSelectable: isWishlist
+                    )
+                )
+                for child in children {
+                    rows.append(
+                        CategoryPickerRow(
+                            id: child.id,
+                            category: child,
+                            isChild: true,
+                            indentLevel: 1,
+                            isSelectable: true
+                        )
+                    )
+                }
+            }
+        }
+        return rows
     }
     private var locations: [Location] { session.locations.locations }
     private var sortedLocations: [Location] {
@@ -256,8 +327,18 @@ struct ItemFormView: View {
                 Text("Category").font(.subheadline).foregroundStyle(.secondary)
                 Picker("", selection: $categoryId) {
                     Text("None").tag("")
-                    ForEach(sortedCategories) { cat in
-                        Text(cat.name).tag(cat.id)
+                    ForEach(categoryPickerRows) { row in
+                        let label = row.indentLevel == 0
+                            ? row.category.name
+                            : String(repeating: "    ", count: row.indentLevel) + row.category.name
+                        if row.isSelectable {
+                            Text(label).tag(row.category.id)
+                        } else {
+                            Text(label)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .disabled(true)
+                        }
                     }
                 }
                 .pickerStyle(.menu)
