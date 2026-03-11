@@ -89,7 +89,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 | A (0)        | id         | String | UUID                                         |
 | B (1)        | itemId     | String | FK to Items id                                |
 | C (2)        | driveFileId| String | Drive file ID (in MyStuff Documents folder)  |
-| D (3)        | kind       | String | `invoice`, `proofOfPurchase`, or `other`     |
+| D (3)        | kind       | String | `invoice`, `userManual`, or `other`          |
 | E (4)        | displayName| String | User-facing label                            |
 | F (5)        | createdAt  | String | ISO8601                                      |
 
@@ -101,7 +101,7 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 
 - **Folders:** Two folders per user, both created in bootstrap via `DriveService.createFolder`:
   - **"MyStuff Photos"** – item photos; file IDs stored in the Items sheet in `photoIds` (comma-separated).
-  - **"MyStuff Documents"** – item documents (invoices, proof of purchase, etc.); file IDs and metadata stored in the Attachments sheet.
+  - **"MyStuff Documents"** – item documents (invoices, user manuals, etc.); file IDs and metadata stored in the Attachments sheet.
 - **Files:** Photos and documents are uploaded with a generated or user-chosen filename. No subfolders; photos and documents each live in their single folder.
 
 ## Local persistence (UserDefaults)

@@ -10,7 +10,7 @@ struct ItemAttachment: Identifiable, Equatable {
 
     enum Kind: String, CaseIterable, Identifiable {
         case invoice
-        case proofOfPurchase
+        case userManual
         case other
 
         var id: String { rawValue }
@@ -18,7 +18,7 @@ struct ItemAttachment: Identifiable, Equatable {
         var displayTitle: String {
             switch self {
             case .invoice: return "Invoice"
-            case .proofOfPurchase: return "Proof of purchase"
+            case .userManual: return "User Manual"
             case .other: return "Other"
             }
         }
