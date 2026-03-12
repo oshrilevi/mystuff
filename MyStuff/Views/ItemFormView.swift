@@ -138,6 +138,9 @@ struct ItemFormView: View {
         }
         return rows
     }
+    private var firstSelectableCategoryId: String? {
+        categoryPickerRows.first(where: \.isSelectable)?.category.id
+    }
     private var locations: [Location] { session.locations.locations }
     private var sortedLocations: [Location] {
         locations.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -326,7 +329,6 @@ struct ItemFormView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Category").font(.subheadline).foregroundStyle(.secondary)
                 Picker("", selection: $categoryId) {
-                    Text("None").tag("")
                     ForEach(categoryPickerRows) { row in
                         let label = row.indentLevel == 0
                             ? row.category.name
@@ -658,7 +660,9 @@ struct ItemFormView: View {
                 focusedField = nil
             }
         } else {
-            categoryId = initialCategoryIdForAdd ?? inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
+            var cid = initialCategoryIdForAdd ?? inventory.lastNewItemCategoryId ?? inventory.selectedCategoryId ?? ""
+            if cid.isEmpty, let first = firstSelectableCategoryId { cid = first }
+            categoryId = cid
             locationId = inventory.lastNewItemLocationId ?? session.locations.defaultLocationId ?? ""
             purchaseDateValue = inventory.lastNewItemPurchaseDate ?? Date()
             if let url = initialWebLinkForAdd, !url.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -703,7 +707,9 @@ struct ItemFormView: View {
         if let item = existingItem {
             name = item.name
             description = item.description
-            categoryId = item.categoryId
+            var cid = item.categoryId
+            if cid.isEmpty, let first = firstSelectableCategoryId { cid = first }
+            categoryId = cid
             price = item.price
             priceCurrency = item.priceCurrency.isEmpty ? "NIS" : item.priceCurrency
             purchaseDateValue = Self.dateFormatter.date(from: item.purchaseDate) ?? Date()
