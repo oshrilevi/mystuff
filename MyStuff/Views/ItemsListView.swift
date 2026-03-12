@@ -75,14 +75,14 @@ struct ItemsListView: View {
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total, iconSymbol: cat.iconSymbol, iconFileId: cat.iconFileId))
         }
         if let uncategorized = byCategory[""], !uncategorized.isEmpty {
             let total = uncategorized.reduce(0.0) { sum, item in
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, iconSymbol: nil, iconFileId: nil))
         }
         return sections
     }
@@ -278,6 +278,9 @@ struct ItemsListView: View {
                                                     set: { sectionSortOrders[section.id] = $0 }
                                                 ),
                                                 sectionId: section.id,
+                                                iconSymbol: section.iconSymbol,
+                                                iconFileId: section.iconFileId,
+                                                drive: session.drive,
                                                 isCollapsed: collapsedSectionIds.contains(section.id),
                                                 onTap: {
                                                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -366,6 +369,9 @@ struct ItemsListView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
+                                        iconSymbol: categories.first(where: { $0.id == singleCategoryId })?.iconSymbol,
+                                        iconFileId: categories.first(where: { $0.id == singleCategoryId })?.iconFileId,
+                                        drive: session.drive,
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {

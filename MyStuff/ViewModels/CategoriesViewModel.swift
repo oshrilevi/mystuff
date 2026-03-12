@@ -52,21 +52,48 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    /// When row has 4 columns, column 4 may be parentId (new schema) or color (old schema). Use as parentId only if it looks like a UUID.
+    /// When row has 6+ columns: parentId at 3, iconSymbol at 4, iconFileId at 5. When row has 5 columns, Sheets may strip trailing empty iconFileId: parentId at 3, iconSymbol at 4 — so only treat row[4] as parentId (legacy) if it looks like a UUID.
     static func parentId(from row: [String]) -> String? {
+        if row.count >= 6 {
+            let s = row[3]
+            return s.isEmpty ? nil : s
+        }
         if row.count > 4 {
-            let s = row[4]
+            let at4 = row[4]
+            // Legacy 5-column: id, name, order, color, parentId. New 5-column (trailing empty stripped): id, name, order, parentId, iconSymbol.
+            if Self.looksLikeUUID(at4) { return at4.isEmpty ? nil : at4 }
+            // row[4] is icon symbol; parentId is at 3
+            let s = row[3]
             return s.isEmpty ? nil : s
         }
         if row.count > 3 {
             let s = row[3]
             guard !s.isEmpty else { return nil }
-            // Old 4-column sheet had id, name, order, color — so column 4 was color. Treat as parentId only if it looks like a UUID.
-            if s.contains("-"), s.count == 36, s.allSatisfy({ $0 == "-" || Self.isHexDigit($0) }) { return s }
+            if Self.looksLikeUUID(s) { return s }
             if s.hasPrefix("#") || ((s.count == 6 || s.count == 8) && s.allSatisfy { Self.isHexDigit($0) }) { return nil } // hex color
+            // Four columns: row[3] may be legacy color or icon symbol (parentId/iconFileId empty and stripped). Don't treat as parentId.
+            if row.count == 4 { return nil }
             return s
         }
         return nil
+    }
+
+    private static func looksLikeUUID(_ s: String) -> Bool {
+        s.contains("-") && s.count == 36 && s.allSatisfy({ $0 == "-" || isHexDigit($0) })
+    }
+
+    static func iconSymbol(from row: [String]) -> String? {
+        if row.count == 4, !row[3].isEmpty, !Self.looksLikeUUID(row[3]) {
+            return row[3] // Trailing columns stripped: id, name, order, iconSymbol
+        }
+        guard row.count > 4, !row[4].isEmpty else { return nil }
+        if Self.looksLikeUUID(row[4]) { return nil } // row[4] is legacy parentId
+        return row[4]
+    }
+
+    static func iconFileId(from row: [String]) -> String? {
+        guard row.count > 5, !row[5].isEmpty else { return nil }
+        return row[5]
     }
 
     private static func isHexDigit(_ c: Character) -> Bool {
@@ -84,10 +111,13 @@ final class CategoriesViewModel: ObservableObject {
                 guard row.count >= 2 else { return nil }
                 let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
                 let parentId = Self.parentId(from: row)
-                return Category(id: row[0], name: row[1], order: order, parentId: parentId)
+                let iconSymbol = Self.iconSymbol(from: row)
+                let iconFileId = Self.iconFileId(from: row)
+                return Category(id: row[0], name: row[1], order: order, parentId: parentId, iconSymbol: iconSymbol, iconFileId: iconFileId)
             }
             categories = loaded
-            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }) {
+            let rowValues = loaded.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? "", $0.iconSymbol ?? "", $0.iconFileId ?? ""] }
+            if let data = try? JSONEncoder().encode(rowValues) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
         } catch {
@@ -98,17 +128,23 @@ final class CategoriesViewModel: ObservableObject {
                     guard row.count >= 2 else { return nil }
                     let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
                     let parentId = Self.parentId(from: row)
-                    return Category(id: row[0], name: row[1], order: order, parentId: parentId)
+                    let iconSymbol = row.count > 5 ? (row[4].isEmpty ? nil : row[4]) : nil
+                    let iconFileId = row.count > 5 ? (row[5].isEmpty ? nil : row[5]) : nil
+                    return Category(id: row[0], name: row[1], order: order, parentId: parentId, iconSymbol: iconSymbol, iconFileId: iconFileId)
                 }
                 categories = cached
             }
         }
     }
 
-    func addCategory(name: String, parentId: String? = nil) async {
+    private func categoryRow(_ cat: Category) -> [String] {
+        [cat.id, cat.name, "\(cat.order)", cat.parentId ?? "", cat.iconSymbol ?? "", cat.iconFileId ?? ""]
+    }
+
+    func addCategory(name: String, parentId: String? = nil, iconSymbol: String? = nil, iconFileId: String? = nil) async {
         guard let sid = spreadsheetId else { return }
-        let category = Category(name: name, order: categories.count, parentId: parentId)
-        let values = [[category.id, category.name, "\(category.order)", category.parentId ?? ""]]
+        let category = Category(name: name, order: categories.count, parentId: parentId, iconSymbol: iconSymbol, iconFileId: iconFileId)
+        let values = [categoryRow(category)]
         do {
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: values)
             await load()
@@ -117,17 +153,20 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func updateCategory(id: String, name: String, parentId: String? = nil) async {
+    func updateCategory(id: String, name: String, parentId: String? = nil, iconSymbol: String? = nil, iconFileId: String? = nil) async {
         guard let sid = spreadsheetId else { return }
         guard let index = categories.firstIndex(where: { $0.id == id }) else { return }
         var updated = categories
         updated[index].name = name
         updated[index].parentId = parentId
+        // Apply icon state so switching from custom to symbol (or vice versa) clears the other.
+        updated[index].iconSymbol = iconSymbol?.isEmpty == true ? nil : iconSymbol
+        updated[index].iconFileId = iconFileId?.isEmpty == true ? nil : iconFileId
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
+            let rows = updated.map { categoryRow($0) }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -170,7 +209,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
+            let rows = updated.map { categoryRow($0) }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -191,7 +230,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
+            let rows = updated.map { categoryRow($0) }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -217,7 +256,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
+            let rows = updated.map { categoryRow($0) }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -247,7 +286,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
+            let rows = updated.map { categoryRow($0) }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }

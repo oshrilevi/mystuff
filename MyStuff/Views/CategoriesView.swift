@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct CategoriesView: View {
     @EnvironmentObject var session: Session
@@ -58,6 +59,7 @@ struct CategoriesView: View {
                         }
                         ForEach(categoryRows) { row in
                             HStack(spacing: 12) {
+                                CategoryIconView(iconSymbol: row.category.iconSymbol, iconFileId: row.category.iconFileId, drive: session.drive, size: 20)
                                 Text(row.category.name)
                                     .font(row.isChild ? .subheadline : .body)
                                 Spacer()
@@ -304,8 +306,14 @@ private struct EditCategorySheet: View {
     let categoriesVM: CategoriesViewModel
     let onDismiss: () -> Void
 
+    @EnvironmentObject private var session: Session
+
     @State private var name: String
     @State private var selectedParentId: String
+    @State private var selectedIconSymbol: String
+    @State private var selectedIconFileId: String?
+    @State private var customIconPhotoItem: PhotosPickerItem?
+    @State private var isUploadingIcon = false
 
     init(category: Category, categoriesVM: CategoriesViewModel, onDismiss: @escaping () -> Void) {
         self.category = category
@@ -313,6 +321,8 @@ private struct EditCategorySheet: View {
         self.onDismiss = onDismiss
         _name = State(initialValue: category.name)
         _selectedParentId = State(initialValue: category.parentId ?? "")
+        _selectedIconSymbol = State(initialValue: category.iconFileId != nil ? "" : (category.iconSymbol ?? ""))
+        _selectedIconFileId = State(initialValue: category.iconFileId)
     }
 
     var body: some View {
@@ -334,6 +344,14 @@ private struct EditCategorySheet: View {
                 } header: {
                     Text("Parent")
                 }
+                Section {
+                    iconPickerGrid
+                    customIconPicker
+                } header: {
+                    Text("Icon")
+                } footer: {
+                    Text("Choose a symbol or add a custom image. The icon appears next to the category name in the gallery.")
+                }
             }
             .formStyle(.grouped)
             .padding(24)
@@ -350,21 +368,113 @@ private struct EditCategorySheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let trimmed = name.trimmingCharacters(in: .whitespaces)
-                        if !trimmed.isEmpty {
-                            let parentId = selectedParentId.isEmpty ? nil : selectedParentId
-                            Task {
-                                await categoriesVM.updateCategory(id: category.id, name: trimmed, parentId: parentId)
-                            }
-                        }
-                        onDismiss()
+                        save()
                     }
                     .help("Save")
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isUploadingIcon)
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+        .onChange(of: customIconPhotoItem) { _, newItem in
+            guard let newItem else {
+                selectedIconFileId = nil
+                return
+            }
+            Task { await uploadCustomIcon(from: newItem) }
+        }
+    }
+
+    private var iconPickerGrid: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button {
+                    selectedIconSymbol = ""
+                    selectedIconFileId = nil
+                    customIconPhotoItem = nil
+                } label: {
+                    Image(systemName: "circle.slash")
+                        .font(.title2)
+                        .frame(width: 36, height: 36)
+                        .background(selectedIconSymbol.isEmpty && selectedIconFileId == nil ? Color.accentColor.opacity(0.2) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                ForEach(Category.predefinedIconSymbols, id: \.self) { symbol in
+                    Button {
+                        selectedIconSymbol = symbol
+                        selectedIconFileId = nil
+                        customIconPhotoItem = nil
+                    } label: {
+                        Image(systemName: symbol)
+                            .font(.title2)
+                            .frame(width: 36, height: 36)
+                            .background(selectedIconSymbol == symbol ? Color.accentColor.opacity(0.2) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .frame(height: 52)
+    }
+
+    private var customIconPicker: some View {
+        HStack(spacing: 12) {
+            if isUploadingIcon {
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
+            PhotosPicker(
+                selection: $customIconPhotoItem,
+                matching: .images,
+                photoLibrary: .shared()
+            ) {
+                if selectedIconFileId != nil {
+                    Label("Change custom image", systemImage: "photo.on.rectangle.angled")
+                } else {
+                    Label("Use custom image", systemImage: "photo.badge.plus")
+                }
+            }
+            .disabled(isUploadingIcon)
+            if selectedIconFileId != nil {
+                Button(role: .destructive) {
+                    customIconPhotoItem = nil
+                    selectedIconFileId = nil
+                    selectedIconSymbol = ""
+                } label: {
+                    Text("Remove custom image")
+                }
+            }
+        }
+    }
+
+    private func uploadCustomIcon(from item: PhotosPickerItem) async {
+        isUploadingIcon = true
+        defer { isUploadingIcon = false }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let folderId = session.appState.driveDocumentsFolderId else { return }
+        let filename = "category-icon-\(category.id)-\(UUID().uuidString.prefix(8)).jpg"
+        do {
+            let fileId = try await session.drive.uploadFile(data: data, mimeType: "image/jpeg", filename: filename, parentFolderId: folderId)
+            selectedIconFileId = fileId
+            selectedIconSymbol = ""
+        } catch {
+            // Could surface error to user
+        }
+    }
+
+    private func save() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let parentId = selectedParentId.isEmpty ? nil : selectedParentId
+        let iconSymbol = selectedIconFileId != nil ? nil : (selectedIconSymbol.isEmpty ? nil : selectedIconSymbol)
+        let iconFileId = selectedIconFileId
+        Task {
+            await categoriesVM.updateCategory(id: category.id, name: trimmed, parentId: parentId, iconSymbol: iconSymbol, iconFileId: iconFileId)
+        }
+        onDismiss()
     }
 }
 
@@ -372,8 +482,14 @@ private struct NewCategorySheet: View {
     let categoriesVM: CategoriesViewModel
     let onDismiss: () -> Void
 
+    @EnvironmentObject private var session: Session
+
     @State private var name: String = ""
     @State private var selectedParentId: String = ""
+    @State private var selectedIconSymbol: String = ""
+    @State private var selectedIconFileId: String?
+    @State private var customIconPhotoItem: PhotosPickerItem?
+    @State private var isUploadingIcon = false
 
     var body: some View {
         NavigationStack {
@@ -394,10 +510,16 @@ private struct NewCategorySheet: View {
                 } header: {
                     Text("Parent")
                 }
+                Section {
+                    newCategoryIconGrid
+                    newCategoryCustomIconPicker
+                } header: {
+                    Text("Icon")
+                }
             }
             .formStyle(.grouped)
             .padding(24)
-            .frame(width: 480)
+            .frame(width: 560)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .navigationTitle("New category")
             #if os(iOS)
@@ -412,19 +534,97 @@ private struct NewCategorySheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        let trimmed = name.trimmingCharacters(in: .whitespaces)
-                        guard !trimmed.isEmpty else { return }
-                        let parentId = selectedParentId.isEmpty ? nil : selectedParentId
-                        Task {
-                            await categoriesVM.addCategory(name: trimmed, parentId: parentId)
-                        }
-                        onDismiss()
+                        addCategory()
                     }
                     .help("Add category")
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isUploadingIcon)
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+        .onChange(of: customIconPhotoItem) { _, newItem in
+            guard let newItem else {
+                selectedIconFileId = nil
+                return
+            }
+            Task { await uploadCustomIcon(from: newItem) }
+        }
+    }
+
+    private var newCategoryIconGrid: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                Button {
+                    selectedIconSymbol = ""
+                    selectedIconFileId = nil
+                    customIconPhotoItem = nil
+                } label: {
+                    Image(systemName: "circle.slash")
+                        .font(.title2)
+                        .frame(width: 36, height: 36)
+                        .background(selectedIconSymbol.isEmpty && selectedIconFileId == nil ? Color.accentColor.opacity(0.2) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                ForEach(Category.predefinedIconSymbols, id: \.self) { symbol in
+                    Button {
+                        selectedIconSymbol = symbol
+                        selectedIconFileId = nil
+                        customIconPhotoItem = nil
+                    } label: {
+                        Image(systemName: symbol)
+                            .font(.title2)
+                            .frame(width: 36, height: 36)
+                            .background(selectedIconSymbol == symbol ? Color.accentColor.opacity(0.2) : Color.clear)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .frame(height: 52)
+    }
+
+    private var newCategoryCustomIconPicker: some View {
+        HStack(spacing: 12) {
+            if isUploadingIcon { ProgressView().scaleEffect(0.8) }
+            PhotosPicker(selection: $customIconPhotoItem, matching: .images, photoLibrary: .shared()) {
+                Label(selectedIconFileId != nil ? "Change custom image" : "Use custom image", systemImage: selectedIconFileId != nil ? "photo.on.rectangle.angled" : "photo.badge.plus")
+            }
+            .disabled(isUploadingIcon)
+            if selectedIconFileId != nil {
+                Button(role: .destructive) {
+                    customIconPhotoItem = nil
+                    selectedIconFileId = nil
+                    selectedIconSymbol = ""
+                } label: { Text("Remove custom image") }
+            }
+        }
+    }
+
+    private func uploadCustomIcon(from item: PhotosPickerItem) async {
+        isUploadingIcon = true
+        defer { isUploadingIcon = false }
+        guard let data = try? await item.loadTransferable(type: Data.self),
+              let folderId = session.appState.driveDocumentsFolderId else { return }
+        let filename = "category-icon-\(UUID().uuidString.prefix(8)).jpg"
+        do {
+            let fileId = try await session.drive.uploadFile(data: data, mimeType: "image/jpeg", filename: filename, parentFolderId: folderId)
+            selectedIconFileId = fileId
+            selectedIconSymbol = ""
+        } catch { }
+    }
+
+    private func addCategory() {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let parentId = selectedParentId.isEmpty ? nil : selectedParentId
+        let iconSymbol = selectedIconFileId != nil ? nil : (selectedIconSymbol.isEmpty ? nil : selectedIconSymbol)
+        let iconFileId = selectedIconFileId
+        Task {
+            await categoriesVM.addCategory(name: trimmed, parentId: parentId, iconSymbol: iconSymbol, iconFileId: iconFileId)
+        }
+        onDismiss()
     }
 }

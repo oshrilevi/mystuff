@@ -8,15 +8,18 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 
 ### Sheet: **Categories**
 
-| Column index | Name    | Type   | Notes                  |
-|--------------|---------|--------|------------------------|
-| A (0)        | id      | String | UUID                   |
-| B (1)        | name    | String | Display name           |
-| C (2)        | order   | Int    | Sort order (row-based) |
-| D (3)        | parentId| String | Optional parent category id |
+| Column index | Name      | Type   | Notes                                           |
+|--------------|-----------|--------|-------------------------------------------------|
+| A (0)        | id        | String | UUID                                            |
+| B (1)        | name      | String | Display name                                    |
+| C (2)        | order     | Int    | Sort order (row-based)                          |
+| D (3)        | parentId  | String | Optional parent category id                     |
+| E (4)        | iconSymbol| String | SF Symbol name for predefined icon (optional)   |
+| F (5)        | iconFileId| String | Drive file ID for custom icon image (optional) |
 
-- Row 1 is the header row (`id`, `name`, `order`, `parentId`). Data starts at row 2.
-- `Category.columnOrder` in code: `["id", "name", "order", "parentId"]`.
+- Row 1 is the header row (`id`, `name`, `order`, `parentId`, `iconSymbol`, `iconFileId`). Data starts at row 2.
+- `Category.columnOrder` in code: `["id", "name", "order", "parentId", "iconSymbol", "iconFileId"]`.
+- Custom category icons are stored in the MyStuff Documents folder; `iconFileId` references the Drive file. When set, it takes precedence over `iconSymbol` in the UI.
 
 ### Sheet: **Items**
 

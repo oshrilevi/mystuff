@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 /// Rounds value to 2 decimal places and formats as currency without trailing zeros.
 fileprivate func formatCurrency(_ value: Double) -> String {
@@ -69,6 +74,10 @@ struct CategorySection: Identifiable {
     let name: String
     let items: [Item]
     let totalValue: Double
+    /// SF Symbol name for section icon (from category).
+    var iconSymbol: String?
+    /// Drive file ID for custom section icon (from category).
+    var iconFileId: String?
 }
 
 /// Groups one or more category sections under a single parent category (for hierarchy in the Gallery).
@@ -177,14 +186,14 @@ struct GalleryView: View {
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total, iconSymbol: cat.iconSymbol, iconFileId: cat.iconFileId))
         }
         if let uncategorized = byCategory[""], !uncategorized.isEmpty {
             let total = uncategorized.reduce(0.0) { sum, item in
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, iconSymbol: nil, iconFileId: nil))
         }
         return sections
     }
@@ -286,7 +295,13 @@ struct GalleryView: View {
                                             let groupTotalValue: Double = group.sections.reduce(0) { sum, sec in
                                                 Category.isWishlist(sec.name) ? sum : sum + sec.totalValue
                                             }
-                                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                            HStack(alignment: .center, spacing: 8) {
+                                                CategoryIconView(
+                                                    iconSymbol: categories.first(where: { $0.id == group.id })?.iconSymbol,
+                                                    iconFileId: categories.first(where: { $0.id == group.id })?.iconFileId,
+                                                    drive: session.drive,
+                                                    size: 22
+                                                )
                                                 Text(group.name)
                                                     .font(.headline)
                                                 if parentCollapsed {
@@ -362,6 +377,9 @@ struct GalleryView: View {
                                                     set: { sectionSortOrders[section.id] = $0 }
                                                 ),
                                                 sectionId: section.id,
+                                                iconSymbol: section.iconSymbol,
+                                                iconFileId: section.iconFileId,
+                                                drive: session.drive,
                                                 isCollapsed: isParentSection ? parentCollapsed : collapsedSectionIds.contains(section.id),
                                                 isSubcategory: isSubcategory,
                                                 isLastSubcategoryInGroup: isLastSubcategoryInGroup,
@@ -464,6 +482,9 @@ struct GalleryView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
+                                        iconSymbol: categories.first(where: { $0.id == singleCategoryId })?.iconSymbol,
+                                        iconFileId: categories.first(where: { $0.id == singleCategoryId })?.iconFileId,
+                                        drive: session.drive,
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -1110,6 +1131,71 @@ struct ItemCard: View {
     }
 }
 
+/// Displays a category icon: SF Symbol or custom image loaded from Drive (Documents folder).
+struct CategoryIconView: View {
+    var iconSymbol: String?
+    var iconFileId: String?
+    var drive: DriveService?
+    var size: CGFloat = 24
+
+    @State private var imageData: Data?
+
+    var body: some View {
+        Group {
+            if let fileId = iconFileId, let drive = drive {
+                if let data = imageData {
+                    imageFromData(data)
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: size * 0.7))
+                        .foregroundStyle(.secondary)
+                }
+            } else if let symbol = iconSymbol, !symbol.isEmpty {
+                Image(systemName: symbol)
+                    .font(.system(size: size * 0.85))
+                    .foregroundStyle(.secondary)
+            } else {
+                Color.clear
+            }
+        }
+        .frame(width: size, height: size)
+        .task(id: iconFileId) {
+            guard let fileId = iconFileId, let drive = drive else { return }
+            guard imageData == nil else { return }
+            imageData = try? await drive.fetchFileData(fileId: fileId)
+        }
+    }
+
+    @ViewBuilder
+    private func imageFromData(_ data: Data) -> some View {
+        #if os(iOS)
+        if let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        } else {
+            Image(systemName: "photo")
+                .font(.system(size: size * 0.7))
+                .foregroundStyle(.secondary)
+        }
+        #elseif os(macOS)
+        if let nsImage = NSImage(data: data) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        } else {
+            Image(systemName: "photo")
+                .font(.system(size: size * 0.7))
+                .foregroundStyle(.secondary)
+        }
+        #else
+        Image(systemName: "photo")
+        #endif
+    }
+}
+
 struct CategorySectionHeader: View {
     /// Fixed height so the header doesn't shrink when collapsed.
     static let fixedHeight: CGFloat = 44
@@ -1120,6 +1206,9 @@ struct CategorySectionHeader: View {
     @Binding var sectionSearchText: String
     @Binding var sortOrder: ItemSortOrder
     var sectionId: String? = nil
+    var iconSymbol: String? = nil
+    var iconFileId: String? = nil
+    var drive: DriveService? = nil
     var isCollapsed: Bool = false
     /// True when this section is a subcategory under a parent (different background from top-level).
     var isSubcategory: Bool = false
@@ -1150,7 +1239,8 @@ struct CategorySectionHeader: View {
 
     /// When collapsed, keep count and total tight next to the title (like parent group header).
     private var titleAndSummary: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 4) {
+        HStack(alignment: .center, spacing: 8) {
+            CategoryIconView(iconSymbol: iconSymbol, iconFileId: iconFileId, drive: drive, size: 22)
             Text(name)
                 .font(.subheadline)
                 .fontWeight(.medium)
@@ -1173,16 +1263,6 @@ struct CategorySectionHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if let onTap {
-                Button {
-                    onTap()
-                } label: {
-                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
             titleAndSummary
             if !isCollapsed {
                 Spacer(minLength: 8)
