@@ -301,6 +301,90 @@ private struct ReorderCategoriesSheet: View {
     }
 }
 
+// MARK: - Category icon picker (search + grid)
+
+private struct CategoryIconPickerView: View {
+    @Binding var selectedIconSymbol: String
+    /// True when "no icon" should appear selected (no symbol and no custom image).
+    var noIconIsSelected: Bool
+    /// Called when user picks a symbol or "no icon" so the parent can clear custom icon state.
+    var onSelectSymbol: () -> Void
+
+    @State private var searchText: String = ""
+    #if os(iOS)
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 5)
+    #else
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 8)
+    #endif
+    private let cellSize: CGFloat = 44
+
+    private var filteredSymbols: [String] {
+        let list = Category.predefinedIconSymbols
+        guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else { return list }
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        return list.filter { $0.lowercased().contains(query) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                    .font(.body)
+                TextField("Search icons…", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(10)
+            .background(Color(.secondarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    Button {
+                        selectedIconSymbol = ""
+                        onSelectSymbol()
+                    } label: {
+                        Image(systemName: "circle.slash")
+                            .font(.title2)
+                            .frame(width: cellSize, height: cellSize)
+                            .background(noIconIsSelected ? Color.accentColor.opacity(0.25) : Color(.tertiarySystemFill))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(filteredSymbols, id: \.self) { symbol in
+                        Button {
+                            selectedIconSymbol = symbol
+                            onSelectSymbol()
+                        } label: {
+                            Image(systemName: symbol)
+                                .font(.title2)
+                                .frame(width: cellSize, height: cellSize)
+                                .background(selectedIconSymbol == symbol ? Color.accentColor.opacity(0.25) : Color(.tertiarySystemFill))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .frame(maxHeight: 280)
+        }
+    }
+}
+
+// MARK: - Edit category sheet
+
 private struct EditCategorySheet: View {
     let category: Category
     let categoriesVM: CategoriesViewModel
@@ -345,7 +429,13 @@ private struct EditCategorySheet: View {
                     Text("Parent")
                 }
                 Section {
-                    iconPickerGrid
+                    CategoryIconPickerView(
+                        selectedIconSymbol: $selectedIconSymbol,
+                        noIconIsSelected: selectedIconSymbol.isEmpty && selectedIconFileId == nil
+                    ) {
+                        selectedIconFileId = nil
+                        customIconPhotoItem = nil
+                    }
                     customIconPicker
                 } header: {
                     Text("Icon")
@@ -383,41 +473,6 @@ private struct EditCategorySheet: View {
             }
             Task { await uploadCustomIcon(from: newItem) }
         }
-    }
-
-    private var iconPickerGrid: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                Button {
-                    selectedIconSymbol = ""
-                    selectedIconFileId = nil
-                    customIconPhotoItem = nil
-                } label: {
-                    Image(systemName: "circle.slash")
-                        .font(.title2)
-                        .frame(width: 36, height: 36)
-                        .background(selectedIconSymbol.isEmpty && selectedIconFileId == nil ? Color.accentColor.opacity(0.2) : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-                ForEach(Category.predefinedIconSymbols, id: \.self) { symbol in
-                    Button {
-                        selectedIconSymbol = symbol
-                        selectedIconFileId = nil
-                        customIconPhotoItem = nil
-                    } label: {
-                        Image(systemName: symbol)
-                            .font(.title2)
-                            .frame(width: 36, height: 36)
-                            .background(selectedIconSymbol == symbol ? Color.accentColor.opacity(0.2) : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .frame(height: 52)
     }
 
     private var customIconPicker: some View {
@@ -511,7 +566,13 @@ private struct NewCategorySheet: View {
                     Text("Parent")
                 }
                 Section {
-                    newCategoryIconGrid
+                    CategoryIconPickerView(
+                        selectedIconSymbol: $selectedIconSymbol,
+                        noIconIsSelected: selectedIconSymbol.isEmpty && selectedIconFileId == nil
+                    ) {
+                        selectedIconFileId = nil
+                        customIconPhotoItem = nil
+                    }
                     newCategoryCustomIconPicker
                 } header: {
                     Text("Icon")
@@ -549,41 +610,6 @@ private struct NewCategorySheet: View {
             }
             Task { await uploadCustomIcon(from: newItem) }
         }
-    }
-
-    private var newCategoryIconGrid: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                Button {
-                    selectedIconSymbol = ""
-                    selectedIconFileId = nil
-                    customIconPhotoItem = nil
-                } label: {
-                    Image(systemName: "circle.slash")
-                        .font(.title2)
-                        .frame(width: 36, height: 36)
-                        .background(selectedIconSymbol.isEmpty && selectedIconFileId == nil ? Color.accentColor.opacity(0.2) : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
-                ForEach(Category.predefinedIconSymbols, id: \.self) { symbol in
-                    Button {
-                        selectedIconSymbol = symbol
-                        selectedIconFileId = nil
-                        customIconPhotoItem = nil
-                    } label: {
-                        Image(systemName: symbol)
-                            .font(.title2)
-                            .frame(width: 36, height: 36)
-                            .background(selectedIconSymbol == symbol ? Color.accentColor.opacity(0.2) : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        .frame(height: 52)
     }
 
     private var newCategoryCustomIconPicker: some View {
