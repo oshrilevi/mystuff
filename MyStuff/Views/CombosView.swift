@@ -6,8 +6,12 @@ struct CombosView: View {
 
     @State private var showAddSheet = false
     @State private var editingCombo: Combo?
+    @State private var selectedItem: Item?
+    @State private var combosPendingDeletion: [Combo] = []
+    @State private var showDeleteConfirmation = false
 
     private var combosVM: CombosViewModel { session.combos }
+    private var inventory: InventoryViewModel { session.inventory }
 
     var body: some View {
         NavigationStack {
@@ -34,15 +38,29 @@ struct CombosView: View {
                         }
                         ForEach(combosVM.filteredCombos) { combo in
                             NavigationLink(value: combo) {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 8) {
                                     Text(combo.name)
                                         .font(.body)
                                         .fontWeight(.medium)
-                                    if !combo.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        Text(combo.notes)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(2)
+                                    let itemsInCombo = combosVM.items(for: combo, from: inventory.items)
+                                    if !itemsInCombo.isEmpty {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 8) {
+                                                ForEach(itemsInCombo) { item in
+                                                    ItemThumbnailView(
+                                                        drive: session.drive,
+                                                        photoId: item.photoIds.first,
+                                                        size: 44,
+                                                        cornerRadius: 8,
+                                                        placeholderFont: .title2
+                                                    )
+                                                    .onTapGesture {
+                                                        selectedItem = item
+                                                    }
+                                                }
+                                            }
+                                            .padding(.top, 4)
+                                        }
                                     }
                                 }
                             }
@@ -50,10 +68,11 @@ struct CombosView: View {
                                 Button {
                                     editingCombo = combo
                                 } label: {
-                                    Label("Rename", systemImage: "pencil")
+                                    Label("Edit", systemImage: "pencil")
                                 }
                                 Button(role: .destructive) {
-                                    Task { await combosVM.deleteCombos([combo]) }
+                                    combosPendingDeletion = [combo]
+                                    showDeleteConfirmation = true
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
@@ -61,9 +80,8 @@ struct CombosView: View {
                         }
                         .onDelete { indexSet in
                             let combosToDelete = indexSet.map { combosVM.filteredCombos[$0] }
-                            Task {
-                                await combosVM.deleteCombos(combosToDelete)
-                            }
+                            combosPendingDeletion = combosToDelete
+                            showDeleteConfirmation = true
                         }
                     }
                     .refreshable { await combosVM.load() }
@@ -117,7 +135,54 @@ struct CombosView: View {
                     onDismiss: { editingCombo = nil }
                 )
             }
-            .task { await combosVM.load() }
+            .sheet(item: $selectedItem) { item in
+                ItemDetailView(
+                    item: item,
+                    allowEditing: false,
+                    allowDeleting: false,
+                    onDismiss: { selectedItem = nil }
+                )
+                .environmentObject(session)
+            }
+            .confirmationDialog(
+                "Delete combo\(combosPendingDeletion.count > 1 ? "s" : "")?",
+                isPresented: $showDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                if !combosPendingDeletion.isEmpty {
+                    if combosPendingDeletion.count == 1 {
+                        let name = combosPendingDeletion[0].name
+                        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let display = trimmed.isEmpty ? "this combo" : "\"\(trimmed.count > 75 ? String(trimmed.prefix(75)) + "…" : trimmed)\""
+                        Button("Delete \(display)", role: .destructive) {
+                            let toDelete = combosPendingDeletion
+                            combosPendingDeletion = []
+                            Task {
+                                await combosVM.deleteCombos(toDelete)
+                            }
+                        }
+                    } else {
+                        Button("Delete \(combosPendingDeletion.count) combos", role: .destructive) {
+                            let toDelete = combosPendingDeletion
+                            combosPendingDeletion = []
+                            Task {
+                                await combosVM.deleteCombos(toDelete)
+                            }
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    combosPendingDeletion = []
+                }
+            } message: {
+                Text("This cannot be undone. The selected combo\(combosPendingDeletion.count > 1 ? "s" : "") will be removed.")
+            }
+            .task {
+                await combosVM.load()
+                if inventory.items.isEmpty {
+                    await inventory.refresh()
+                }
+            }
         }
     }
 

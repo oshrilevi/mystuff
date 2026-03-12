@@ -61,6 +61,10 @@ struct ItemDetailView: View {
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
     let item: Item
+    /// When false, hides the Edit button and prevents switching into edit mode.
+    let allowEditing: Bool
+    /// When false, hides the Delete button and confirmation dialog.
+    let allowDeleting: Bool
     /// Called when the user taps Done or after a successful Delete so the parent can clear the sheet binding.
     var onDismiss: (() -> Void)? = nil
     @State private var isEditing = false
@@ -71,8 +75,10 @@ struct ItemDetailView: View {
     @State private var currentPriceError: String?
     @State private var selectedAttachment: ItemAttachment?
 
-    init(item: Item, onDismiss: (() -> Void)? = nil) {
+    init(item: Item, allowEditing: Bool = true, allowDeleting: Bool = true, onDismiss: (() -> Void)? = nil) {
         self.item = item
+        self.allowEditing = allowEditing
+        self.allowDeleting = allowDeleting
         self.onDismiss = onDismiss
         _currentItem = State(initialValue: item)
     }
@@ -164,25 +170,31 @@ struct ItemDetailView: View {
                     .navigationTitle(currentItem.name)
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
-                            Button("Edit") {
-                                withAnimation(.easeInOut(duration: 0.35)) { isEditing = true }
+                            if allowEditing {
+                                Button("Edit") {
+                                    withAnimation(.easeInOut(duration: 0.35)) { isEditing = true }
+                                }
+                                .help("Edit item")
                             }
-                            .help("Edit item")
                         }
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Done") { dismissSheet() }
                                 .help("Done")
                         }
                         ToolbarItem(placement: .destructiveAction) {
-                            Button("Delete", role: .destructive) { showDeleteConfirmation = true }
-                                .help("Delete item")
+                            if allowDeleting {
+                                Button("Delete", role: .destructive) { showDeleteConfirmation = true }
+                                    .help("Delete item")
+                            }
                         }
                     }
                     .confirmationDialog("Delete item?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
-                        Button("Delete \"\(currentItem.name.count > 75 ? String(currentItem.name.prefix(75)) + "…" : currentItem.name)\"", role: .destructive) {
-                            Task {
-                                await inventory.deleteItems(ids: [currentItem.id])
-                                dismissSheet()
+                        if allowDeleting {
+                            Button("Delete \"\(currentItem.name.count > 75 ? String(currentItem.name.prefix(75)) + "…" : currentItem.name)\"", role: .destructive) {
+                                Task {
+                                    await inventory.deleteItems(ids: [currentItem.id])
+                                    dismissSheet()
+                                }
                             }
                         }
                         Button("Cancel", role: .cancel) {}
