@@ -63,6 +63,7 @@ struct CombosView: View {
                                         }
                                     }
                                 }
+                                .padding(.vertical, 6)
                             }
                             .contextMenu {
                                 Button {
