@@ -1,22 +1,19 @@
 import SwiftUI
 
 struct ItemSelectionView: View {
-    @EnvironmentObject var session: Session
-
+    /// The list we're adding items to (used for title only).
     let list: UserList
+    /// Snapshot of all available items at the time the picker is presented.
+    let allItems: [Item]
+    /// Snapshot of categories for display.
+    let categories: [Category]
+    /// Items that are already in the list when opening the picker.
     let initiallySelectedIds: Set<String>
     let onDone: ([Item]) -> Void
     let onCancel: () -> Void
 
     @State private var selectedIds: Set<String> = []
     @State private var searchText: String = ""
-
-    private var inventory: InventoryViewModel { session.inventory }
-    private var categories: [Category] { session.categories.categories }
-
-    private var allItems: [Item] {
-        inventory.items
-    }
 
     private var filteredItems: [Item] {
         var result = allItems
@@ -34,31 +31,41 @@ struct ItemSelectionView: View {
     var body: some View {
         NavigationStack {
             List {
-                ForEach(filteredItems) { item in
-                    HStack(spacing: 12) {
-                        Image(systemName: selectedIds.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(selectedIds.contains(item.id) ? .accentColor : .secondary)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name)
-                                .font(.body)
-                            HStack(spacing: 6) {
-                                if let catName = categories.first(where: { $0.id == item.categoryId })?.name {
-                                    Text(catName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                if !item.tags.isEmpty {
-                                    Text(item.tags.joined(separator: ", "))
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                        .lineLimit(1)
+                if filteredItems.isEmpty {
+                    Section {
+                        Text("No items available yet. Add items from the Inventory section first, or adjust your search.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 24)
+                    }
+                } else {
+                    ForEach(filteredItems) { item in
+                        HStack(spacing: 12) {
+                            Image(systemName: selectedIds.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(selectedIds.contains(item.id) ? .accentColor : .secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(.body)
+                                HStack(spacing: 6) {
+                                    if let catName = categories.first(where: { $0.id == item.categoryId })?.name {
+                                        Text(catName)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    if !item.tags.isEmpty {
+                                        Text(item.tags.joined(separator: ", "))
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                            .lineLimit(1)
+                                    }
                                 }
                             }
                         }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        toggleSelection(for: item.id)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            toggleSelection(for: item.id)
+                        }
                     }
                 }
             }
@@ -84,6 +91,9 @@ struct ItemSelectionView: View {
                 selectedIds = initiallySelectedIds
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 420)
+        #endif
     }
 
     private var searchField: some View {

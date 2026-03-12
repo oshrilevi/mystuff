@@ -117,7 +117,16 @@ struct ListsView: View {
                     onDismiss: { editingList = nil }
                 )
             }
-            .task { await listsVM.load() }
+            .task {
+                await listsVM.load()
+                // Ensure inventory and combos are loaded so pickers in ListDetailView have data.
+                if session.inventory.items.isEmpty {
+                    await session.inventory.refresh()
+                }
+                if session.combos.combos.isEmpty {
+                    await session.combos.load()
+                }
+            }
         }
     }
 

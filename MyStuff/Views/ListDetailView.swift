@@ -6,6 +6,7 @@ struct ListDetailView: View {
     let list: UserList
 
     @State private var selectedItem: Item?
+    @State private var showItemPicker = false
     @State private var showComboPicker = false
 
     private var listsVM: ListsViewModel { session.lists }
@@ -98,6 +99,11 @@ struct ListDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 12) {
                     Button {
+                        showItemPicker = true
+                    } label: {
+                        Label("Add items", systemImage: "plus.circle")
+                    }
+                    Button {
                         showComboPicker = true
                     } label: {
                         Label("Add combos", systemImage: "square.grid.2x2")
@@ -110,6 +116,11 @@ struct ListDetailView: View {
             #else
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 12) {
+                    Button {
+                        showItemPicker = true
+                    } label: {
+                        Label("Add items", systemImage: "plus.circle")
+                    }
                     Button {
                         showComboPicker = true
                     } label: {
@@ -126,8 +137,30 @@ struct ListDetailView: View {
             ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                 .environmentObject(session)
         }
+        .sheet(isPresented: $showItemPicker) {
+            ItemSelectionView(
+                list: list,
+                allItems: inventory.items,
+                categories: session.categories.categories,
+                initiallySelectedIds: Set(itemsInList.map(\.id)),
+                onDone: { items in
+                    Task {
+                        await session.lists.addItems(items, to: list)
+                    }
+                    showItemPicker = false
+                },
+                onCancel: {
+                    showItemPicker = false
+                }
+            )
+            #if os(iOS)
+            .presentationDetents([.medium, .large])
+            #endif
+            .environmentObject(session)
+        }
         .sheet(isPresented: $showComboPicker) {
             ComboPickerView(
+                combos: session.combos.combos,
                 onDone: { combos in
                     Task {
                         let allItems = session.inventory.items
@@ -142,7 +175,14 @@ struct ListDetailView: View {
                     showComboPicker = false
                 }
             )
+            #if os(iOS)
+            .presentationDetents([.medium, .large])
+            #endif
             .environmentObject(session)
+        }
+        .task {
+            await listsVM.load()
+            await inventory.refresh()
         }
     }
 

@@ -1,17 +1,17 @@
 import SwiftUI
 
 struct ComboPickerView: View {
-    @EnvironmentObject var session: Session
-
+    /// Snapshot of all available combos at the time the picker is presented.
+    let combos: [Combo]
     let onDone: ([Combo]) -> Void
     let onCancel: () -> Void
 
     @State private var selectedIds: Set<String> = []
 
-    private var combosVM: CombosViewModel { session.combos }
-
     private var sortedCombos: [Combo] {
-        combosVM.filteredCombos
+        combos.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
     }
 
     var body: some View {
@@ -69,6 +69,9 @@ struct ComboPickerView: View {
                 }
             }
         }
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 420)
+        #endif
     }
 
     private func toggleSelection(for combo: Combo) {
