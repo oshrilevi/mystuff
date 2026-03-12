@@ -65,6 +65,13 @@
 		B00100000000000000000040 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000044 /* ListsView.swift */; };
 		B00100000000000000000041 /* ListDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000045 /* ListDetailView.swift */; };
 		B00100000000000000000042 /* ItemSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000046 /* ItemSelectionView.swift */; };
+		B00100000000000000000043 /* Combo.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000047 /* Combo.swift */; };
+		B00100000000000000000044 /* ComboItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000048 /* ComboItem.swift */; };
+		B00100000000000000000045 /* CombosViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000049 /* CombosViewModel.swift */; };
+		B00100000000000000000046 /* CombosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000050 /* CombosView.swift */; };
+		B00100000000000000000047 /* ComboDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000051 /* ComboDetailView.swift */; };
+		B00100000000000000000048 /* ComboPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000052 /* ComboPickerView.swift */; };
+		B00100000000000000000049 /* ComboItemSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000053 /* ComboItemSelectionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -126,6 +133,13 @@
 		F00100000000000000000044 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
 		F00100000000000000000045 /* ListDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListDetailView.swift; sourceTree = "<group>"; };
 		F00100000000000000000046 /* ItemSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemSelectionView.swift; sourceTree = "<group>"; };
+		F00100000000000000000047 /* Combo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Combo.swift; sourceTree = "<group>"; };
+		F00100000000000000000048 /* ComboItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboItem.swift; sourceTree = "<group>"; };
+		F00100000000000000000049 /* CombosViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombosViewModel.swift; sourceTree = "<group>"; };
+		F00100000000000000000050 /* CombosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CombosView.swift; sourceTree = "<group>"; };
+		F00100000000000000000051 /* ComboDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboDetailView.swift; sourceTree = "<group>"; };
+		F00100000000000000000052 /* ComboPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboPickerView.swift; sourceTree = "<group>"; };
+		F00100000000000000000053 /* ComboItemSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComboItemSelectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +174,8 @@
 				F00100000000000000000027 /* UserSource.swift */,
 				F00100000000000000000041 /* List.swift */,
 				F00100000000000000000042 /* ListItem.swift */,
+				F00100000000000000000047 /* Combo.swift */,
+				F00100000000000000000048 /* ComboItem.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -189,6 +205,7 @@
 				F00100000000000000000022 /* StoresViewModel.swift */,
 				F00100000000000000000028 /* SourcesViewModel.swift */,
 				F00100000000000000000043 /* ListsViewModel.swift */,
+				F00100000000000000000049 /* CombosViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -223,6 +240,10 @@
 				F00100000000000000000044 /* ListsView.swift */,
 				F00100000000000000000045 /* ListDetailView.swift */,
 				F00100000000000000000046 /* ItemSelectionView.swift */,
+				F00100000000000000000050 /* CombosView.swift */,
+				F00100000000000000000051 /* ComboDetailView.swift */,
+				F00100000000000000000052 /* ComboPickerView.swift */,
+				F00100000000000000000053 /* ComboItemSelectionView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -383,6 +404,13 @@
 				B00100000000000000000040 /* ListsView.swift in Sources */,
 				B00100000000000000000041 /* ListDetailView.swift in Sources */,
 				B00100000000000000000042 /* ItemSelectionView.swift in Sources */,
+				B00100000000000000000043 /* Combo.swift in Sources */,
+				B00100000000000000000044 /* ComboItem.swift in Sources */,
+				B00100000000000000000045 /* CombosViewModel.swift in Sources */,
+				B00100000000000000000046 /* CombosView.swift in Sources */,
+				B00100000000000000000047 /* ComboDetailView.swift in Sources */,
+				B00100000000000000000048 /* ComboPickerView.swift in Sources */,
+				B00100000000000000000049 /* ComboItemSelectionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

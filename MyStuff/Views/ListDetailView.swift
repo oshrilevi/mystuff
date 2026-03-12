@@ -6,6 +6,7 @@ struct ListDetailView: View {
     let list: UserList
 
     @State private var selectedItem: Item?
+    @State private var showComboPicker = false
 
     private var listsVM: ListsViewModel { session.lists }
     private var inventory: InventoryViewModel { session.inventory }
@@ -95,14 +96,28 @@ struct ListDetailView: View {
         .toolbar {
             #if os(macOS)
             ToolbarItem(placement: .primaryAction) {
-                ShareLink(item: shareText) {
-                    Label("Share list", systemImage: "square.and.arrow.up")
+                HStack(spacing: 12) {
+                    Button {
+                        showComboPicker = true
+                    } label: {
+                        Label("Add combos", systemImage: "square.grid.2x2")
+                    }
+                    ShareLink(item: shareText) {
+                        Label("Share list", systemImage: "square.and.arrow.up")
+                    }
                 }
             }
             #else
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: shareText) {
-                    Label("Share list", systemImage: "square.and.arrow.up")
+                HStack(spacing: 12) {
+                    Button {
+                        showComboPicker = true
+                    } label: {
+                        Label("Add combos", systemImage: "square.grid.2x2")
+                    }
+                    ShareLink(item: shareText) {
+                        Label("Share list", systemImage: "square.and.arrow.up")
+                    }
                 }
             }
             #endif
@@ -110,6 +125,24 @@ struct ListDetailView: View {
         .sheet(item: $selectedItem) { item in
             ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                 .environmentObject(session)
+        }
+        .sheet(isPresented: $showComboPicker) {
+            ComboPickerView(
+                onDone: { combos in
+                    Task {
+                        let allItems = session.inventory.items
+                        for combo in combos {
+                            let comboItems = session.combos.items(for: combo, from: allItems)
+                            await session.lists.addItems(comboItems, to: list)
+                        }
+                    }
+                    showComboPicker = false
+                },
+                onCancel: {
+                    showComboPicker = false
+                }
+            )
+            .environmentObject(session)
         }
     }
 

@@ -129,6 +129,34 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 - `ListItem.columnOrder` in code: `["id", "listId", "itemId", "order", "note"]`.
 - For existing spreadsheets created before ListItems existed, the app will add the "ListItems" sheet on first load of the Lists feature and append the header (migration in `ListsViewModel.load()`).
 
+### Sheet: **Combos**
+
+| Column index | Name      | Type   | Notes                                      |
+|--------------|-----------|--------|--------------------------------------------|
+| A (0)        | id        | String | UUID                                       |
+| B (1)        | name      | String | Combo name (e.g. "Camera + 2 lenses")     |
+| C (2)        | notes     | String | Optional freeform notes                    |
+| D (3)        | order     | Int    | Sort order (row-based)                     |
+| E (4)        | createdAt | String | ISO8601                                    |
+| F (5)        | updatedAt | String | ISO8601                                    |
+
+- Row 1 is the header row (`id`, `name`, `notes`, `order`, `createdAt`, `updatedAt`). Data starts at row 2.
+- `Combo.columnOrder` in code: `["id", "name", "notes", "order", "createdAt", "updatedAt"]`.
+- For existing spreadsheets created before Combos existed, the app will add the "Combos" sheet on first load of the Combos feature and append the header (migration in `CombosViewModel.load()`).
+
+### Sheet: **ComboItems**
+
+| Column index | Name     | Type   | Notes                                            |
+|--------------|----------|--------|--------------------------------------------------|
+| A (0)        | id       | String | UUID                                             |
+| B (1)        | comboId  | String | FK to Combos id                                  |
+| C (2)        | itemId   | String | FK to Items id                                   |
+| D (3)        | order    | Int    | Optional order of items within the combo        |
+
+- Row 1 is the header row (`id`, `comboId`, `itemId`, `order`). Data starts at row 2.
+- `ComboItem.columnOrder` in code: `["id", "comboId", "itemId", "order"]`.
+- For existing spreadsheets created before ComboItems existed, the app will add the "ComboItems" sheet on first load of the Combos feature and append the header (migration in `CombosViewModel.load()`).
+
 ## Google Drive
 
 - **Folders:** Two folders per user, both created in bootstrap via `DriveService.createFolder`:
