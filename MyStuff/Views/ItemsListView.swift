@@ -445,7 +445,14 @@ struct ItemsListView: View {
                         .font(.headline)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    ExportMenuView()
+                    HStack(spacing: 12) {
+                        NavigationLink {
+                            ListsView()
+                        } label: {
+                            Label("My Lists", systemImage: "checklist")
+                        }
+                        ExportMenuView()
+                    }
                 }
                 #else
                 ToolbarItem(placement: .navigation) {
@@ -506,7 +513,12 @@ struct ItemsListView: View {
                     .environmentObject(session)
                     .onDisappear { Task { await inventory.refresh() } }
             }
-            .task { await inventory.refresh() }
+            .task {
+                await inventory.refresh()
+                if session.lists.lists.isEmpty {
+                    await session.lists.load()
+                }
+            }
             .onChange(of: categorySections.count) { _, newCount in
                 if !inventory.hasAppliedInitialCategoryCollapse, newCount > 0 {
                     inventory.categorySectionCollapsedIds = Set(categorySections.filter { !Category.isWishlist($0.name) }.map(\.id))

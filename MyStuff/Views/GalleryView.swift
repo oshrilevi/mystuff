@@ -580,7 +580,14 @@ struct GalleryView: View {
                         .font(.headline)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 12) {
+                    NavigationLink {
+                        ListsView()
+                    } label: {
+                        Label("My Lists", systemImage: "checklist")
+                    }
                     ExportMenuView()
+                }
                 }
                 #else
                 ToolbarItem(placement: .navigation) {
@@ -660,7 +667,12 @@ struct GalleryView: View {
                     .environmentObject(session)
                     .onDisappear { Task { await inventory.refresh() } }
             }
-            .task { await inventory.refresh() }
+            .task {
+                await inventory.refresh()
+                if session.lists.lists.isEmpty {
+                    await session.lists.load()
+                }
+            }
             .onChange(of: categorySections.count) { _, newCount in
                 if !inventory.hasAppliedInitialCategoryCollapse, newCount > 0 {
                     inventory.categorySectionCollapsedIds = Set(categorySections.filter { !Category.isWishlist($0.name) }.map(\.id))
@@ -1001,6 +1013,38 @@ struct ItemContextMenuContent: View {
                     }
                 }
             }
+
+            // Lists section
+            Divider()
+            Menu {
+                if session.lists.lists.isEmpty {
+                    Button("No lists yet") {}
+                        .disabled(true)
+                } else {
+                    ForEach(session.lists.lists) { list in
+                        let isInList = session.lists.listItems.contains { entry in
+                            entry.listId == list.id && entry.itemId == item.id
+                        }
+                        Button {
+                            Task {
+                                if isInList {
+                                    await session.lists.removeItems([item], from: list)
+                                } else {
+                                    await session.lists.addItems([item], to: list)
+                                }
+                            }
+                        } label: {
+                            Label(
+                                list.name,
+                                systemImage: isInList ? "checkmark.circle.fill" : "circle"
+                            )
+                        }
+                    }
+                }
+            } label: {
+                Label("Add to list", systemImage: "text.badge.plus")
+            }
+
             Divider()
             Text("Item Actions")
                 .font(.caption2)

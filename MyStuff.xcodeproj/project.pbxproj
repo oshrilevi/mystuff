@@ -59,6 +59,12 @@
 		B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000039 /* AttachmentsViewModel.swift */; };
 		B0010000000000000000003B /* DocumentPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000003B /* DocumentPreviewView.swift */; };
 		B0010000000000000000003C /* TagChipsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000003C /* TagChipsView.swift */; };
+		B0010000000000000000003D /* List.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000041 /* List.swift */; };
+		B0010000000000000000003E /* ListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000042 /* ListItem.swift */; };
+		B0010000000000000000003F /* ListsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000043 /* ListsViewModel.swift */; };
+		B00100000000000000000040 /* ListsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000044 /* ListsView.swift */; };
+		B00100000000000000000041 /* ListDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000045 /* ListDetailView.swift */; };
+		B00100000000000000000042 /* ItemSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000046 /* ItemSelectionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -114,6 +120,12 @@
 		F00100000000000000000039 /* AttachmentsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentsViewModel.swift; sourceTree = "<group>"; };
 		F0010000000000000000003B /* DocumentPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPreviewView.swift; sourceTree = "<group>"; };
 		F0010000000000000000003C /* TagChipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChipsView.swift; sourceTree = "<group>"; };
+		F00100000000000000000041 /* List.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = List.swift; sourceTree = "<group>"; };
+		F00100000000000000000042 /* ListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListItem.swift; sourceTree = "<group>"; };
+		F00100000000000000000043 /* ListsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsViewModel.swift; sourceTree = "<group>"; };
+		F00100000000000000000044 /* ListsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsView.swift; sourceTree = "<group>"; };
+		F00100000000000000000045 /* ListDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListDetailView.swift; sourceTree = "<group>"; };
+		F00100000000000000000046 /* ItemSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemSelectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,6 +158,8 @@
 				F0010000000000000000001C /* Location.swift */,
 				F00100000000000000000021 /* UserStore.swift */,
 				F00100000000000000000027 /* UserSource.swift */,
+				F00100000000000000000041 /* List.swift */,
+				F00100000000000000000042 /* ListItem.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -174,6 +188,7 @@
 				F0010000000000000000001D /* LocationsViewModel.swift */,
 				F00100000000000000000022 /* StoresViewModel.swift */,
 				F00100000000000000000028 /* SourcesViewModel.swift */,
+				F00100000000000000000043 /* ListsViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -207,6 +222,9 @@
 				F00100000000000000000010 /* RootView.swift */,
 				F00100000000000000000011 /* SignInView.swift */,
 				F00100000000000000000016 /* UserAvatarMenuView.swift */,
+				F00100000000000000000044 /* ListsView.swift */,
+				F00100000000000000000045 /* ListDetailView.swift */,
+				F00100000000000000000046 /* ItemSelectionView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -363,6 +381,12 @@
 				B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */,
 				B0010000000000000000003B /* DocumentPreviewView.swift in Sources */,
 				B0010000000000000000003C /* TagChipsView.swift in Sources */,
+				B0010000000000000000003D /* List.swift in Sources */,
+				B0010000000000000000003E /* ListItem.swift in Sources */,
+				B0010000000000000000003F /* ListsViewModel.swift in Sources */,
+				B00100000000000000000040 /* ListsView.swift in Sources */,
+				B00100000000000000000041 /* ListDetailView.swift in Sources */,
+				B00100000000000000000042 /* ItemSelectionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

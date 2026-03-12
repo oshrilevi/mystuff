@@ -6,6 +6,7 @@ import AppKit
 
 enum MainSidebarSelection: Hashable {
     case items
+    case lists
     case categories
     case locations
     case storesList
@@ -64,6 +65,7 @@ struct MainTabView: View {
         NavigationSplitView {
             List(selection: $selection) {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
+                NavigationLink(value: MainSidebarSelection.lists) { Label("My Lists", systemImage: "checklist") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
                         Label {
@@ -111,6 +113,8 @@ struct MainTabView: View {
                 switch selection {
                 case .items:
                     ItemsTabView(viewMode: $itemViewMode)
+                case .lists:
+                    ListsView()
                 case .categories:
                     CategoriesView()
                 case .locations:

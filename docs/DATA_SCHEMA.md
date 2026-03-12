@@ -100,6 +100,35 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 - `ItemAttachment.columnOrder` in code: `["id", "itemId", "driveFileId", "kind", "displayName", "createdAt"]`.
 - For existing spreadsheets created before Attachments existed, the app adds the "Attachments" sheet on first load via `SheetsService.addSheet` and appends the header (migration in `AttachmentsViewModel.load()`).
 
+### Sheet: **Lists**
+
+| Column index | Name      | Type   | Notes                                      |
+|--------------|-----------|--------|--------------------------------------------|
+| A (0)        | id        | String | UUID                                       |
+| B (1)        | name      | String | List name (e.g. "Desert Trip – April")    |
+| C (2)        | notes     | String | Optional freeform notes                    |
+| D (3)        | order     | Int    | Sort order (row-based)                     |
+| E (4)        | createdAt | String | ISO8601                                    |
+| F (5)        | updatedAt | String | ISO8601                                    |
+
+- Row 1 is the header row (`id`, `name`, `notes`, `order`, `createdAt`, `updatedAt`). Data starts at row 2.
+- `UserList.columnOrder` in code: `["id", "name", "notes", "order", "createdAt", "updatedAt"]`.
+- For existing spreadsheets created before Lists existed, the app will add the "Lists" sheet on first load of the Lists feature and append the header (migration in `ListsViewModel.load()`).
+
+### Sheet: **ListItems**
+
+| Column index | Name   | Type   | Notes                                            |
+|--------------|--------|--------|--------------------------------------------------|
+| A (0)        | id     | String | UUID                                             |
+| B (1)        | listId | String | FK to Lists id                                   |
+| C (2)        | itemId | String | FK to Items id                                   |
+| D (3)        | order  | Int    | Optional order of items within the list         |
+| E (4)        | note   | String | Optional per-item-in-list note (e.g. conditions)|
+
+- Row 1 is the header row (`id`, `listId`, `itemId`, `order`, `note`). Data starts at row 2.
+- `ListItem.columnOrder` in code: `["id", "listId", "itemId", "order", "note"]`.
+- For existing spreadsheets created before ListItems existed, the app will add the "ListItems" sheet on first load of the Lists feature and append the header (migration in `ListsViewModel.load()`).
+
 ## Google Drive
 
 - **Folders:** Two folders per user, both created in bootstrap via `DriveService.createFolder`:
