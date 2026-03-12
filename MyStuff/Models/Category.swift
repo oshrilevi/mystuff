@@ -59,6 +59,7 @@ struct Category: Identifiable, Equatable {
         "photo", "photo.fill", "photo.on.rectangle.angled", "photo.stack", "photo.stack.fill",
         // Transport & travel
         "car", "car.fill", "car.circle", "car.circle.fill",
+        "car.2", "car.2.fill", "car.rear", "car.rear.fill",
         "airplane", "airplane.circle", "airplane.circle.fill",
         "car.side", "car.side.fill", "bus", "bus.fill", "tram.fill", "bicycle", "bicycle.circle", "bicycle.circle.fill",
         "ferry", "ferry.fill", "sailboat", "sailboat.fill", "fuelpump", "fuelpump.fill",
@@ -83,6 +84,9 @@ struct Category: Identifiable, Equatable {
         "leaf", "leaf.fill", "leaf.circle", "leaf.circle.fill",
         "drop", "drop.fill", "drop.circle", "drop.circle.fill", "drop.triangle", "drop.triangle.fill",
         "flame", "flame.fill", "flame.circle", "flame.circle.fill",
+        "mountain.2", "mountain.2.fill",
+        "tent", "tent.fill",
+        "figure.hiking", "figure.hiking.circle", "figure.hiking.circle.fill",
         "sun.max", "sun.max.fill", "sun.min", "sun.min.fill", "moon", "moon.fill", "moon.stars", "moon.stars.fill",
         "cloud", "cloud.fill", "cloud.sun", "cloud.sun.fill", "cloud.rain", "cloud.rain.fill", "cloud.snow", "cloud.snow.fill",
         "snowflake", "thermometer.sun", "thermometer.sun.fill",
@@ -129,6 +133,7 @@ struct Category: Identifiable, Equatable {
         "map", "map.fill", "map.circle", "map.circle.fill",
         "location", "location.fill", "location.circle", "location.circle.fill", "location.north", "location.north.fill",
         "mappin", "mappin.circle", "mappin.circle.fill", "mappin.and.ellipse",
+        "signpost.left", "signpost.left.fill", "signpost.right", "signpost.right.fill",
         "compass.drawing", "binoculars", "binoculars.fill",
         // Misc & symbols
         "cube", "cube.fill", "cube.transparent", "cube.transparent.fill",
