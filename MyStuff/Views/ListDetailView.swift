@@ -82,12 +82,29 @@ struct ListDetailView: View {
                                 }
                             }
                             Spacer()
+                            Button {
+                                removeItem(item)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.red)
+                            .help("Remove from list")
                         }
                         .padding(.vertical, 4)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             selectedItem = item
                         }
+                        #if os(iOS)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                removeItem(item)
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
+                        #endif
                     }
                     .onDelete(perform: removeItems)
                 }
@@ -101,12 +118,12 @@ struct ListDetailView: View {
                     Button {
                         showItemPicker = true
                     } label: {
-                        Label("Add items", systemImage: "plus.circle")
+                        Label("Add items", systemImage: "square.grid.2x2")
                     }
                     Button {
                         showComboPicker = true
                     } label: {
-                        Label("Add combos", systemImage: "square.grid.2x2")
+                        Label("Add combos", systemImage: "square.stack.3d.up")
                     }
                     ShareLink(item: shareText) {
                         Label("Share list", systemImage: "square.and.arrow.up")
@@ -119,12 +136,12 @@ struct ListDetailView: View {
                     Button {
                         showItemPicker = true
                     } label: {
-                        Label("Add items", systemImage: "plus.circle")
+                        Label("Add items", systemImage: "square.grid.2x2")
                     }
                     Button {
                         showComboPicker = true
                     } label: {
-                        Label("Add combos", systemImage: "square.grid.2x2")
+                        Label("Add combos", systemImage: "square.stack.3d.up")
                     }
                     ShareLink(item: shareText) {
                         Label("Share list", systemImage: "square.and.arrow.up")
@@ -190,6 +207,12 @@ struct ListDetailView: View {
         let toRemove = offsets.map { itemsInList[$0] }
         Task {
             await listsVM.removeItems(toRemove, from: list)
+        }
+    }
+
+    private func removeItem(_ item: Item) {
+        Task {
+            await listsVM.removeItems([item], from: list)
         }
     }
 }

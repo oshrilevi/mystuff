@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ItemSelectionView: View {
+    @EnvironmentObject var session: Session
     /// The list we're adding items to (used for title only).
     let list: UserList
     /// Snapshot of all available items at the time the picker is presented.
@@ -31,6 +32,9 @@ struct ItemSelectionView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    searchField
+                }
                 if filteredItems.isEmpty {
                     Section {
                         Text("No items available yet. Add items from the Inventory section first, or adjust your search.")
@@ -41,9 +45,17 @@ struct ItemSelectionView: View {
                     }
                 } else {
                     ForEach(filteredItems) { item in
-                        HStack(spacing: 12) {
+                        HStack(alignment: .center, spacing: 12) {
                             Image(systemName: selectedIds.contains(item.id) ? "checkmark.circle.fill" : "circle")
                                 .foregroundColor(selectedIds.contains(item.id) ? .accentColor : .secondary)
+                                .frame(width: 24, height: 40, alignment: .center)
+                            ItemThumbnailView(
+                                drive: session.drive,
+                                photoId: item.photoIds.first,
+                                size: 40,
+                                cornerRadius: 8,
+                                placeholderFont: .title3
+                            )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.name)
                                     .font(.body)
@@ -82,9 +94,6 @@ struct ItemSelectionView: View {
                         onDone(toAdd)
                     }
                     .disabled(selectedIds.isEmpty)
-                }
-                ToolbarItem(placement: .principal) {
-                    searchField
                 }
             }
             .onAppear {
