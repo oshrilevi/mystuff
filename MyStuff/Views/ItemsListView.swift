@@ -611,8 +611,6 @@ private struct ItemListRow: View {
     /// True when item has a valid web link (so we show fetching/price/dash); when false for wishlist, show nothing.
     var hasValidWebLink: Bool = true
 
-    @State private var fillColor: Color?
-
     @State private var isEditingFromMenu = false
     @State private var showDeleteConfirmationFromMenu = false
 
@@ -623,21 +621,13 @@ private struct ItemListRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(fillColor ?? Color.gray.opacity(0.2))
-                if let fileId = item.photoIds.first {
-                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit, onBackgroundColorDetected: { fillColor = $0 })
-                        .frame(width: thumbSize, height: thumbSize)
-                        .clipped()
-                        .cornerRadius(8)
-                } else {
-                    Image(systemName: "photo")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: thumbSize, height: thumbSize)
+            ItemThumbnailView(
+                drive: drive,
+                photoId: item.photoIds.first,
+                size: thumbSize,
+                cornerRadius: 8,
+                placeholderFont: .title2
+            )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)

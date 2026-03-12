@@ -1086,8 +1086,6 @@ struct ItemCard: View {
     /// True when item has a valid web link (so we show fetching/price/dash).
     var hasValidWebLink: Bool = true
 
-    @State private var fillColor: Color?
-
     private var titleFont: Font {
         switch thumbnailSize {
         case .compact: return .caption
@@ -1115,21 +1113,13 @@ struct ItemCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: thumbnailSize == .compact ? 8 : 12)
-                    .fill(fillColor ?? Color.gray.opacity(0.2))
-                if let fileId = photoId {
-                    DriveImageView(drive: drive, fileId: fileId, contentMode: .fit, onBackgroundColorDetected: { fillColor = $0 })
-                        .frame(width: thumbDimension, height: thumbDimension)
-                        .clipped()
-                        .cornerRadius(thumbnailSize == .compact ? 8 : 12)
-                } else {
-                    Image(systemName: "photo")
-                        .font(iconFont)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: thumbDimension, height: thumbDimension)
+            ItemThumbnailView(
+                drive: drive,
+                photoId: photoId,
+                size: thumbDimension,
+                cornerRadius: thumbnailSize == .compact ? 8 : 12,
+                placeholderFont: iconFont
+            )
             Text(item.name)
                 .font(titleFont)
                 .fontWeight(.medium)
@@ -1172,6 +1162,41 @@ struct ItemCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Shared thumbnail view used by both the gallery cards and list rows so that
+/// thumbnails have consistent background fill and rounded corners.
+struct ItemThumbnailView: View {
+    let drive: DriveService
+    let photoId: String?
+    let size: CGFloat
+    let cornerRadius: CGFloat
+    let placeholderFont: Font
+
+    @State private var fillColor: Color?
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(fillColor ?? Color.gray.opacity(0.2))
+            if let fileId = photoId {
+                DriveImageView(
+                    drive: drive,
+                    fileId: fileId,
+                    contentMode: .fit,
+                    onBackgroundColorDetected: { fillColor = $0 }
+                )
+                .frame(width: size, height: size)
+                .clipped()
+                .cornerRadius(cornerRadius)
+            } else {
+                Image(systemName: "photo")
+                    .font(placeholderFont)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: size, height: size)
     }
 }
 

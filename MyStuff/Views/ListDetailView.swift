@@ -28,25 +28,13 @@ struct ListDetailView: View {
                 } else {
                     ForEach(itemsInList) { item in
                         HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.gray.opacity(0.2))
-                                if let fileId = item.photoIds.first {
-                                    DriveImageView(
-                                        drive: session.drive,
-                                        fileId: fileId,
-                                        contentMode: .fit
-                                    )
-                                    .frame(width: 44, height: 44)
-                                    .clipped()
-                                    .cornerRadius(8)
-                                } else {
-                                    Image(systemName: "photo")
-                                        .font(.title2)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .frame(width: 44, height: 44)
+                            ItemThumbnailView(
+                                drive: session.drive,
+                                photoId: item.photoIds.first,
+                                size: 44,
+                                cornerRadius: 8,
+                                placeholderFont: .title2
+                            )
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.name)
