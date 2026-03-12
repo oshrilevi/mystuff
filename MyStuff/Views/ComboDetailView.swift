@@ -7,6 +7,9 @@ struct ComboDetailView: View {
 
     @State private var selectedItem: Item?
     @State private var showItemSelection = false
+    #if os(macOS)
+    @State private var hoveredItemId: String?
+    #endif
 
     private var combosVM: CombosViewModel { session.combos }
     private var inventory: InventoryViewModel { session.inventory }
@@ -65,12 +68,33 @@ struct ComboDetailView: View {
                                 }
                             }
                             Spacer()
+                            #if os(macOS)
+                            Button {
+                                Task {
+                                    await combosVM.removeItems([item], from: combo)
+                                }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.borderless)
+                            .opacity(hoveredItemId == item.id ? 1 : 0)
+                            #endif
                         }
                         .padding(.vertical, 4)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             selectedItem = item
                         }
+                        #if os(macOS)
+                        .onHover { isHovering in
+                            if isHovering {
+                                hoveredItemId = item.id
+                            } else if hoveredItemId == item.id {
+                                hoveredItemId = nil
+                            }
+                        }
+                        #endif
                     }
                     .onDelete(perform: removeItems)
                 }
