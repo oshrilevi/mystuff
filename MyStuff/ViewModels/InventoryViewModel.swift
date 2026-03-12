@@ -267,8 +267,7 @@ final class InventoryViewModel: ObservableObject {
     private func parseCategoryRow(_ row: [String], rowIndex: Int) -> Category? {
         guard row.count >= 2 else { return nil }
         let order = row.count > 2 ? (Int(row[2]) ?? rowIndex) : rowIndex
-        let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
-        let parentId = row.count > 4 && !row[4].isEmpty ? row[4] : nil
-        return Category(id: row[0], name: row[1], order: order, color: color, parentId: parentId)
+        let parentId = CategoriesViewModel.parentId(from: row)
+        return Category(id: row[0], name: row[1], order: order, parentId: parentId)
     }
 }

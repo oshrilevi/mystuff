@@ -69,15 +69,12 @@ struct CategorySection: Identifiable {
     let name: String
     let items: [Item]
     let totalValue: Double
-    /// Optional hex color for section header background (from category).
-    var color: String?
 }
 
 /// Groups one or more category sections under a single parent category (for hierarchy in the Gallery).
 struct CategoryGroup: Identifiable {
     let id: String          // parent category id, or section id for standalone / Uncategorized
     let name: String        // parent category name (or section name for standalone)
-    let color: String?      // parent color
     var sections: [CategorySection]
 }
 
@@ -182,14 +179,14 @@ struct GalleryView: View {
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total, color: cat.color))
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
         }
         if let uncategorized = byCategory[""], !uncategorized.isEmpty {
             let total = uncategorized.reduce(0.0) { sum, item in
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, color: nil))
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
         }
         let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }
         let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }
@@ -205,7 +202,7 @@ struct GalleryView: View {
             guard !section.id.isEmpty,
                   let cat = categories.first(where: { $0.id == section.id }) else {
                 let key = section.id
-                var group = groups[key] ?? CategoryGroup(id: key, name: section.name, color: section.color, sections: [])
+                var group = groups[key] ?? CategoryGroup(id: key, name: section.name, sections: [])
                 group.sections.append(section)
                 groups[key] = group
                 continue
@@ -214,7 +211,7 @@ struct GalleryView: View {
             let parentId = (cat.parentId?.isEmpty == false) ? cat.parentId! : cat.id
             let parentCat = categories.first(where: { $0.id == parentId }) ?? cat
             let key = parentId
-            var group = groups[key] ?? CategoryGroup(id: key, name: parentCat.name, color: parentCat.color, sections: [])
+            var group = groups[key] ?? CategoryGroup(id: key, name: parentCat.name, sections: [])
             group.sections.append(section)
             groups[key] = group
         }
@@ -302,9 +299,7 @@ struct GalleryView: View {
                                             }
                                             .padding(.horizontal, 16)
                                             .frame(maxWidth: .infinity, minHeight: CategorySectionHeader.fixedHeight, alignment: .leading)
-                                            .background(
-                                                Color(hex: group.color)?.opacity(0.35) ?? Color.clear
-                                            )
+                                            .background(.ultraThinMaterial)
                                             .contentShape(Rectangle())
                                             .onTapGesture {
                                                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -338,7 +333,6 @@ struct GalleryView: View {
                                                 return sum + p * Double(item.quantity)
                                             }
                                             let isParentSection = section.id == group.id
-                                            let headerColorHex = isParentSection ? group.color : (section.color ?? group.color)
                                             CategorySectionHeader(
                                                 name: section.name,
                                                 itemCount: sortedItemsForSection.count,
@@ -352,7 +346,6 @@ struct GalleryView: View {
                                                     set: { sectionSortOrders[section.id] = $0 }
                                                 ),
                                                 sectionId: section.id,
-                                                categoryColor: Color(hex: headerColorHex),
                                                 isPinned: pinnedCategoryIds.contains(section.id),
                                                 isCollapsed: isParentSection ? parentCollapsed : collapsedSectionIds.contains(section.id),
                                                 onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
@@ -454,7 +447,6 @@ struct GalleryView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
-                                        categoryColor: categories.first(where: { $0.id == singleCategoryId }).flatMap { Color(hex: $0.color) },
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
@@ -1105,8 +1097,6 @@ struct CategorySectionHeader: View {
     @Binding var sectionSearchText: String
     @Binding var sortOrder: ItemSortOrder
     var sectionId: String? = nil
-    /// When set, used as the section header background color (from category color).
-    var categoryColor: Color? = nil
     var isPinned: Bool = false
     var isCollapsed: Bool = false
     var onTogglePin: (() -> Void)? = nil
@@ -1120,13 +1110,8 @@ struct CategorySectionHeader: View {
         formatCurrency(totalValue)
     }
 
-    @ViewBuilder
     private var headerBackground: some View {
-        if let color = categoryColor {
-            color.opacity(0.35)
-        } else {
-            Rectangle().fill(.ultraThinMaterial)
-        }
+        Rectangle().fill(.ultraThinMaterial)
     }
 
     private var sortOptions: [ItemSortOption] {

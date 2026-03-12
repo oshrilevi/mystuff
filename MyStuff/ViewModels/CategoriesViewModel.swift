@@ -69,6 +69,27 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
+    /// When row has 4 columns, column 4 may be parentId (new schema) or color (old schema). Use as parentId only if it looks like a UUID.
+    static func parentId(from row: [String]) -> String? {
+        if row.count > 4 {
+            let s = row[4]
+            return s.isEmpty ? nil : s
+        }
+        if row.count > 3 {
+            let s = row[3]
+            guard !s.isEmpty else { return nil }
+            // Old 4-column sheet had id, name, order, color — so column 4 was color. Treat as parentId only if it looks like a UUID.
+            if s.contains("-"), s.count == 36, s.allSatisfy({ $0 == "-" || Self.isHexDigit($0) }) { return s }
+            if s.hasPrefix("#") || ((s.count == 6 || s.count == 8) && s.allSatisfy { Self.isHexDigit($0) }) { return nil } // hex color
+            return s
+        }
+        return nil
+    }
+
+    private static func isHexDigit(_ c: Character) -> Bool {
+        (c >= "0" && c <= "9") || (c >= "a" && c <= "f") || (c >= "A" && c <= "F")
+    }
+
     func load() async {
         guard let sid = spreadsheetId else { return }
         isLoading = true
@@ -79,12 +100,11 @@ final class CategoriesViewModel: ObservableObject {
             let loaded: [Category] = rows.enumerated().compactMap { index, row in
                 guard row.count >= 2 else { return nil }
                 let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
-                let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
-                let parentId = row.count > 4 && !row[4].isEmpty ? row[4] : nil
-                return Category(id: row[0], name: row[1], order: order, color: color, parentId: parentId)
+                let parentId = Self.parentId(from: row)
+                return Category(id: row[0], name: row[1], order: order, parentId: parentId)
             }
             categories = loaded
-            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }) {
+            if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
             applyWishlistPinnedByDefault()
@@ -95,9 +115,8 @@ final class CategoriesViewModel: ObservableObject {
                 let cached: [Category] = rows.enumerated().compactMap { index, row in
                     guard row.count >= 2 else { return nil }
                     let order = row.count > 2 ? (Int(row[2]) ?? index + 2) : index + 2
-                    let color = row.count > 3 && !row[3].isEmpty ? row[3] : nil
-                    let parentId = row.count > 4 && !row[4].isEmpty ? row[4] : nil
-                    return Category(id: row[0], name: row[1], order: order, color: color, parentId: parentId)
+                    let parentId = Self.parentId(from: row)
+                    return Category(id: row[0], name: row[1], order: order, parentId: parentId)
                 }
                 categories = cached
                 applyWishlistPinnedByDefault()
@@ -115,10 +134,10 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func addCategory(name: String, color: String? = nil, parentId: String? = nil) async {
+    func addCategory(name: String, parentId: String? = nil) async {
         guard let sid = spreadsheetId else { return }
-        let category = Category(name: name, order: categories.count, color: color, parentId: parentId)
-        let values = [[category.id, category.name, "\(category.order)", category.color ?? "", category.parentId ?? ""]]
+        let category = Category(name: name, order: categories.count, parentId: parentId)
+        let values = [[category.id, category.name, "\(category.order)", category.parentId ?? ""]]
         do {
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: values)
             await load()
@@ -127,18 +146,17 @@ final class CategoriesViewModel: ObservableObject {
         }
     }
 
-    func updateCategory(id: String, name: String, color: String? = nil, parentId: String? = nil) async {
+    func updateCategory(id: String, name: String, parentId: String? = nil) async {
         guard let sid = spreadsheetId else { return }
         guard let index = categories.firstIndex(where: { $0.id == id }) else { return }
         var updated = categories
         updated[index].name = name
-        updated[index].color = color
         updated[index].parentId = parentId
         do {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -181,7 +199,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -202,7 +220,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -228,7 +246,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }
@@ -258,7 +276,7 @@ final class CategoriesViewModel: ObservableObject {
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "Categories")
             let header = [Category.columnOrder]
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: header)
-            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.color ?? "", $0.parentId ?? ""] }
+            let rows = updated.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }
             if !rows.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Categories", values: rows)
             }

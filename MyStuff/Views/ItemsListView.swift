@@ -77,14 +77,14 @@ struct ItemsListView: View {
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total, color: cat.color))
+            sections.append(CategorySection(id: cat.id, name: cat.name, items: items, totalValue: total))
         }
         if let uncategorized = byCategory[""], !uncategorized.isEmpty {
             let total = uncategorized.reduce(0.0) { sum, item in
                 let p = Double(item.price.trimmingCharacters(in: .whitespaces)) ?? 0
                 return sum + p * Double(item.quantity)
             }
-            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total, color: nil))
+            sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
         }
         let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }
         let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }
@@ -94,7 +94,6 @@ struct ItemsListView: View {
     private struct ListCategoryGroup: Identifiable {
         let id: String
         let name: String
-        let color: String?
         var sections: [CategorySection]
     }
 
@@ -106,7 +105,7 @@ struct ItemsListView: View {
             guard !section.id.isEmpty,
                   let cat = categories.first(where: { $0.id == section.id }) else {
                 let key = section.id
-                var group = groups[key] ?? ListCategoryGroup(id: key, name: section.name, color: section.color, sections: [])
+                var group = groups[key] ?? ListCategoryGroup(id: key, name: section.name, sections: [])
                 group.sections.append(section)
                 groups[key] = group
                 continue
@@ -115,7 +114,7 @@ struct ItemsListView: View {
             let parentId = (cat.parentId?.isEmpty == false) ? cat.parentId! : cat.id
             let parentCat = categories.first(where: { $0.id == parentId }) ?? cat
             let key = parentId
-            var group = groups[key] ?? ListCategoryGroup(id: key, name: parentCat.name, color: parentCat.color, sections: [])
+            var group = groups[key] ?? ListCategoryGroup(id: key, name: parentCat.name, sections: [])
             group.sections.append(section)
             groups[key] = group
         }
@@ -289,7 +288,6 @@ struct ItemsListView: View {
                                                     set: { sectionSortOrders[section.id] = $0 }
                                                 ),
                                                 sectionId: section.id,
-                                                categoryColor: Color(hex: section.color),
                                                 isPinned: pinnedCategoryIds.contains(section.id),
                                                 isCollapsed: collapsedSectionIds.contains(section.id),
                                                 onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
@@ -380,7 +378,6 @@ struct ItemsListView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
-                                        categoryColor: categories.first(where: { $0.id == singleCategoryId }).flatMap { Color(hex: $0.color) },
                                         isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
                                         onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },

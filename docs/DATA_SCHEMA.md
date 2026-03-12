@@ -8,15 +8,15 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 
 ### Sheet: **Categories**
 
-| Column index | Name   | Type   | Notes                     |
-|--------------|--------|--------|---------------------------|
-| A (0)        | id     | String | UUID                      |
-| B (1)        | name   | String | Display name              |
-| C (2)        | order  | Int    | Sort order (row-based)    |
-| D (3)        | color  | String | Optional hex (e.g. #FF5733) for category header color |
+| Column index | Name    | Type   | Notes                  |
+|--------------|---------|--------|------------------------|
+| A (0)        | id      | String | UUID                   |
+| B (1)        | name    | String | Display name           |
+| C (2)        | order   | Int    | Sort order (row-based) |
+| D (3)        | parentId| String | Optional parent category id |
 
-- Row 1 is the header row (`id`, `name`, `order`, `color`). Data starts at row 2.
-- `Category.columnOrder` in code: `["id", "name", "order", "color"]`.
+- Row 1 is the header row (`id`, `name`, `order`, `parentId`). Data starts at row 2.
+- `Category.columnOrder` in code: `["id", "name", "order", "parentId"]`.
 
 ### Sheet: **Items**
 

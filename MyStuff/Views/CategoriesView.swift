@@ -1,67 +1,5 @@
 import SwiftUI
 
-/// Preset hex colors for category header, grouped by family. Stored in Sheets as hex string.
-/// Each row is a color family with shades from light to dark.
-private let categoryColorPresetRows: [(section: String, presets: [(label: String, hex: String?)])] = [
-    ("None", [
-        ("None", nil),
-    ]),
-    ("Reds", [
-        ("Light", "#FFCDD2"),
-        ("", "#EF9A9A"),
-        ("", "#E57373"),
-        ("", "#EF5350"),
-        ("", "#F44336"),
-        ("Dark", "#C62828"),
-        ("Darker", "#B71C1C"),
-    ]),
-    ("Yellows", [
-        ("Light", "#FFF9C4"),
-        ("", "#FFF59D"),
-        ("", "#FFF176"),
-        ("", "#FFEE58"),
-        ("", "#FFEB3B"),
-        ("Dark", "#FBC02D"),
-        ("Darker", "#F9A825"),
-    ]),
-    ("Greens", [
-        ("Light", "#C8E6C9"),
-        ("", "#A5D6A7"),
-        ("", "#81C784"),
-        ("", "#66BB6A"),
-        ("", "#4CAF50"),
-        ("Dark", "#2E7D32"),
-        ("Darker", "#1B5E20"),
-    ]),
-    ("Blues", [
-        ("Light", "#B3E5FC"),
-        ("", "#81D4FA"),
-        ("", "#4FC3F7"),
-        ("", "#29B6F6"),
-        ("", "#03A9F4"),
-        ("Dark", "#1565C0"),
-        ("Darker", "#0D47A1"),
-    ]),
-    ("Purples", [
-        ("Light", "#E1BEE7"),
-        ("", "#CE93D8"),
-        ("", "#BA68C8"),
-        ("", "#AB47BC"),
-        ("", "#9C27B0"),
-        ("Dark", "#6A1B9A"),
-        ("Darker", "#4A148C"),
-    ]),
-    ("Browns", [
-        ("Light", "#D7CCC8"),
-        ("", "#BCAAA4"),
-        ("", "#A1887F"),
-        ("", "#8D6E63"),
-        ("", "#795548"),
-        ("Dark", "#5D4037"),
-        ("Darker", "#3E2723"),
-    ]),
-]
-
 struct CategoriesView: View {
     @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
@@ -120,11 +58,6 @@ struct CategoriesView: View {
                         }
                         ForEach(categoryRows) { row in
                             HStack(spacing: 12) {
-                                if let hex = row.category.color, let color = Color(hex: hex) {
-                                    RoundedRectangle(cornerRadius: 4)
-                                        .fill(color)
-                                        .frame(width: 20, height: 20)
-                                }
                                 Text(row.category.name)
                                     .font(row.isChild ? .subheadline : .body)
                                 Spacer()
@@ -323,11 +256,6 @@ private struct ReorderCategoriesSheet: View {
             List {
                 ForEach(order) { cat in
                     HStack(spacing: 12) {
-                        if let hex = cat.color, let color = Color(hex: hex) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(color)
-                                .frame(width: 20, height: 20)
-                        }
                         Text(cat.name)
                     }
                     .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
@@ -377,7 +305,6 @@ private struct EditCategorySheet: View {
     let onDismiss: () -> Void
 
     @State private var name: String
-    @State private var selectedColor: String?
     @State private var selectedParentId: String
 
     init(category: Category, categoriesVM: CategoriesViewModel, onDismiss: @escaping () -> Void) {
@@ -385,7 +312,6 @@ private struct EditCategorySheet: View {
         self.categoriesVM = categoriesVM
         self.onDismiss = onDismiss
         _name = State(initialValue: category.name)
-        _selectedColor = State(initialValue: category.color)
         _selectedParentId = State(initialValue: category.parentId ?? "")
     }
 
@@ -408,49 +334,6 @@ private struct EditCategorySheet: View {
                 } header: {
                     Text("Parent")
                 }
-                Section {
-                    Text("Used as the section header background in the Items list.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    ForEach(Array(categoryColorPresetRows.enumerated()), id: \.offset) { _, row in
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: row.presets.count), spacing: 12) {
-                            ForEach(Array(row.presets.enumerated()), id: \.offset) { presetIndex, preset in
-                                let presetId = "\(row.section)-\(presetIndex)-\(preset.hex ?? "none")"
-                                let isSelected = selectedColor == preset.hex
-                                Button {
-                                    selectedColor = preset.hex
-                                } label: {
-                                    if let hex = preset.hex, let color = Color(hex: hex) {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(color)
-                                            .frame(height: 36)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                                            )
-                                    } else {
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(.quaternary)
-                                            .frame(height: 36)
-                                            .overlay(
-                                                Text("None")
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.secondary)
-                                            )
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 8)
-                                                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 3)
-                                            )
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .id(presetId)
-                            }
-                        }
-                    }
-                } header: {
-                    Text("Header color")
-                }
             }
             .formStyle(.grouped)
             .padding(24)
@@ -471,7 +354,7 @@ private struct EditCategorySheet: View {
                         if !trimmed.isEmpty {
                             let parentId = selectedParentId.isEmpty ? nil : selectedParentId
                             Task {
-                                await categoriesVM.updateCategory(id: category.id, name: trimmed, color: selectedColor, parentId: parentId)
+                                await categoriesVM.updateCategory(id: category.id, name: trimmed, parentId: parentId)
                             }
                         }
                         onDismiss()
@@ -543,22 +426,5 @@ private struct NewCategorySheet: View {
             }
         }
         .presentationDetents([.medium])
-    }
-}
-
-// MARK: - Color from hex (used by category header and section headers)
-extension Color {
-    /// Creates a Color from a hex string (e.g. "#FF5733" or "FF5733"). Returns nil if invalid.
-    init?(hex: String?) {
-        guard let hex = hex?.trimmingCharacters(in: .whitespaces), !hex.isEmpty else { return nil }
-        var hexSanitized = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
-        if hexSanitized.count == 6 { }
-        else if hexSanitized.count == 8 { hexSanitized = String(hexSanitized.prefix(6)) }
-        else { return nil }
-        guard let value = UInt64(hexSanitized, radix: 16) else { return nil }
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >> 8) & 0xFF) / 255
-        let b = Double(value & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
     }
 }
