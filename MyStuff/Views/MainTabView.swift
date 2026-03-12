@@ -66,7 +66,7 @@ struct MainTabView: View {
         NavigationSplitView {
             List(selection: $selection) {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
-                NavigationLink(value: MainSidebarSelection.combos) { Label("Combos", systemImage: "square.grid.2x2") }
+                NavigationLink(value: MainSidebarSelection.combos) { Label("Combos", systemImage: "square.stack.3d.up") }
                 NavigationLink(value: MainSidebarSelection.lists) { Label("My Lists", systemImage: "checklist") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
