@@ -14,6 +14,31 @@ struct ListDetailView: View {
         listsVM.items(for: list, from: inventory.items)
     }
 
+    private var shareText: String {
+        var lines: [String] = []
+        lines.append("MyStuff – List: \(list.name)")
+        let trimmedNotes = list.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedNotes.isEmpty {
+            lines.append("")
+            lines.append(trimmedNotes)
+        }
+        if !itemsInList.isEmpty {
+            lines.append("")
+            lines.append("Items:")
+            for item in itemsInList {
+                var parts: [String] = [item.name]
+                if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
+                    parts.append("(\(catName))")
+                }
+                if !item.tags.isEmpty {
+                    parts.append("[\(item.tags.joined(separator: ", "))]")
+                }
+                lines.append("• " + parts.joined(separator: " "))
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             List {
@@ -67,6 +92,21 @@ struct ListDetailView: View {
             }
         }
         .navigationTitle(list.name)
+        .toolbar {
+            #if os(macOS)
+            ToolbarItem(placement: .primaryAction) {
+                ShareLink(item: shareText) {
+                    Label("Share list", systemImage: "square.and.arrow.up")
+                }
+            }
+            #else
+            ToolbarItem(placement: .topBarTrailing) {
+                ShareLink(item: shareText) {
+                    Label("Share list", systemImage: "square.and.arrow.up")
+                }
+            }
+            #endif
+        }
         .sheet(item: $selectedItem) { item in
             ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                 .environmentObject(session)
