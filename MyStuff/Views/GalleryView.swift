@@ -289,8 +289,8 @@ struct GalleryView: View {
                                     ForEach(categoryGroups) { group in
                                         let parentCollapsed = collapsedSectionIds.contains(group.id)
                                         let isLastCategory = group.id == categoryGroups.last?.id
-                                        // Show a parent label only when group has multiple sections (i.e. a parent with subcategories).
-                                        if group.sections.count > 1 {
+                                        // Show a parent label when group actually has subcategories (sections whose id differs from the parent group id).
+                                        if group.sections.contains(where: { $0.id != group.id }) {
                                             let groupItemCount = group.sections.reduce(0) { $0 + $1.items.count }
                                             let groupTotalValue: Double = group.sections.reduce(0) { sum, sec in
                                                 Category.isWishlist(sec.name) ? sum : sum + sec.totalValue
