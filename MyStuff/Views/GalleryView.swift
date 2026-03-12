@@ -961,35 +961,37 @@ struct ItemContextMenuContent: View {
                 }
             }
 
-            // Lists section
-            Divider()
-            Menu {
-                if session.lists.lists.isEmpty {
-                    Button("No lists yet") {}
-                        .disabled(true)
-                } else {
-                    ForEach(session.lists.lists) { list in
-                        let isInList = session.lists.listItems.contains { entry in
-                            entry.listId == list.id && entry.itemId == item.id
-                        }
-                        Button {
-                            Task {
-                                if isInList {
-                                    await session.lists.removeItems([item], from: list)
-                                } else {
-                                    await session.lists.addItems([item], to: list)
-                                }
+            // Lists section (not shown for wishlist items, which you don't own yet)
+            if !isWishlist {
+                Divider()
+                Menu {
+                    if session.lists.lists.isEmpty {
+                        Button("No lists yet") {}
+                            .disabled(true)
+                    } else {
+                        ForEach(session.lists.lists) { list in
+                            let isInList = session.lists.listItems.contains { entry in
+                                entry.listId == list.id && entry.itemId == item.id
                             }
-                        } label: {
-                            Label(
-                                list.name,
-                                systemImage: isInList ? "checkmark.circle.fill" : "circle"
-                            )
+                            Button {
+                                Task {
+                                    if isInList {
+                                        await session.lists.removeItems([item], from: list)
+                                    } else {
+                                        await session.lists.addItems([item], to: list)
+                                    }
+                                }
+                            } label: {
+                                Label(
+                                    list.name,
+                                    systemImage: isInList ? "checkmark.circle.fill" : "circle"
+                                )
+                            }
                         }
                     }
+                } label: {
+                    Label("Add to list", systemImage: "text.badge.plus")
                 }
-            } label: {
-                Label("Add to list", systemImage: "text.badge.plus")
             }
 
             Divider()
