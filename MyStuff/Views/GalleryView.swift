@@ -289,17 +289,38 @@ struct GalleryView: View {
                                 VStack(spacing: 0) {
                                     ForEach(categoryGroups) { group in
                                         let parentCollapsed = collapsedSectionIds.contains(group.id)
+                                        let isLastCategory = group.id == categoryGroups.last?.id
                                         // Show a parent label only when group has multiple sections (i.e. a parent with subcategories).
                                         if group.sections.count > 1 {
+                                            let groupItemCount = group.sections.reduce(0) { $0 + $1.items.count }
+                                            let groupTotalValue: Double = group.sections.reduce(0) { sum, sec in
+                                                Category.isWishlist(sec.name) ? sum : sum + sec.totalValue
+                                            }
                                             HStack {
                                                 Text(group.name)
                                                     .font(.headline)
                                                     .padding(.vertical, 8)
                                                 Spacer()
+                                                if parentCollapsed {
+                                                    Text("\(groupItemCount) item(s)")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.secondary)
+                                                    if group.sections.contains(where: { !Category.isWishlist($0.name) }) {
+                                                        Text("·")
+                                                            .font(.caption)
+                                                            .foregroundStyle(.tertiary)
+                                                        Text("Total: \(formatCurrency(groupTotalValue))")
+                                                            .font(.caption)
+                                                            .foregroundStyle(.secondary)
+                                                    }
+                                                }
                                             }
                                             .padding(.horizontal, 16)
                                             .frame(maxWidth: .infinity, minHeight: CategorySectionHeader.fixedHeight, alignment: .leading)
-                                            .background(.ultraThinMaterial)
+                                            .background(GalleryView.sectionBackground(isTopLevel: true, isSubcategory: false))
+                                            .overlay(alignment: .bottom) {
+                                                if parentCollapsed && !isLastCategory { Divider() }
+                                            }
                                             .contentShape(Rectangle())
                                             .onTapGesture {
                                                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -333,6 +354,9 @@ struct GalleryView: View {
                                                 return sum + p * Double(item.quantity)
                                             }
                                             let isParentSection = section.id == group.id
+                                            let isSubcategory = !isParentSection
+                                            let subcategories = group.sections.filter { $0.id != group.id }
+                                            let isLastSubcategoryInGroup = !isSubcategory || subcategories.last?.id == section.id
                                             CategorySectionHeader(
                                                 name: section.name,
                                                 itemCount: sortedItemsForSection.count,
@@ -348,6 +372,9 @@ struct GalleryView: View {
                                                 sectionId: section.id,
                                                 isPinned: pinnedCategoryIds.contains(section.id),
                                                 isCollapsed: isParentSection ? parentCollapsed : collapsedSectionIds.contains(section.id),
+                                                isSubcategory: isSubcategory,
+                                                isLastSubcategoryInGroup: isLastSubcategoryInGroup,
+                                                isLastCategoryInGallery: isLastCategory,
                                                 onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                                 onTap: {
                                                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -651,6 +678,14 @@ struct GalleryView: View {
 
     private var gridColumns: [GridItem] {
         [GridItem(.adaptive(minimum: thumbnailSize.gridMinimum), spacing: 16)]
+    }
+
+    /// Background color for category/section headers: top-level vs subcategory (same hue, top-level slightly darker).
+    static func sectionBackground(isTopLevel: Bool, isSubcategory: Bool) -> Color {
+        if isTopLevel {
+            return Color.primary.opacity(0.11)
+        }
+        return Color.primary.opacity(0.08)
     }
 }
 
@@ -1099,6 +1134,12 @@ struct CategorySectionHeader: View {
     var sectionId: String? = nil
     var isPinned: Bool = false
     var isCollapsed: Bool = false
+    /// True when this section is a subcategory under a parent (different background from top-level).
+    var isSubcategory: Bool = false
+    /// When isSubcategory, false = show a bottom border; true = no border (last subcategory in group).
+    var isLastSubcategoryInGroup: Bool = true
+    /// When true, collapsed state does not show a bottom border (last category in the list).
+    var isLastCategoryInGallery: Bool = true
     var onTogglePin: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
@@ -1111,7 +1152,7 @@ struct CategorySectionHeader: View {
     }
 
     private var headerBackground: some View {
-        Rectangle().fill(.ultraThinMaterial)
+        Rectangle().fill(GalleryView.sectionBackground(isTopLevel: !isSubcategory, isSubcategory: isSubcategory))
     }
 
     private var sortOptions: [ItemSortOption] {
@@ -1234,6 +1275,11 @@ struct CategorySectionHeader: View {
         #if os(iOS)
         .overlay(alignment: .top) { Divider() }
         #endif
+        .overlay(alignment: .bottom) {
+            if (isSubcategory && !isLastSubcategoryInGroup) || (isCollapsed && !isLastCategoryInGallery) {
+                Divider()
+            }
+        }
         .dropDestination(for: String.self) { itemIds, _ in
             guard let itemId = itemIds.first, let onDropItem else { return false }
             onDropItem(itemId)
