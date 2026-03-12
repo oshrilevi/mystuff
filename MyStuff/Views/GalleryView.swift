@@ -1,9 +1,5 @@
 import SwiftUI
-#if os(iOS)
-import UIKit
-#elseif os(macOS)
 import AppKit
-#endif
 
 /// Rounds value to 2 decimal places and formats as currency without trailing zeros.
 fileprivate func formatCurrency(_ value: Double) -> String {
@@ -437,13 +433,9 @@ struct GalleryView: View {
                                                                 thumbnailSize: thumbnailSize,
                                                                 onTap: { selectedItem = item },
                                                                 onOpenAttachment: { att in
-                                                                    #if os(iOS)
-                                                                    selectedAttachment = att
-                                                                    #elseif os(macOS)
                                                                     Task {
                                                                         await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
                                                                     }
-                                                                    #endif
                                                                 }
                                                             )
                                                             .draggable(item.id)
@@ -523,13 +515,9 @@ struct GalleryView: View {
                                                 thumbnailSize: thumbnailSize,
                                                 onTap: { selectedItem = item },
                                                 onOpenAttachment: { att in
-                                                    #if os(iOS)
-                                                    selectedAttachment = att
-                                                    #elseif os(macOS)
                                                     Task {
                                                         await AttachmentOpener.open(att, itemName: item.name, drive: session.drive)
                                                     }
-                                                    #endif
                                                 }
                                             )
                                             .draggable(item.id)
@@ -563,38 +551,12 @@ struct GalleryView: View {
             .task {
                 await session.prefetchWishlistPricesIfNeeded()
             }
-            #if os(iOS)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            #else
             .navigationTitle(toolbarTitle)
-            #endif
             .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showAddItem = true } label: { Image(systemName: "plus") }
-                        .help("Add item")
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Text(toolbarTitle)
-                        .font(.headline)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    NavigationLink {
-                        ListsView()
-                    } label: {
-                        Label("My Lists", systemImage: "checklist")
-                    }
-                    ExportMenuView()
-                }
-                }
-                #else
                 ToolbarItem(placement: .navigation) {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }
                         .help("Add item")
                 }
-                #endif
                 ToolbarItemGroup(placement: .primaryAction) {
                     if isShowingAllCategories ? !categorySections.isEmpty : (inventory.selectedCategoryId ?? "").isEmpty == false {
                         Button {
@@ -625,9 +587,6 @@ struct GalleryView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .frame(minWidth: 120, maxWidth: 200)
                                 .help("Search items")
-                                #if os(iOS)
-                                .focusEffectDisabled()
-                                #endif
                             if !inventory.searchText.isEmpty {
                                 Button {
                                     inventory.searchText = ""
@@ -650,18 +609,6 @@ struct GalleryView: View {
                 ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                     .environmentObject(session)
             }
-            #if os(iOS)
-            .sheet(item: $selectedAttachment) { att in
-                DocumentPreviewView(
-                    drive: session.drive,
-                    driveFileId: att.driveFileId,
-                    itemName: att.displayName.isEmpty ? (selectedItem?.name ?? "") : att.displayName,
-                    documentType: att.kind.displayTitle,
-                    driveWebViewURL: URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view")!,
-                    onDismiss: { selectedAttachment = nil }
-                )
-            }
-            #endif
             .sheet(isPresented: $showAddItem) {
                 ItemFormView(mode: .add(initialWebLink: nil, initialCategoryId: nil))
                     .environmentObject(session)

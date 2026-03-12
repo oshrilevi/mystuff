@@ -428,38 +428,12 @@ struct ItemsListView: View {
             .task {
                 await session.prefetchWishlistPricesIfNeeded()
             }
-            #if os(iOS)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            #else
             .navigationTitle(toolbarTitle)
-            #endif
             .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showAddItem = true } label: { Image(systemName: "plus") }
-                        .help("Add item")
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Text(toolbarTitle)
-                        .font(.headline)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        NavigationLink {
-                            ListsView()
-                        } label: {
-                            Label("My Lists", systemImage: "checklist")
-                        }
-                        ExportMenuView()
-                    }
-                }
-                #else
                 ToolbarItem(placement: .navigation) {
                     Button { showAddItem = true } label: { Image(systemName: "plus") }
                         .help("Add item")
                 }
-                #endif
                 ToolbarItemGroup(placement: .primaryAction) {
                     if isShowingAllCategories ? !categorySections.isEmpty : (inventory.selectedCategoryId ?? "").isEmpty == false {
                         Button {
@@ -496,18 +470,6 @@ struct ItemsListView: View {
                 ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                     .environmentObject(session)
             }
-            #if os(iOS)
-            .sheet(item: $selectedAttachment) { att in
-                DocumentPreviewView(
-                    drive: session.drive,
-                    driveFileId: att.driveFileId,
-                    itemName: att.displayName.isEmpty ? (selectedItem?.name ?? "") : att.displayName,
-                    documentType: att.kind.displayTitle,
-                    driveWebViewURL: URL(string: "https://drive.google.com/file/d/\(att.driveFileId)/view")!,
-                    onDismiss: { selectedAttachment = nil }
-                )
-            }
-            #endif
             .sheet(isPresented: $showAddItem) {
                 ItemFormView(mode: .add(initialWebLink: nil, initialCategoryId: nil))
                     .environmentObject(session)

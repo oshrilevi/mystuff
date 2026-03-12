@@ -24,7 +24,7 @@
 		B0010000000000000000000D /* ItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000D /* ItemDetailView.swift */; };
 		B00100000000000000000012 /* DriveImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000015 /* DriveImageView.swift */; };
 		B0010000000000000000000E /* ItemFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000E /* ItemFormView.swift */; };
-		B00100000000000000000019 /* CameraImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000019 /* CameraImagePicker.swift */; };
+		
 		B0010000000000000000001A /* MacCameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000001A /* MacCameraCaptureView.swift */; };
 		B0010000000000000000000F /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000000F /* MainTabView.swift */; };
 		B00100000000000000000010 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000010 /* RootView.swift */; };
@@ -53,7 +53,7 @@
 		B00100000000000000000033 /* SourceIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002B /* SourceIconView.swift */; };
 		B00100000000000000000034 /* FaviconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002C /* FaviconView.swift */; };
 		B00100000000000000000035 /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002D /* ExportService.swift */; };
-		B00100000000000000000036 /* ExportMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002E /* ExportMenuView.swift */; };
+		
 		B00100000000000000000037 /* PDFExportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000002F /* PDFExportBuilder.swift */; };
 		B00100000000000000000038 /* ItemAttachment.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000038 /* ItemAttachment.swift */; };
 		B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000039 /* AttachmentsViewModel.swift */; };
@@ -85,7 +85,7 @@
 		F0010000000000000000000D /* ItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemDetailView.swift; sourceTree = "<group>"; };
 		F00100000000000000000015 /* DriveImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriveImageView.swift; sourceTree = "<group>"; };
 		F0010000000000000000000E /* ItemFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemFormView.swift; sourceTree = "<group>"; };
-		F00100000000000000000019 /* CameraImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraImagePicker.swift; sourceTree = "<group>"; };
+		
 		F0010000000000000000001A /* MacCameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacCameraCaptureView.swift; sourceTree = "<group>"; };
 		F0010000000000000000000F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		F00100000000000000000010 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -114,7 +114,7 @@
 		F0010000000000000000002B /* SourceIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceIconView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002C /* FaviconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaviconView.swift; sourceTree = "<group>"; };
 		F0010000000000000000002D /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
-		F0010000000000000000002E /* ExportMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportMenuView.swift; sourceTree = "<group>"; };
+		
 		F0010000000000000000002F /* PDFExportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFExportBuilder.swift; sourceTree = "<group>"; };
 		F00100000000000000000038 /* ItemAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ItemAttachment.swift; sourceTree = "<group>"; };
 		F00100000000000000000039 /* AttachmentsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentsViewModel.swift; sourceTree = "<group>"; };
@@ -200,12 +200,10 @@
 				F00100000000000000000015 /* DriveImageView.swift */,
 				F0010000000000000000003B /* DocumentPreviewView.swift */,
 				F0010000000000000000003C /* TagChipsView.swift */,
-				F0010000000000000000002E /* ExportMenuView.swift */,
 				F0010000000000000000002F /* PDFExportBuilder.swift */,
 				F0010000000000000000000C /* GalleryView.swift */,
 				F0010000000000000000000D /* ItemDetailView.swift */,
 				F0010000000000000000000E /* ItemFormView.swift */,
-				F00100000000000000000019 /* CameraImagePicker.swift */,
 				F0010000000000000000001A /* MacCameraCaptureView.swift */,
 				F00100000000000000000018 /* ItemsListView.swift */,
 				F0010000000000000000001E /* LocationsView.swift */,
@@ -349,7 +347,6 @@
 				B0010000000000000000000D /* ItemDetailView.swift in Sources */,
 				B00100000000000000000012 /* DriveImageView.swift in Sources */,
 				B0010000000000000000000E /* ItemFormView.swift in Sources */,
-				B00100000000000000000019 /* CameraImagePicker.swift in Sources */,
 				B0010000000000000000001A /* MacCameraCaptureView.swift in Sources */,
 				B00100000000000000000018 /* ItemsListView.swift in Sources */,
 				B00100000000000000000023 /* NSTextFieldFocusRing.swift in Sources */,
@@ -375,7 +372,6 @@
 				B00100000000000000000033 /* SourceIconView.swift in Sources */,
 				B00100000000000000000034 /* FaviconView.swift in Sources */,
 				B00100000000000000000035 /* ExportService.swift in Sources */,
-				B00100000000000000000036 /* ExportMenuView.swift in Sources */,
 				B00100000000000000000037 /* PDFExportBuilder.swift in Sources */,
 				B00100000000000000000038 /* ItemAttachment.swift in Sources */,
 				B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */,
@@ -459,11 +455,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.mystuff.inventory;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,6";
+				/* TARGETED_DEVICE_FAMILY removed: macOS-only app */
 			};
 			name = Debug;
 		};
@@ -491,11 +487,11 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.mystuff.inventory;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SUPPORTED_PLATFORMS = "macosx iphoneos iphonesimulator";
+				SUPPORTED_PLATFORMS = macosx;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,6";
+				/* TARGETED_DEVICE_FAMILY removed: macOS-only app */
 			};
 			name = Release;
 		};

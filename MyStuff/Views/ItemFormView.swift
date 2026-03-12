@@ -1,11 +1,6 @@
 import SwiftUI
-#if os(iOS)
-import PhotosUI
-import UIKit
-#elseif os(macOS)
 import AppKit
 import UniformTypeIdentifiers
-#endif
 
 struct ItemFormView: View {
     @EnvironmentObject var session: Session
@@ -33,15 +28,9 @@ struct ItemFormView: View {
     @State private var locationId = ""
     @State private var priceCurrency = "NIS"
     @State private var isExtracting = false
-    #if os(iOS)
-    @State private var selectedPhotos: [PhotosPickerItem] = []
-    @State private var showCamera = false
-    @State private var capturedImageData: Data?
-    #elseif os(macOS)
     @State private var showImagePicker = false
     @State private var showCamera = false
     @State private var capturedImageData: Data?
-    #endif
     @State private var imageData: [Data] = []
     @State private var removedPhoto = false
     @State private var isSaving = false
@@ -162,80 +151,6 @@ struct ItemFormView: View {
     }
 
     var body: some View {
-        #if os(macOS)
-        macOSBody
-        #else
-        iOSBody
-        #endif
-    }
-
-    // MARK: - iOS body (keeps existing Form-based layout)
-
-    #if os(iOS)
-    private var iOSBody: some View {
-        NavigationStack {
-            Form {
-                formFields
-            }
-            .padding(20)
-            .navigationBarTitleDisplayMode(.inline)
-            .fullScreenCover(isPresented: $showCamera) {
-                CameraImagePicker(capturedImageData: $capturedImageData) {
-                    showCamera = false
-                    if let data = capturedImageData {
-                        imageData.append(data)
-                        removedPhoto = false
-                        selectedPhotos = []
-                    }
-                    capturedImageData = nil
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(isEdit ? "Edit item" : "New item")
-                        .font(.headline)
-                }
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        if let onCancel {
-                            onCancel()
-                        } else {
-                            dismiss()
-                        }
-                    }
-                    .help("Cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Group {
-                        if isSaving {
-                            HStack(spacing: 6) {
-                                ProgressView()
-                                    .scaleEffect(0.85)
-                                Text("Saving…")
-                                    .font(.body)
-                            }
-                        } else {
-                            Button("Save") { Task { await save() } }
-                                .help("Save")
-                        }
-                    }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
-                }
-            }
-            .defaultFocus($focusedField, isEdit ? .absorbInitialFocus : nil)
-            .onAppear(perform: handleOnAppear)
-            .task {
-                guard session.appState.spreadsheetId != nil, locations.isEmpty else { return }
-                await session.locations.load()
-            }
-        }
-    }
-    #endif
-
-    // MARK: - macOS body (custom ScrollView layout for consistent alignment)
-    
-    #if os(macOS)
-    private var macOSBody: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -294,7 +209,6 @@ struct ItemFormView: View {
             }
         }
     }
-    #endif
 
     // MARK: - Shared form fields
 
@@ -519,49 +433,15 @@ struct ItemFormView: View {
                         Button("Remove photo") {
                             removedPhoto = true
                             imageData = []
-                            #if os(iOS)
-                            selectedPhotos = []
-                            #endif
                         }
                         .foregroundStyle(.red)
                         Button("Replace photo") {
                             removedPhoto = false
-                            #if os(iOS)
-                            // Picker is below; user selects and we set imageData
-                            #elseif os(macOS)
                             showImagePicker = true
-                            #endif
                         }
                     }
                 }
             }
-            #if os(iOS)
-            if isEdit && showCurrentPhoto {
-                Text("Or pick new photos to replace:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            HStack(spacing: 12) {
-                PhotosPicker(
-                    selection: $selectedPhotos,
-                    maxSelectionCount: 10,
-                    matching: .images
-                ) {
-                    Label(isEdit && showCurrentPhoto ? "Pick new photos to replace" : "Pick photos", systemImage: "photo.on.rectangle.angled")
-                }
-                .onChange(of: selectedPhotos) { _, new in
-                    removedPhoto = false
-                    Task { await loadPhotos(new) }
-                }
-                if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                    Button {
-                        showCamera = true
-                    } label: {
-                        Label("Take photo", systemImage: "camera")
-                    }
-                }
-            }
-            #elseif os(macOS)
             HStack(spacing: 12) {
                 Button {
                     showCamera = true
@@ -586,7 +466,6 @@ struct ItemFormView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            #endif
         }
 
         if isEdit, let item = existingItem {
@@ -686,15 +565,7 @@ struct ItemFormView: View {
     }()
 
     private func pasteURLFromClipboardAndExtract() {
-        let clipboardString: String? = {
-            #if os(iOS)
-            return UIPasteboard.general.string
-            #elseif os(macOS)
-            return NSPasteboard.general.string(forType: .string)
-            #else
-            return nil
-            #endif
-        }()
+        let clipboardString: String? = NSPasteboard.general.string(forType: .string)
         guard let str = clipboardString?.trimmingCharacters(in: .whitespaces),
               !str.isEmpty,
               let url = URL(string: str),
@@ -753,17 +624,6 @@ struct ItemFormView: View {
             }
         }
     }
-
-    #if os(iOS)
-    private func loadPhotos(_ items: [PhotosPickerItem]) async {
-        imageData = []
-        for item in items {
-            if let data = try? await item.loadTransferable(type: Data.self) {
-                imageData.append(data)
-            }
-        }
-    }
-    #endif
 
     private func save() async {
         isSaving = true
