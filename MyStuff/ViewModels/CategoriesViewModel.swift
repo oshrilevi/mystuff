@@ -4,7 +4,6 @@ import SwiftUI
 @MainActor
 final class CategoriesViewModel: ObservableObject {
     @Published var categories: [Category] = []
-    @Published var pinnedCategoryIds: Set<String> = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -16,15 +15,10 @@ final class CategoriesViewModel: ObservableObject {
     private let appState: AppState
 
     private let categoriesCacheKey = "mystuff_categories_cache"
-    private let pinnedCategoryIdsKey = "mystuff_pinned_category_ids"
 
     init(sheets: SheetsService, appState: AppState) {
         self.sheets = sheets
         self.appState = appState
-        if let data = UserDefaults.standard.data(forKey: pinnedCategoryIdsKey),
-           let ids = try? JSONDecoder().decode(Set<String>.self, from: data) {
-            pinnedCategoryIds = ids
-        }
     }
 
     /// Top-level categories (no parent), ordered by `order` then name.
@@ -55,17 +49,6 @@ final class CategoriesViewModel: ObservableObject {
             if let child, candidate.id == child.id { return false }
             if Category.isWishlist(candidate.name) { return false }
             return true
-        }
-    }
-
-    func togglePinned(categoryId: String) {
-        if pinnedCategoryIds.contains(categoryId) {
-            pinnedCategoryIds.remove(categoryId)
-        } else {
-            pinnedCategoryIds.insert(categoryId)
-        }
-        if let data = try? JSONEncoder().encode(pinnedCategoryIds) {
-            UserDefaults.standard.set(data, forKey: pinnedCategoryIdsKey)
         }
     }
 
@@ -107,7 +90,6 @@ final class CategoriesViewModel: ObservableObject {
             if let data = try? JSONEncoder().encode(loaded.map { [$0.id, $0.name, "\($0.order)", $0.parentId ?? ""] }) {
                 UserDefaults.standard.set(data, forKey: categoriesCacheKey)
             }
-            applyWishlistPinnedByDefault()
         } catch {
             errorMessage = error.localizedDescription
             if let data = UserDefaults.standard.data(forKey: categoriesCacheKey),
@@ -119,18 +101,7 @@ final class CategoriesViewModel: ObservableObject {
                     return Category(id: row[0], name: row[1], order: order, parentId: parentId)
                 }
                 categories = cached
-                applyWishlistPinnedByDefault()
             }
-        }
-    }
-
-    /// If the user has never set pinned categories, pin the Wishlist category by default.
-    private func applyWishlistPinnedByDefault() {
-        guard UserDefaults.standard.object(forKey: pinnedCategoryIdsKey) == nil else { return }
-        guard let wishlist = categories.first(where: { Category.isWishlist($0.name) }) else { return }
-        pinnedCategoryIds.insert(wishlist.id)
-        if let data = try? JSONEncoder().encode(pinnedCategoryIds) {
-            UserDefaults.standard.set(data, forKey: pinnedCategoryIdsKey)
         }
     }
 

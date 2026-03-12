@@ -113,7 +113,6 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 | `mystuff_drive_documents_folder_id` | Current user’s documents folder ID (MyStuff Documents) |
 | `mystuff_items_cache`      | Offline cache of items (encoded)  |
 | `mystuff_categories_cache` | Offline cache of categories       |
-| `mystuff_pinned_category_ids` | Pinned category IDs (Set)     |
 | `mystuff_default_location_id` | Default location ID for new items |
 | `mystuff_browser_<storeId>`   | Last-visited URL per store (in-app browser); storeId from Stores sheet |
 | `mystuff_browser_source_<id>` | Last-visited URL per source (in-app browser); id from Sources sheet   |

@@ -64,8 +64,6 @@ struct ItemsListView: View {
         }
     }
 
-    private var pinnedCategoryIds: Set<String> { session.categories.pinnedCategoryIds }
-
     private var categorySections: [CategorySection] {
         let list = inventory.filteredItems
         let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
@@ -86,9 +84,7 @@ struct ItemsListView: View {
             }
             sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
         }
-        let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }
-        let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }
-        return pinned + unpinned
+        return sections
     }
 
     private struct ListCategoryGroup: Identifiable {
@@ -119,13 +115,10 @@ struct ItemsListView: View {
             groups[key] = group
         }
 
-        // Sort sections within each group: pinned children first, then by category order/name.
+        // Sort sections within each group by category order/name.
         for (key, group) in groups {
             var sorted = group.sections
             sorted.sort { a, b in
-                let aPinned = pinnedCategoryIds.contains(a.id)
-                let bPinned = pinnedCategoryIds.contains(b.id)
-                if aPinned != bPinned { return aPinned && !bPinned }
                 let aOrder = categories.first(where: { $0.id == a.id })?.order ?? Int.max
                 let bOrder = categories.first(where: { $0.id == b.id })?.order ?? Int.max
                 return (aOrder, a.name.lowercased()) < (bOrder, b.name.lowercased())
@@ -133,12 +126,9 @@ struct ItemsListView: View {
             groups[key]?.sections = sorted
         }
 
-        // Sort parent groups: pinned parents first, then by parent category order/name.
+        // Sort parent groups by parent category order/name.
         var result = Array(groups.values)
         result.sort { lhs, rhs in
-            let lhsPinned = pinnedCategoryIds.contains(lhs.id)
-            let rhsPinned = pinnedCategoryIds.contains(rhs.id)
-            if lhsPinned != rhsPinned { return lhsPinned && !rhsPinned }
             let lhsOrder = categories.first(where: { $0.id == lhs.id })?.order ?? Int.max
             let rhsOrder = categories.first(where: { $0.id == rhs.id })?.order ?? Int.max
             return (lhsOrder, lhs.name.lowercased()) < (rhsOrder, rhs.name.lowercased())
@@ -288,9 +278,7 @@ struct ItemsListView: View {
                                                     set: { sectionSortOrders[section.id] = $0 }
                                                 ),
                                                 sectionId: section.id,
-                                                isPinned: pinnedCategoryIds.contains(section.id),
                                                 isCollapsed: collapsedSectionIds.contains(section.id),
-                                                onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                                 onTap: {
                                                     withAnimation(.easeInOut(duration: 0.2)) {
                                                         var next = inventory.categorySectionCollapsedIds
@@ -378,9 +366,7 @@ struct ItemsListView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
-                                        isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
-                                        onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {
                                                 var next = inventory.categorySectionCollapsedIds

@@ -165,9 +165,7 @@ struct GalleryView: View {
         }
     }
 
-    private var pinnedCategoryIds: Set<String> { session.categories.pinnedCategoryIds }
-
-    /// When filter is "All", groups filtered items by category for subsectioned layout. Pinned categories always appear first.
+    /// When filter is "All", groups filtered items by category for subsectioned layout.
     private var categorySections: [CategorySection] {
         let list = inventory.filteredItems
         let byCategory = Dictionary(grouping: list, by: { $0.categoryId })
@@ -188,9 +186,7 @@ struct GalleryView: View {
             }
             sections.append(CategorySection(id: "", name: "Uncategorized", items: uncategorized, totalValue: total))
         }
-        let pinned = sections.filter { pinnedCategoryIds.contains($0.id) }
-        let unpinned = sections.filter { !pinnedCategoryIds.contains($0.id) }
-        return pinned + unpinned
+        return sections
     }
 
     /// Parent groups with their child category sections, used to visually nest subcategories under parents.
@@ -216,13 +212,10 @@ struct GalleryView: View {
             groups[key] = group
         }
 
-        // Sort sections within each group: pinned children first, then by category order/name.
+        // Sort sections within each group by category order/name.
         for (key, group) in groups {
             var sorted = group.sections
             sorted.sort { a, b in
-                let aPinned = pinnedCategoryIds.contains(a.id)
-                let bPinned = pinnedCategoryIds.contains(b.id)
-                if aPinned != bPinned { return aPinned && !bPinned }
                 let aOrder = categories.first(where: { $0.id == a.id })?.order ?? Int.max
                 let bOrder = categories.first(where: { $0.id == b.id })?.order ?? Int.max
                 return (aOrder, a.name.lowercased()) < (bOrder, b.name.lowercased())
@@ -230,12 +223,9 @@ struct GalleryView: View {
             groups[key]?.sections = sorted
         }
 
-        // Sort parent groups: pinned parents first, then by parent category order/name.
+        // Sort parent groups by parent category order/name.
         var result = Array(groups.values)
         result.sort { lhs, rhs in
-            let lhsPinned = pinnedCategoryIds.contains(lhs.id)
-            let rhsPinned = pinnedCategoryIds.contains(rhs.id)
-            if lhsPinned != rhsPinned { return lhsPinned && !rhsPinned }
             let lhsOrder = categories.first(where: { $0.id == lhs.id })?.order ?? Int.max
             let rhsOrder = categories.first(where: { $0.id == rhs.id })?.order ?? Int.max
             return (lhsOrder, lhs.name.lowercased()) < (rhsOrder, rhs.name.lowercased())
@@ -372,12 +362,10 @@ struct GalleryView: View {
                                                     set: { sectionSortOrders[section.id] = $0 }
                                                 ),
                                                 sectionId: section.id,
-                                                isPinned: pinnedCategoryIds.contains(section.id),
                                                 isCollapsed: isParentSection ? parentCollapsed : collapsedSectionIds.contains(section.id),
                                                 isSubcategory: isSubcategory,
                                                 isLastSubcategoryInGroup: isLastSubcategoryInGroup,
                                                 isLastCategoryInGallery: isLastCategory,
-                                                onTogglePin: { session.categories.togglePinned(categoryId: section.id) },
                                                 onTap: {
                                                     withAnimation(.easeInOut(duration: 0.2)) {
                                                         var next = inventory.categorySectionCollapsedIds
@@ -476,9 +464,7 @@ struct GalleryView: View {
                                             set: { sectionSortOrders[singleCategoryId] = $0 }
                                         ),
                                         sectionId: singleCategoryId,
-                                        isPinned: pinnedCategoryIds.contains(singleCategoryId),
                                         isCollapsed: collapsedSectionIds.contains(singleCategoryId),
-                                        onTogglePin: { session.categories.togglePinned(categoryId: singleCategoryId) },
                                         onTap: {
                                             withAnimation(.easeInOut(duration: 0.2)) {
                                                 var next = inventory.categorySectionCollapsedIds
@@ -1134,7 +1120,6 @@ struct CategorySectionHeader: View {
     @Binding var sectionSearchText: String
     @Binding var sortOrder: ItemSortOrder
     var sectionId: String? = nil
-    var isPinned: Bool = false
     var isCollapsed: Bool = false
     /// True when this section is a subcategory under a parent (different background from top-level).
     var isSubcategory: Bool = false
@@ -1142,7 +1127,6 @@ struct CategorySectionHeader: View {
     var isLastSubcategoryInGroup: Bool = true
     /// When true, collapsed state does not show a bottom border (last category in the list).
     var isLastCategoryInGallery: Bool = true
-    var onTogglePin: (() -> Void)? = nil
     var onTap: (() -> Void)? = nil
     var onAddItem: (() -> Void)? = nil
     var onDropItem: ((String) -> Void)? = nil
@@ -1196,16 +1180,6 @@ struct CategorySectionHeader: View {
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            if let onTogglePin {
-                Button {
-                    onTogglePin()
-                } label: {
-                    Image(systemName: isPinned ? "pin.fill" : "pin")
-                        .font(.subheadline)
-                        .foregroundStyle(isPinned ? Color.accentColor : .secondary)
                 }
                 .buttonStyle(.plain)
             }
