@@ -20,7 +20,9 @@ final class CombosViewModel: ObservableObject {
 
     var filteredCombos: [Combo] {
         guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return combos.sorted { ($0.order, $0.createdAt) < ($1.order, $1.createdAt) }
+            return combos.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
         }
         let q = searchText.lowercased()
         return combos
@@ -28,7 +30,9 @@ final class CombosViewModel: ObservableObject {
                 combo.name.lowercased().contains(q) ||
                 combo.notes.lowercased().contains(q)
             }
-            .sorted { ($0.order, $0.createdAt) < ($1.order, $1.createdAt) }
+            .sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
     }
 
     func items(for combo: Combo, from items: [Item]) -> [Item] {
