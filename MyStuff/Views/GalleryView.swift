@@ -296,26 +296,28 @@ struct GalleryView: View {
                                             let groupTotalValue: Double = group.sections.reduce(0) { sum, sec in
                                                 Category.isWishlist(sec.name) ? sum : sum + sec.totalValue
                                             }
-                                            HStack {
+                                            HStack(alignment: .firstTextBaseline, spacing: 4) {
                                                 Text(group.name)
                                                     .font(.headline)
-                                                    .padding(.vertical, 8)
-                                                Spacer()
                                                 if parentCollapsed {
-                                                    Text("\(groupItemCount) item(s)")
-                                                        .font(.caption)
-                                                        .foregroundStyle(.secondary)
-                                                    if group.sections.contains(where: { !Category.isWishlist($0.name) }) {
-                                                        Text("·")
-                                                            .font(.caption)
-                                                            .foregroundStyle(.tertiary)
-                                                        Text("Total: \(formatCurrency(groupTotalValue))")
+                                                    HStack(spacing: 4) {
+                                                        Text("\(groupItemCount) item(s)")
                                                             .font(.caption)
                                                             .foregroundStyle(.secondary)
+                                                        if group.sections.contains(where: { !Category.isWishlist($0.name) }) {
+                                                            Text("·")
+                                                                .font(.caption)
+                                                                .foregroundStyle(.tertiary)
+                                                            Text("Total: \(formatCurrency(groupTotalValue))")
+                                                                .font(.caption)
+                                                                .foregroundStyle(.secondary)
+                                                        }
                                                     }
+                                                    .padding(.leading, 10)
                                                 }
                                             }
                                             .padding(.horizontal, 16)
+                                            .padding(.vertical, 8)
                                             .frame(maxWidth: .infinity, minHeight: CategorySectionHeader.fixedHeight, alignment: .leading)
                                             .background(GalleryView.sectionBackground(isTopLevel: true, isSubcategory: false))
                                             .overlay(alignment: .bottom) {
@@ -1162,6 +1164,29 @@ struct CategorySectionHeader: View {
         return Array(ItemSortOption.allCases)
     }
 
+    /// When collapsed, keep count and total tight next to the title (like parent group header).
+    private var titleAndSummary: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(name)
+                .font(.subheadline)
+                .fontWeight(.medium)
+            HStack(spacing: 4) {
+                Text("\(itemCount) item(s)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !isWishlist {
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Text("Total: \(formattedValue)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.leading, 10)
+        }
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             if let onTap {
@@ -1184,22 +1209,9 @@ struct CategorySectionHeader: View {
                 }
                 .buttonStyle(.plain)
             }
-            Text(name)
-                .font(.subheadline)
-                .fontWeight(.medium)
-            Text("\(itemCount) item(s)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            if !isWishlist {
-                Text("·")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Text("Total: \(formattedValue)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
+            titleAndSummary
             if !isCollapsed {
+                Spacer(minLength: 8)
                 HStack(spacing: 4) {
                     Text("Sort:")
                         .font(.caption)
