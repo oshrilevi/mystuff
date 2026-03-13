@@ -11,6 +11,8 @@ final class Session: ObservableObject {
     @Published var youtubeSearchQuery: String?
     /// Optional search query for the Amazon store; consumed by StoreBrowserView when opening the Amazon store.
     @Published var amazonSearchQuery: String?
+    /// Optional combo id to focus when navigating to the Combos view (e.g. from an item context menu).
+    @Published var requestedComboFocusId: String?
 
     /// Cache of current store prices keyed by product URL (absolute string). Filled on app load for wishlist items and when opening item detail.
     @Published var storePriceCache: [String: String] = [:]

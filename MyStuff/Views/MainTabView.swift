@@ -400,6 +400,9 @@ struct ItemsTabView: View {
             }
         }
         .task {
+            // Ensure combos are available from app launch so item context menus
+            // can show which combos an item belongs to without first visiting Combos.
+            await session.combos.ensureLoaded()
             await session.prefetchWishlistPricesIfNeeded()
         }
     }

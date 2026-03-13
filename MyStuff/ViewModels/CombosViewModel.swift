@@ -55,8 +55,20 @@ final class CombosViewModel: ObservableObject {
             combos = parseCombos(from: comboRows)
             comboItems = parseComboItems(from: itemRows)
         } catch {
+            // Ignore benign task cancellations (e.g. when a view disappears while loading).
+            if (error as? CancellationError) != nil {
+                return
+            }
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Ensures combos and comboItems are loaded at least once.
+    /// Safe to call from background tasks in views like context menus.
+    func ensureLoaded() async {
+        if isLoading { return }
+        if !combos.isEmpty || !comboItems.isEmpty { return }
+        await load()
     }
 
     func addCombo(name: String, notes: String = "") async {

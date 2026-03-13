@@ -9,12 +9,15 @@ struct CombosView: View {
     @State private var selectedItem: Item?
     @State private var combosPendingDeletion: [Combo] = []
     @State private var showDeleteConfirmation = false
+    /// Navigation path so we can programmatically push a combo detail (e.g. from an item context menu)
+    /// and still have a Back button that returns to the combos list.
+    @State private var navigationPath: [Combo] = []
 
     private var combosVM: CombosViewModel { session.combos }
     private var inventory: InventoryViewModel { session.inventory }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if combosVM.isLoading, combosVM.combos.isEmpty {
                     ProgressView()
@@ -182,6 +185,13 @@ struct CombosView: View {
                 await combosVM.load()
                 if inventory.items.isEmpty {
                     await inventory.refresh()
+                }
+                // If a combo was requested (e.g. from an item context menu), push it on the navigation path
+                // so we land directly in its detail view with a Back button to the combos list.
+                if let focusId = session.requestedComboFocusId,
+                   let target = combosVM.combos.first(where: { $0.id == focusId }) {
+                    navigationPath = [target]
+                    session.requestedComboFocusId = nil
                 }
             }
         }

@@ -869,6 +869,19 @@ struct ItemContextMenuContent: View {
         return query.isEmpty ? nil : query
     }
 
+    /// All combos that currently include this item.
+    private var combosForItem: [Combo] {
+        let combosVM = session.combos
+        let entries = combosVM.comboItems.filter { $0.itemId == item.id }
+        guard !entries.isEmpty else { return [] }
+        let ids = Set(entries.map { $0.comboId })
+        return combosVM.combos
+            .filter { ids.contains($0.id) }
+            .sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+    }
+
     private var hasSearchActions: Bool {
         productURL != nil || !trimmedName.isEmpty || amazonSearchQuery != nil
     }
@@ -961,6 +974,26 @@ struct ItemContextMenuContent: View {
                 }
             }
 
+            // Combos section (only for owned items, not wishlist)
+            if !isWishlist, !combosForItem.isEmpty {
+                Divider()
+
+                Menu {
+                    ForEach(combosForItem, id: \.id) { combo in
+                        Button {
+                            // Show full combos list; just focus the selected combo detail.
+                            session.combos.searchText = ""
+                            session.requestedComboFocusId = combo.id
+                            session.requestedSidebarSelection = .combos
+                        } label: {
+                            Text(combo.name)
+                        }
+                    }
+                } label: {
+                    Label("Combos", systemImage: "square.stack.3d.up")
+                }
+            }
+
             // Lists section (not shown for wishlist items, which you don't own yet)
             if !isWishlist {
                 Divider()
@@ -1014,6 +1047,9 @@ struct ItemContextMenuContent: View {
                 Label("Delete", systemImage: "trash")
             }
             .tint(.red)
+        }
+        .task {
+            await session.combos.ensureLoaded()
         }
     }
 }
