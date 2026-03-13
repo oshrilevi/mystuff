@@ -32,14 +32,7 @@ struct ListDetailView: View {
             lines.append("")
             lines.append("Items:")
             for item in itemsInList {
-                var parts: [String] = [item.name]
-                if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
-                    parts.append("(\(catName))")
-                }
-                if !item.tags.isEmpty {
-                    parts.append("[\(item.tags.joined(separator: ", "))]")
-                }
-                lines.append("• " + parts.joined(separator: " "))
+                lines.append("• \(item.name)")
             }
         }
         return lines.joined(separator: "\n")
