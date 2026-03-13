@@ -9,6 +9,9 @@ struct ListDetailView: View {
     @State private var showItemPicker = false
     @State private var showComboPicker = false
     @State private var hoveredItemId: Item.ID?
+    #if os(iOS)
+    @State private var editMode: EditMode = .inactive
+    #endif
 
     private var listsVM: ListsViewModel { session.lists }
     private var inventory: InventoryViewModel { session.inventory }
@@ -121,6 +124,7 @@ struct ListDetailView: View {
                         #endif
                     }
                     .onDelete(perform: removeItems)
+                    .onMove(perform: moveItems)
                 }
             }
         }
@@ -160,10 +164,14 @@ struct ListDetailView: View {
                     ShareLink(item: shareText) {
                         Label("Share list", systemImage: "square.and.arrow.up")
                     }
+                    EditButton()
                 }
             }
             #endif
         }
+        #if os(iOS)
+        .environment(\.editMode, $editMode)
+        #endif
         .sheet(item: $selectedItem) { item in
             ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                 .environmentObject(session)
@@ -227,6 +235,12 @@ struct ListDetailView: View {
     private func removeItem(_ item: Item) {
         Task {
             await listsVM.removeItems([item], from: list)
+        }
+    }
+
+    private func moveItems(from source: IndexSet, to destination: Int) {
+        Task {
+            await listsVM.reorderItems(in: list, fromOffsets: source, toOffset: destination)
         }
     }
 }

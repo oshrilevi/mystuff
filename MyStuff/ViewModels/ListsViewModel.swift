@@ -190,12 +190,43 @@ final class ListsViewModel: ObservableObject {
         guard !items.isEmpty else { return }
         let idsToRemove = Set(items.map { $0.id })
         let remaining = listItems.filter { !($0.listId == list.id && idsToRemove.contains($0.itemId)) }
+        await persistListItems(remaining, spreadsheetId: sid)
+    }
+
+    /// Reorder items within a specific list and persist the new order to Sheets.
+    func reorderItems(in list: UserList, fromOffsets: IndexSet, toOffset: Int) async {
+        guard let sid = spreadsheetId else { return }
+        var entriesForList = listItems
+            .filter { $0.listId == list.id }
+            .sorted { ($0.order, $0.itemId) < ($1.order, $1.itemId) }
+        guard !entriesForList.isEmpty else { return }
+
+        entriesForList.move(fromOffsets: fromOffsets, toOffset: toOffset)
+
+        // Update orders to be dense and stable from 0...
+        for idx in entriesForList.indices {
+            entriesForList[idx].order = idx
+        }
+
+        // Merge updated entries back into the full listItems collection.
+        var updatedAll = listItems
+        for entry in entriesForList {
+            if let index = updatedAll.firstIndex(where: { $0.id == entry.id }) {
+                updatedAll[index] = entry
+            }
+        }
+
+        await persistListItems(updatedAll, spreadsheetId: sid)
+    }
+
+    /// Write the given `ListItem` collection to the `ListItems` sheet and update local state.
+    private func persistListItems(_ items: [ListItem], spreadsheetId sid: String) async {
         do {
             try await ensureSheetsExist(spreadsheetId: sid)
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "ListItems")
             try await sheets.appendRows(spreadsheetId: sid, sheetName: "ListItems", values: [ListItem.columnOrder])
-            if !remaining.isEmpty {
-                let rows = remaining.map { entry in
+            if !items.isEmpty {
+                let rows = items.map { entry in
                     [
                         entry.id,
                         entry.listId,
@@ -206,7 +237,7 @@ final class ListsViewModel: ObservableObject {
                 }
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "ListItems", values: rows)
             }
-            listItems = remaining
+            listItems = items
         } catch {
             errorMessage = error.localizedDescription
         }

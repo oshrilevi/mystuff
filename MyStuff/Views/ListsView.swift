@@ -34,7 +34,7 @@ struct ListsView: View {
                         }
                         ForEach(listsVM.filteredLists) { list in
                             NavigationLink(value: list) {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 6) {
                                     Text(list.name)
                                         .font(.body)
                                         .fontWeight(.medium)
@@ -43,6 +43,24 @@ struct ListsView: View {
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(2)
+                                    }
+
+                                    let listItems = listsVM.items(for: list, from: session.inventory.items)
+                                    if !listItems.isEmpty {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 4) {
+                                                ForEach(listItems) { item in
+                                                    ItemThumbnailView(
+                                                        drive: session.drive,
+                                                        photoId: item.photoIds.first,
+                                                        size: 26,
+                                                        cornerRadius: 5,
+                                                        placeholderFont: .caption
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        .padding(.top, 2)
                                     }
                                 }
                             }
