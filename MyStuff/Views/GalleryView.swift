@@ -881,6 +881,14 @@ struct ItemContextMenuContent: View {
                 $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
             }
     }
+    
+    /// Number of lists that currently include this item.
+    private var listCountForItem: Int {
+        let entries = session.lists.listItems.filter { $0.itemId == item.id }
+        guard !entries.isEmpty else { return 0 }
+        let listIds = Set(entries.map { $0.listId })
+        return listIds.count
+    }
 
     private var hasSearchActions: Bool {
         productURL != nil || !trimmedName.isEmpty || amazonSearchQuery != nil
@@ -990,7 +998,7 @@ struct ItemContextMenuContent: View {
                         }
                     }
                 } label: {
-                    Label("Combos", systemImage: "square.stack.3d.up")
+                    Label("Combos (\(combosForItem.count))", systemImage: "square.stack.3d.up")
                 }
             }
 
@@ -1023,7 +1031,7 @@ struct ItemContextMenuContent: View {
                         }
                     }
                 } label: {
-                    Label("Add to list", systemImage: "text.badge.plus")
+                    Label("Add to list (\(listCountForItem))", systemImage: "text.badge.plus")
                 }
             }
 
