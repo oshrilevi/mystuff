@@ -8,6 +8,7 @@ struct ListDetailView: View {
     @State private var selectedItem: Item?
     @State private var showItemPicker = false
     @State private var showComboPicker = false
+    @State private var hoveredItemId: Item.ID?
 
     private var listsVM: ListsViewModel { session.lists }
     private var inventory: InventoryViewModel { session.inventory }
@@ -82,20 +83,33 @@ struct ListDetailView: View {
                                 }
                             }
                             Spacer()
-                            Button {
-                                removeItem(item)
-                            } label: {
-                                Image(systemName: "trash")
+                            #if os(macOS)
+                            if hoveredItemId == item.id {
+                                Button {
+                                    removeItem(item)
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(.red)
+                                .help("Remove from list")
                             }
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(.red)
-                            .help("Remove from list")
+                            #endif
                         }
                         .padding(.vertical, 4)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             selectedItem = item
                         }
+                        #if os(macOS)
+                        .onHover { isHovering in
+                            if isHovering {
+                                hoveredItemId = item.id
+                            } else if hoveredItemId == item.id {
+                                hoveredItemId = nil
+                            }
+                        }
+                        #endif
                         #if os(iOS)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
