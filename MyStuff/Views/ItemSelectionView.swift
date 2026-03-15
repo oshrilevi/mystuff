@@ -16,8 +16,15 @@ struct ItemSelectionView: View {
     @State private var selectedIds: Set<String> = []
     @State private var searchText: String = ""
 
+    /// Items available to add to the list; excludes Wishlist category so you only add owned items.
+    private var selectableItems: [Item] {
+        let wishlistCategoryIds = Set(categories.filter { Category.isWishlist($0.name) }.map(\.id))
+        if wishlistCategoryIds.isEmpty { return allItems }
+        return allItems.filter { !wishlistCategoryIds.contains($0.categoryId) }
+    }
+
     private var filteredItems: [Item] {
-        var result = allItems
+        var result = selectableItems
         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let q = searchText.lowercased()
             result = result.filter {
@@ -90,7 +97,7 @@ struct ItemSelectionView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add \(selectedIds.count) item(s)") {
-                        let toAdd = allItems.filter { selectedIds.contains($0.id) }
+                        let toAdd = selectableItems.filter { selectedIds.contains($0.id) }
                         onDone(toAdd)
                     }
                     .disabled(selectedIds.isEmpty)
