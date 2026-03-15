@@ -116,7 +116,7 @@ struct ItemSelectionView: View {
         ZStack(alignment: .trailing) {
             TextField("Search items", text: $searchText)
                 .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 160, maxWidth: 260)
+                .frame(maxWidth: .infinity)
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -127,6 +127,7 @@ struct ItemSelectionView: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(.bottom, 12)
     }
 
     private func toggleSelection(for id: String) {

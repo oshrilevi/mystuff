@@ -114,7 +114,7 @@ struct ComboPickerView: View {
         ZStack(alignment: .trailing) {
             TextField("Search combos", text: $searchText)
                 .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 160, maxWidth: 260)
+                .frame(maxWidth: .infinity)
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
@@ -125,6 +125,7 @@ struct ComboPickerView: View {
                 .buttonStyle(.plain)
             }
         }
+        .padding(.bottom, 12)
     }
 }
 

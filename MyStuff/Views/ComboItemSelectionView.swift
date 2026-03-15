@@ -49,7 +49,7 @@ struct ComboItemSelectionView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
-                .padding(.bottom, 4)
+                .padding(.bottom, 12)
 
                 List {
                     if isLoading && allItems.isEmpty {
@@ -156,7 +156,7 @@ struct ComboItemSelectionView: View {
         ZStack(alignment: .trailing) {
             TextField("Search by name, description, or tag", text: $searchText)
                 .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 160, maxWidth: 260)
+                .frame(maxWidth: .infinity)
             if !searchText.isEmpty {
                 Button {
                     searchText = ""
