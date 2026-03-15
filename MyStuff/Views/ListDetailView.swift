@@ -8,10 +8,6 @@ struct ListDetailView: View {
     @State private var selectedItem: Item?
     @State private var showItemPicker = false
     @State private var showComboPicker = false
-    @State private var hoveredItemId: Item.ID?
-    #if os(iOS)
-    @State private var editMode: EditMode = .inactive
-    #endif
 
     private var listsVM: ListsViewModel { session.lists }
     private var inventory: InventoryViewModel { session.inventory }
@@ -40,84 +36,76 @@ struct ListDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            List {
-                if itemsInList.isEmpty {
-                    Section {
-                        Text("No items in this list yet.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 24)
+            if itemsInList.isEmpty {
+                ContentUnavailableView {
+                    Label("No items in this list yet.", systemImage: "tray")
+                } actions: {
+                    Button { showItemPicker = true } label: {
+                        Label("Add items", systemImage: "plus")
                     }
-                } else {
-                    ForEach(itemsInList) { item in
-                        HStack(spacing: 12) {
-                            ItemThumbnailView(
-                                drive: session.drive,
-                                photoId: item.photoIds.first,
-                                size: 44,
-                                cornerRadius: 8,
-                                placeholderFont: .title2
-                            )
+                    Button { showComboPicker = true } label: {
+                        Label("Add combos", systemImage: "square.stack.3d.up")
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ], spacing: 12) {
+                        ForEach(itemsInList) { item in
+                            VStack(alignment: .leading, spacing: 10) {
+                                ItemThumbnailView(
+                                    drive: session.drive,
+                                    photoId: item.photoIds.first,
+                                    size: 64,
+                                    cornerRadius: 8,
+                                    placeholderFont: .title2
+                                )
+                                .frame(width: 64, height: 64)
+                                .clipped()
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.name)
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                HStack(spacing: 6) {
-                                    if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
-                                        Text(catName)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    if !item.tags.isEmpty {
-                                        Text(item.tags.joined(separator: ", "))
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                            .lineLimit(1)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.name)
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                    HStack(spacing: 6) {
+                                        if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
+                                            Text(catName)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        if !item.tags.isEmpty {
+                                            Text(item.tags.joined(separator: ", "))
+                                                .font(.caption2)
+                                                .foregroundStyle(.tertiary)
+                                                .lineLimit(1)
+                                        }
                                     }
                                 }
+                                Spacer(minLength: 0)
                             }
-                            Spacer()
-                            #if os(macOS)
-                            if hoveredItemId == item.id {
-                                Button {
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedItem = item
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
                                     removeItem(item)
                                 } label: {
-                                    Image(systemName: "trash")
+                                    Label("Remove from list", systemImage: "trash")
                                 }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.red)
-                                .help("Remove from list")
-                            }
-                            #endif
-                        }
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedItem = item
-                        }
-                        #if os(macOS)
-                        .onHover { isHovering in
-                            if isHovering {
-                                hoveredItemId = item.id
-                            } else if hoveredItemId == item.id {
-                                hoveredItemId = nil
                             }
                         }
-                        #endif
-                        #if os(iOS)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                removeItem(item)
-                            } label: {
-                                Label("Remove", systemImage: "trash")
-                            }
-                        }
-                        #endif
                     }
-                    .onDelete(perform: removeItems)
-                    .onMove(perform: moveItems)
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
                 }
             }
         }
@@ -157,14 +145,10 @@ struct ListDetailView: View {
                     ShareLink(item: shareText) {
                         Label("Share list", systemImage: "square.and.arrow.up")
                     }
-                    EditButton()
                 }
             }
             #endif
         }
-        #if os(iOS)
-        .environment(\.editMode, $editMode)
-        #endif
         .sheet(item: $selectedItem) { item in
             ItemDetailView(item: item, onDismiss: { selectedItem = nil })
                 .environmentObject(session)
@@ -218,23 +202,11 @@ struct ListDetailView: View {
         }
     }
 
-    private func removeItems(at offsets: IndexSet) {
-        let toRemove = offsets.map { itemsInList[$0] }
-        Task {
-            await listsVM.removeItems(toRemove, from: list)
-        }
-    }
-
     private func removeItem(_ item: Item) {
         Task {
             await listsVM.removeItems([item], from: list)
         }
     }
 
-    private func moveItems(from source: IndexSet, to destination: Int) {
-        Task {
-            await listsVM.reorderItems(in: list, fromOffsets: source, toOffset: destination)
-        }
-    }
 }
 

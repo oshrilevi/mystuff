@@ -7,9 +7,6 @@ struct ComboDetailView: View {
 
     @State private var selectedItem: Item?
     @State private var showItemSelection = false
-    #if os(macOS)
-    @State private var hoveredItemId: String?
-    #endif
 
     private var combosVM: CombosViewModel { session.combos }
     private var inventory: InventoryViewModel { session.inventory }
@@ -20,83 +17,75 @@ struct ComboDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            List {
-                if itemsInCombo.isEmpty {
-                    Section {
-                        VStack(spacing: 12) {
-                            Text("No items in this combo yet.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                            Button {
-                                showItemSelection = true
-                            } label: {
-                                Label("Add items to this combo", systemImage: "plus")
-                            }
-                            .buttonStyle(.borderedProminent)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 24)
+            if itemsInCombo.isEmpty {
+                ContentUnavailableView {
+                    Label("No items in this combo yet.", systemImage: "tray")
+                } actions: {
+                    Button {
+                        showItemSelection = true
+                    } label: {
+                        Label("Add items to this combo", systemImage: "plus")
                     }
-                } else {
-                    ForEach(itemsInCombo) { item in
-                        HStack(spacing: 12) {
-                            ItemThumbnailView(
-                                drive: session.drive,
-                                photoId: item.photoIds.first,
-                                size: 44,
-                                cornerRadius: 8,
-                                placeholderFont: .title2
-                            )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12)
+                    ], spacing: 12) {
+                        ForEach(itemsInCombo) { item in
+                            VStack(alignment: .leading, spacing: 10) {
+                                ItemThumbnailView(
+                                    drive: session.drive,
+                                    photoId: item.photoIds.first,
+                                    size: 64,
+                                    cornerRadius: 8,
+                                    placeholderFont: .title2
+                                )
+                                .frame(width: 64, height: 64)
+                                .clipped()
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.name)
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                HStack(spacing: 6) {
-                                    if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
-                                        Text(catName)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    if !item.tags.isEmpty {
-                                        Text(item.tags.joined(separator: ", "))
-                                            .font(.caption2)
-                                            .foregroundStyle(.tertiary)
-                                            .lineLimit(1)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.name)
+                                        .font(.body)
+                                        .fontWeight(.medium)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                    HStack(spacing: 6) {
+                                        if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
+                                            Text(catName)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        if !item.tags.isEmpty {
+                                            Text(item.tags.joined(separator: ", "))
+                                                .font(.caption2)
+                                                .foregroundStyle(.tertiary)
+                                                .lineLimit(1)
+                                        }
                                     }
                                 }
+                                Spacer(minLength: 0)
                             }
-                            Spacer()
-                            #if os(macOS)
-                            Button {
-                                Task {
-                                    await combosVM.removeItems([item], from: combo)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedItem = item
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    removeItem(item)
+                                } label: {
+                                    Label("Remove from combo", systemImage: "trash")
                                 }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundStyle(.red)
-                            }
-                            .buttonStyle(.borderless)
-                            .opacity(hoveredItemId == item.id ? 1 : 0)
-                            #endif
-                        }
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedItem = item
-                        }
-                        #if os(macOS)
-                        .onHover { isHovering in
-                            if isHovering {
-                                hoveredItemId = item.id
-                            } else if hoveredItemId == item.id {
-                                hoveredItemId = nil
                             }
                         }
-                        #endif
                     }
-                    .onDelete(perform: removeItems)
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
                 }
             }
         }
@@ -142,10 +131,9 @@ struct ComboDetailView: View {
         }
     }
 
-    private func removeItems(at offsets: IndexSet) {
-        let toRemove = offsets.map { itemsInCombo[$0] }
+    private func removeItem(_ item: Item) {
         Task {
-            await combosVM.removeItems(toRemove, from: combo)
+            await combosVM.removeItems([item], from: combo)
         }
     }
 }

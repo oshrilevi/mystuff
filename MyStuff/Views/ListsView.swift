@@ -25,64 +25,71 @@ struct ListsView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
+                    ScrollView {
                         if let err = listsVM.errorMessage {
-                            Section {
-                                Text(err)
-                                    .foregroundStyle(.red)
-                            }
+                            Text(err)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal)
+                                .padding(.top, 8)
                         }
-                        ForEach(listsVM.filteredLists) { list in
-                            NavigationLink(value: list) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(list.name)
-                                        .font(.body)
-                                        .fontWeight(.medium)
-                                    if !list.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        Text(list.notes)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
+                        LazyVGrid(columns: [
+                            GridItem(.flexible(), spacing: 12),
+                            GridItem(.flexible(), spacing: 12)
+                        ], spacing: 12) {
+                            ForEach(listsVM.filteredLists) { list in
+                                NavigationLink(value: list) {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text(list.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
                                             .lineLimit(2)
-                                    }
-
-                                    let listItems = listsVM.items(for: list, from: session.inventory.items)
-                                    if !listItems.isEmpty {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 4) {
-                                                ForEach(listItems) { item in
-                                                    ItemThumbnailView(
-                                                        drive: session.drive,
-                                                        photoId: item.photoIds.first,
-                                                        size: 26,
-                                                        cornerRadius: 5,
-                                                        placeholderFont: .caption
-                                                    )
+                                            .multilineTextAlignment(.leading)
+                                        if !list.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                            Text(list.notes)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(2)
+                                        }
+                                        let listItems = listsVM.items(for: list, from: session.inventory.items)
+                                        if !listItems.isEmpty {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(listItems) { item in
+                                                        ItemThumbnailView(
+                                                            drive: session.drive,
+                                                            photoId: item.photoIds.first,
+                                                            size: 64,
+                                                            cornerRadius: 8,
+                                                            placeholderFont: .title2
+                                                        )
+                                                    }
                                                 }
+                                                .padding(.top, 4)
                                             }
                                         }
-                                        .padding(.top, 2)
+                                    }
+                                    .padding(12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button {
+                                        editingList = list
+                                    } label: {
+                                        Label("Rename", systemImage: "pencil")
+                                    }
+                                    Button(role: .destructive) {
+                                        Task { await listsVM.deleteLists([list]) }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
                             }
-                            .contextMenu {
-                                Button {
-                                    editingList = list
-                                } label: {
-                                    Label("Rename", systemImage: "pencil")
-                                }
-                                Button(role: .destructive) {
-                                    Task { await listsVM.deleteLists([list]) }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
                         }
-                        .onDelete { indexSet in
-                            let listsToDelete = indexSet.map { listsVM.filteredLists[$0] }
-                            Task {
-                                await listsVM.deleteLists(listsToDelete)
-                            }
-                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 12)
                     }
                     .refreshable { await listsVM.load() }
                 }

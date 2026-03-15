@@ -32,61 +32,69 @@ struct CombosView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List {
+                    ScrollView {
                         if let err = combosVM.errorMessage {
-                            Section {
-                                Text(err)
-                                    .foregroundStyle(.red)
-                            }
+                            Text(err)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal)
+                                .padding(.top, 8)
                         }
-                        ForEach(combosVM.filteredCombos) { combo in
-                            NavigationLink(value: combo) {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(combo.name)
-                                        .font(.body)
-                                        .fontWeight(.medium)
-                                    let itemsInCombo = combosVM.items(for: combo, from: inventory.items)
-                                    if !itemsInCombo.isEmpty {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 8) {
-                                                ForEach(itemsInCombo) { item in
-                                                    ItemThumbnailView(
-                                                        drive: session.drive,
-                                                        photoId: item.photoIds.first,
-                                                        size: 44,
-                                                        cornerRadius: 8,
-                                                        placeholderFont: .title2
-                                                    )
-                                                    .onTapGesture {
-                                                        selectedItem = item
+                        LazyVGrid(columns: [
+                            GridItem(.flexible(), spacing: 12),
+                            GridItem(.flexible(), spacing: 12)
+                        ], spacing: 12) {
+                            ForEach(combosVM.filteredCombos) { combo in
+                                NavigationLink(value: combo) {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text(combo.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                        let itemsInCombo = combosVM.items(for: combo, from: inventory.items)
+                                        if !itemsInCombo.isEmpty {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(itemsInCombo) { item in
+                                                        ItemThumbnailView(
+                                                            drive: session.drive,
+                                                            photoId: item.photoIds.first,
+                                                            size: 64,
+                                                            cornerRadius: 8,
+                                                            placeholderFont: .title2
+                                                        )
+                                                        .onTapGesture {
+                                                            selectedItem = item
+                                                        }
                                                     }
                                                 }
+                                                .padding(.top, 4)
                                             }
-                                            .padding(.top, 4)
                                         }
                                     }
+                                    .padding(12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 }
-                                .padding(.vertical, 6)
-                            }
-                            .contextMenu {
-                                Button {
-                                    editingCombo = combo
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
-                                }
-                                Button(role: .destructive) {
-                                    combosPendingDeletion = [combo]
-                                    showDeleteConfirmation = true
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                                .buttonStyle(.plain)
+                                .contextMenu {
+                                    Button {
+                                        editingCombo = combo
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    Button(role: .destructive) {
+                                        combosPendingDeletion = [combo]
+                                        showDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
-                        .onDelete { indexSet in
-                            let combosToDelete = indexSet.map { combosVM.filteredCombos[$0] }
-                            combosPendingDeletion = combosToDelete
-                            showDeleteConfirmation = true
-                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 12)
                     }
                     .refreshable { await combosVM.load() }
                 }
