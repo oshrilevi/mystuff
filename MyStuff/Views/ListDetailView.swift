@@ -66,7 +66,7 @@ struct ListDetailView: View {
                         GridItem(.flexible(), spacing: 12)
                     ], spacing: 12) {
                         ForEach(itemsInList) { item in
-                            VStack(alignment: .leading, spacing: 10) {
+                            HStack(alignment: .top, spacing: 10) {
                                 ItemThumbnailView(
                                     drive: session.drive,
                                     photoId: item.photoIds.first,
@@ -89,6 +89,7 @@ struct ListDetailView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
+                                Spacer(minLength: 0)
                             }
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)

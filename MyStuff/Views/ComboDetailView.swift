@@ -46,7 +46,7 @@ struct ComboDetailView: View {
                         GridItem(.flexible(), spacing: 12)
                     ], spacing: 12) {
                         ForEach(itemsInCombo) { item in
-                            VStack(alignment: .leading, spacing: 10) {
+                            HStack(alignment: .top, spacing: 10) {
                                 ItemThumbnailView(
                                     drive: session.drive,
                                     photoId: item.photoIds.first,
@@ -69,6 +69,7 @@ struct ComboDetailView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
+                                Spacer(minLength: 0)
                             }
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
