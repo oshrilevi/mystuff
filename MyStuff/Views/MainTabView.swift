@@ -101,12 +101,13 @@ struct MainTabView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                HStack {
+                VStack(spacing: 0) {
+                    Divider()
                     SettingsMenuButton(selection: $selection)
-                    Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                 }
-                .padding(.leading, 12)
-                .padding(.top, 8)
+                .padding(.horizontal, 12)
                 .padding(.bottom, 10)
             }
             .listStyle(.sidebar)
@@ -201,8 +202,10 @@ private struct SettingsMenuButton: View {
                 } label: { Label("Export as ZIP", systemImage: "archivebox") }
             }
         } label: {
-            Image(systemName: "gearshape")
-                .font(.title2)
+            Text("SETTINGS")
+                .font(.callout.weight(.semibold))
+                .textCase(.uppercase)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
