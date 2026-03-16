@@ -32,6 +32,7 @@ struct ComboDetailView: View {
                 ScrollView {
                     LazyVGrid(columns: [
                         GridItem(.flexible(), spacing: 12),
+                        GridItem(.flexible(), spacing: 12),
                         GridItem(.flexible(), spacing: 12)
                     ], spacing: 12) {
                         ForEach(itemsInCombo) { item in
@@ -57,12 +58,6 @@ struct ComboDetailView: View {
                                             Text(catName)
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
-                                        }
-                                        if !item.tags.isEmpty {
-                                            Text(item.tags.joined(separator: ", "))
-                                                .font(.caption2)
-                                                .foregroundStyle(.tertiary)
-                                                .lineLimit(1)
                                         }
                                     }
                                 }
