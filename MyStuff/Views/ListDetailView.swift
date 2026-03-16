@@ -16,6 +16,16 @@ struct ListDetailView: View {
         listsVM.items(for: list, from: inventory.items)
     }
 
+    private func categoryPath(for item: Item) -> String? {
+        let categories = session.categories.categories
+        guard let category = categories.first(where: { $0.id == item.categoryId }) else { return nil }
+        if let parentId = category.parentId,
+           let parent = categories.first(where: { $0.id == parentId }) {
+            return "\(parent.name) › \(category.name)"
+        }
+        return category.name
+    }
+
     private var shareText: String {
         var lines: [String] = []
         lines.append("MyStuff – List: \(list.name)")
@@ -73,12 +83,10 @@ struct ListDetailView: View {
                                         .fontWeight(.medium)
                                         .lineLimit(2)
                                         .multilineTextAlignment(.leading)
-                                    HStack(spacing: 6) {
-                                        if let catName = session.categories.categories.first(where: { $0.id == item.categoryId })?.name {
-                                            Text(catName)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
+                                    if let path = categoryPath(for: item) {
+                                        Text(path)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
                                 Spacer(minLength: 0)
@@ -145,8 +153,13 @@ struct ListDetailView: View {
             #endif
         }
         .sheet(item: $selectedItem) { item in
-            ItemDetailView(item: item, onDismiss: { selectedItem = nil })
-                .environmentObject(session)
+            ItemDetailView(
+                item: item,
+                allowEditing: false,
+                allowDeleting: false,
+                onDismiss: { selectedItem = nil }
+            )
+            .environmentObject(session)
         }
         .sheet(isPresented: $showItemPicker) {
             ItemSelectionView(
