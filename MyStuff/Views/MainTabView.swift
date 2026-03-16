@@ -137,27 +137,6 @@ struct MainTabView: View {
                     YouTubeSearchView()
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            selection = .categories
-                        } label: { Label("Categories", systemImage: "folder") }
-                        Button {
-                            selection = .locations
-                        } label: { Label("Locations", systemImage: "location") }
-                        Button {
-                            selection = .storesList
-                        } label: { Label("Stores", systemImage: "cart") }
-                        Button {
-                            selection = .sourcesList
-                        } label: { Label("Sources", systemImage: "link") }
-                    } label: {
-                        Label("Settings", systemImage: "gearshape")
-                    }
-                    .help("Open Categories, Locations, Stores, or Sources")
-                }
-            }
             .onChange(of: session.requestedSidebarSelection) { _, newValue in
                 if let sel = newValue {
                     selection = sel
