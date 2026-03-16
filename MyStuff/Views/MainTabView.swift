@@ -160,55 +160,114 @@ private struct SettingsMenuButton: View {
     @EnvironmentObject var session: Session
     @State private var isExportingPDF = false
     @State private var isExportingZIP = false
+    @State private var isExpanded = false
+    @State private var hoveredRow: SettingsRow?
+
+    private enum SettingsRow: Hashable {
+        case categories
+        case locations
+        case stores
+        case sources
+        case exportCSV
+        case exportPDF
+        case exportZIP
+    }
 
     var body: some View {
-        Menu {
-            Section("Settings") {
-                Button {
-                    selection = .categories
-                } label: { Label("Categories", systemImage: "folder") }
+        VStack(spacing: 6) {
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Settings")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-                Button {
-                    selection = .locations
-                } label: { Label("Locations", systemImage: "location") }
-
-                Button {
-                    selection = .storesList
-                } label: { Label("Stores", systemImage: "cart") }
-
-                Button {
-                    selection = .sourcesList
-                } label: { Label("Sources", systemImage: "link") }
-            }
-            Section("Exports") {
-                Button {
-                    exportCSV()
-                } label: { Label("Export as CSV", systemImage: "table") }
-
-                Button {
-                    isExportingPDF = true
-                    Task {
-                        await exportPDF()
-                        await MainActor.run { isExportingPDF = false }
+                    settingsRowButton(
+                        title: "Categories",
+                        systemImage: "folder",
+                        row: .categories
+                    ) {
+                        selection = .categories
                     }
-                } label: { Label("Export as PDF", systemImage: "doc.richtext") }
 
-                Button {
-                    isExportingZIP = true
-                    Task {
-                        await exportZIP()
-                        await MainActor.run { isExportingZIP = false }
+                    settingsRowButton(
+                        title: "Locations",
+                        systemImage: "location",
+                        row: .locations
+                    ) {
+                        selection = .locations
                     }
-                } label: { Label("Export as ZIP", systemImage: "archivebox") }
+
+                    settingsRowButton(
+                        title: "Stores",
+                        systemImage: "cart",
+                        row: .stores
+                    ) {
+                        selection = .storesList
+                    }
+
+                    settingsRowButton(
+                        title: "Sources",
+                        systemImage: "link",
+                        row: .sources
+                    ) {
+                        selection = .sourcesList
+                    }
+
+                    Divider()
+                        .padding(.top, 4)
+
+                    Text("Exports")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    settingsRowButton(
+                        title: "Export as CSV",
+                        systemImage: "table",
+                        row: .exportCSV
+                    ) {
+                        exportCSV()
+                    }
+
+                    settingsRowButton(
+                        title: "Export as PDF",
+                        systemImage: "doc.richtext",
+                        row: .exportPDF
+                    ) {
+                        isExportingPDF = true
+                        Task {
+                            await exportPDF()
+                            await MainActor.run { isExportingPDF = false }
+                        }
+                    }
+
+                    settingsRowButton(
+                        title: "Export as ZIP",
+                        systemImage: "archivebox",
+                        row: .exportZIP
+                    ) {
+                        isExportingZIP = true
+                        Task {
+                            await exportZIP()
+                            await MainActor.run { isExportingZIP = false }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } label: {
-            Text("SETTINGS")
-                .font(.callout.weight(.semibold))
-                .textCase(.uppercase)
-                .frame(maxWidth: .infinity, alignment: .center)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                Text("SETTINGS")
+                    .font(.callout.weight(.semibold))
+                    .textCase(.uppercase)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+            }
+            .buttonStyle(.plain)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
         .sheet(isPresented: $isExportingPDF) {
             VStack(spacing: 12) {
                 ProgressView()
@@ -226,6 +285,56 @@ private struct SettingsMenuButton: View {
                     .font(.headline)
             }
             .frame(width: 220, height: 100)
+        }
+    }
+
+    private func settingsRowButton(
+        title: String,
+        systemImage: String,
+        row: SettingsRow,
+        action: @escaping () -> Void
+    ) -> some View {
+        let isSelected = isRowSelected(row)
+        return Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 3)
+                .padding(.horizontal, 4)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(highlightColor(for: row))
+                )
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            hoveredRow = hovering ? row : (hoveredRow == row ? nil : hoveredRow)
+        }
+    }
+
+    private func highlightColor(for row: SettingsRow) -> Color {
+        if isRowSelected(row) {
+            return Color.accentColor.opacity(0.18)
+        }
+        if hoveredRow == row {
+            return Color.accentColor.opacity(0.10)
+        }
+        return .clear
+    }
+
+    private func isRowSelected(_ row: SettingsRow) -> Bool {
+        switch row {
+        case .categories:
+            return selection == .categories
+        case .locations:
+            return selection == .locations
+        case .stores:
+            return selection == .storesList
+        case .sources:
+            return selection == .sourcesList
+        case .exportCSV, .exportPDF, .exportZIP:
+            return false
         }
     }
 
