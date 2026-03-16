@@ -69,7 +69,6 @@ struct ComboDetailView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
-                                Spacer(minLength: 0)
                             }
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
