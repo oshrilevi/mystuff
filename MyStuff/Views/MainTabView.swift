@@ -267,6 +267,11 @@ private struct SettingsMenuButton: View {
             }
             .buttonStyle(.plain)
         }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .windowBackgroundColor))
+        )
         .buttonStyle(.plain)
         .sheet(isPresented: $isExportingPDF) {
             VStack(spacing: 12) {
