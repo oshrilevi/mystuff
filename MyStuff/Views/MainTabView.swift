@@ -306,7 +306,11 @@ private struct SettingsMenuButton: View {
                 isExpanded = false
             }
         } label: {
-            Label(title, systemImage: systemImage)
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .frame(width: 16, alignment: .center)
+                Text(title)
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 3)
                 .padding(.horizontal, 4)
