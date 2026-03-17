@@ -291,84 +291,16 @@ struct GalleryView: View {
                                             let groupTotalValue: Double = group.sections.reduce(0) { sum, sec in
                                                 Category.isWishlist(sec.name) ? sum : sum + sec.totalValue
                                             }
-                                            HStack(alignment: .center, spacing: 8) {
-                                                CategoryIconView(
-                                                    iconSymbol: categories.first(where: { $0.id == group.id })?.iconSymbol,
-                                                    iconFileId: categories.first(where: { $0.id == group.id })?.iconFileId,
-                                                    drive: session.drive,
-                                                    size: 22
-                                                )
-                                                Text(group.name)
-                                                    .font(.headline)
-                                                if parentCollapsed {
-                                                    HStack(spacing: 4) {
-                                                        Text("\(groupItemCount) item(s)")
-                                                            .font(.caption)
-                                                            .foregroundStyle(.secondary)
-                                                        if group.sections.contains(where: { !Category.isWishlist($0.name) }) {
-                                                            Text("·")
-                                                                .font(.caption)
-                                                                .foregroundStyle(.tertiary)
-                                                            Text("Total: \(formatCurrency(groupTotalValue))")
-                                                                .font(.caption)
-                                                                .foregroundStyle(.secondary)
-                                                        }
-                                                    }
-                                                    .padding(.leading, 10)
-                                                }
-                                                Spacer(minLength: 8)
-                                                let subcategoryIds = group.sections
-                                                    .filter { $0.id != group.id }
-                                                    .map(\.id)
-                                                if !subcategoryIds.isEmpty {
-                                                    HStack(spacing: 8) {
-                                                        Button {
-                                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                                var next = inventory.categorySectionCollapsedIds
-                                                                next.formUnion(subcategoryIds)
-                                                                inventory.categorySectionCollapsedIds = next
-                                                            }
-                                                        } label: {
-                                                            Image(systemName: "rectangle.compress.vertical")
-                                                        }
-                                                        .buttonStyle(.plain)
-                                                        .help("Collapse all subcategories in \(group.name)")
-                                                        Button {
-                                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                                var next = inventory.categorySectionCollapsedIds
-                                                                next.subtract(subcategoryIds)
-                                                                inventory.categorySectionCollapsedIds = next
-                                                            }
-                                                        } label: {
-                                                            Image(systemName: "rectangle.expand.vertical")
-                                                        }
-                                                        .buttonStyle(.plain)
-                                                        .help("Expand all subcategories in \(group.name)")
-                                                    }
-                                                }
-                                            }
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 8)
-                                            .frame(maxWidth: .infinity, minHeight: CategorySectionHeader.fixedHeight, alignment: .leading)
-                                            .background(GalleryView.sectionBackground(isTopLevel: true, isSubcategory: false))
-                                            .overlay(alignment: .bottom) {
-                                                if parentCollapsed && !isLastCategory { Divider() }
-                                            }
-                                            .contentShape(Rectangle())
-                                            .onTapGesture {
-                                                withAnimation(.easeInOut(duration: 0.2)) {
-                                                    var next = inventory.categorySectionCollapsedIds
-                                                    let currentlyCollapsed = next.contains(group.id)
-                                                    if currentlyCollapsed {
-                                                        // Expand: only expand the parent group; keep child sections' states as-is.
-                                                        next.remove(group.id)
-                                                    } else {
-                                                        // Collapse: hide the entire group but do not change child sections' states.
-                                                        next.insert(group.id)
-                                                    }
-                                                    inventory.categorySectionCollapsedIds = next
-                                                }
-                                            }
+                                            CategoryGroupHeader(
+                                                group: group,
+                                                parentCollapsed: parentCollapsed,
+                                                isLastCategory: isLastCategory,
+                                                categories: categories,
+                                                inventory: inventory,
+                                                session: session,
+                                                groupItemCount: groupItemCount,
+                                                groupTotalValue: groupTotalValue
+                                            )
                                         }
                                         // When a parent is collapsed, hide all child sections entirely.
                                         ForEach(group.sections.filter { !parentCollapsed || $0.id == group.id }) { section in
@@ -1310,6 +1242,8 @@ struct CategoryIconView: View {
 struct CategorySectionHeader: View {
     /// Fixed height so the header doesn't shrink when collapsed.
     static let fixedHeight: CGFloat = 44
+    /// Fixed width for the trailing summary area in subcategory headers so values align vertically.
+    static let subcategorySummaryWidth: CGFloat = 180
 
     let name: String
     let itemCount: Int
@@ -1355,26 +1289,40 @@ struct CategorySectionHeader: View {
             Text(name)
                 .font(.subheadline)
                 .fontWeight(.medium)
-            HStack(spacing: 4) {
-                Text("\(itemCount) item(s)")
+            // For top-level sections, keep the summary inline next to the title (existing behavior).
+            if !isSubcategory {
+                summary
+                    .padding(.leading, 10)
+            }
+        }
+    }
+
+    /// Items count and total worth summary.
+    private var summary: some View {
+        HStack(spacing: 4) {
+            Text("\(itemCount) item(s)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !isWishlist {
+                Text("·")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Text("Total: \(formattedValue)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if !isWishlist {
-                    Text("·")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                    Text("Total: \(formattedValue)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
-            .padding(.leading, 10)
         }
     }
 
     var body: some View {
         HStack(spacing: 8) {
             titleAndSummary
+            // For subcategory headers, push the summary to the far right end of the row.
+            if isSubcategory {
+                Spacer(minLength: 8)
+                summary
+                    .frame(width: Self.subcategorySummaryWidth, alignment: .trailing)
+            }
             if !isCollapsed {
                 Spacer(minLength: 8)
                 HStack(spacing: 4) {
@@ -1462,6 +1410,124 @@ struct CategorySectionHeader: View {
             onDropItem(itemId)
             return true
         } isTargeted: { _ in }
+    }
+}
+
+/// Parent category header row that shows a group title and (on hover) expand/collapse all subcategories buttons.
+private struct CategoryGroupHeader: View {
+    let group: CategoryGroup
+    let parentCollapsed: Bool
+    let isLastCategory: Bool
+    let categories: [Category]
+    @ObservedObject var inventory: InventoryViewModel
+    let session: Session
+    let groupItemCount: Int
+    let groupTotalValue: Double
+
+    @State private var isHovered: Bool = false
+
+    /// Fixed width for the center expand/collapse controls so layout is stable.
+    private static let controlsWidth: CGFloat = 72
+
+    private var subcategoryIds: [String] {
+        group.sections
+            .filter { $0.id != group.id }
+            .map(\.id)
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            CategoryIconView(
+                iconSymbol: categories.first(where: { $0.id == group.id })?.iconSymbol,
+                iconFileId: categories.first(where: { $0.id == group.id })?.iconFileId,
+                drive: session.drive,
+                size: 22
+            )
+            Text(group.name)
+                .font(.headline)
+            Spacer(minLength: 8)
+            // Centered expand/collapse buttons within the row.
+            if !subcategoryIds.isEmpty {
+                HStack(spacing: 8) {
+                    if isHovered {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                var next = inventory.categorySectionCollapsedIds
+                                // Collapse parent and all subcategories together.
+                                next.formUnion(subcategoryIds)
+                                next.insert(group.id)
+                                inventory.categorySectionCollapsedIds = next
+                            }
+                        } label: {
+                            Image(systemName: "rectangle.compress.vertical")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Collapse all subcategories in \(group.name)")
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                var next = inventory.categorySectionCollapsedIds
+                                // Expand parent and all subcategories together.
+                                next.subtract(subcategoryIds)
+                                next.remove(group.id)
+                                inventory.categorySectionCollapsedIds = next
+                            }
+                        } label: {
+                            Image(systemName: "rectangle.expand.vertical")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Expand all subcategories in \(group.name)")
+                    }
+                }
+                .frame(width: Self.controlsWidth, alignment: .center)
+            } else {
+                // Reserve space so the summary still lines up even when there are no controls.
+                Spacer()
+                    .frame(width: Self.controlsWidth)
+            }
+            if parentCollapsed {
+                HStack(spacing: 4) {
+                    Text("\(groupItemCount) item(s)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if group.sections.contains(where: { !Category.isWishlist($0.name) }) {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        Text("Total: \(formatCurrency(groupTotalValue))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(width: CategorySectionHeader.subcategorySummaryWidth, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: CategorySectionHeader.fixedHeight, alignment: .leading)
+        .background(GalleryView.sectionBackground(isTopLevel: true, isSubcategory: false))
+        .overlay(alignment: .bottom) {
+            if parentCollapsed && !isLastCategory { Divider() }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                var next = inventory.categorySectionCollapsedIds
+                let currentlyCollapsed = next.contains(group.id)
+                if currentlyCollapsed {
+                    // Expand: only expand the parent group; keep child sections' states as-is.
+                    next.remove(group.id)
+                } else {
+                    // Collapse: hide the entire group but do not change child sections' states.
+                    next.insert(group.id)
+                }
+                inventory.categorySectionCollapsedIds = next
+            }
+        }
+        #if os(macOS)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        #endif
     }
 }
 
