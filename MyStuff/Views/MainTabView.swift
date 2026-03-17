@@ -687,6 +687,81 @@ struct AmazonCSVImportView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showFileImporter = false
 
+    // Category hierarchy for the Category picker (matches ItemFormView behavior).
+    private var categories: [Category] { session.categories.categories }
+    private var wishlistCategoryId: String? {
+        categories.first(where: { Category.isWishlist($0.name) })?.id
+    }
+    private var topLevelCategories: [Category] {
+        categories
+            .filter { ($0.parentId ?? "").isEmpty }
+            .sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
+    }
+    private var childrenByParentId: [String: [Category]] {
+        var result: [String: [Category]] = [:]
+        for cat in categories {
+            guard let pid = cat.parentId, !pid.isEmpty else { continue }
+            result[pid, default: []].append(cat)
+        }
+        for (pid, list) in result {
+            result[pid] = list.sorted { ($0.order, $0.name.lowercased()) < ($1.order, $1.name.lowercased()) }
+        }
+        return result
+    }
+    private struct CategoryPickerRow: Identifiable {
+        let id: String
+        let category: Category
+        let isChild: Bool
+        let indentLevel: Int
+        let isSelectable: Bool
+    }
+    private var categoryPickerRows: [CategoryPickerRow] {
+        var rows: [CategoryPickerRow] = []
+        for parent in topLevelCategories {
+            let children = childrenByParentId[parent.id] ?? []
+            let isWishlist = wishlistCategoryId == parent.id
+
+            if children.isEmpty {
+                rows.append(
+                    CategoryPickerRow(
+                        id: parent.id,
+                        category: parent,
+                        isChild: false,
+                        indentLevel: 0,
+                        isSelectable: isWishlist
+                    )
+                )
+            } else {
+                rows.append(
+                    CategoryPickerRow(
+                        id: parent.id,
+                        category: parent,
+                        isChild: false,
+                        indentLevel: 0,
+                        isSelectable: isWishlist
+                    )
+                )
+                for child in children {
+                    rows.append(
+                        CategoryPickerRow(
+                            id: child.id,
+                            category: child,
+                            isChild: true,
+                            indentLevel: 1,
+                            isSelectable: true
+                        )
+                    )
+                }
+            }
+        }
+        return rows
+    }
+
+    // Default "Home" location for imported rows.
+    private var homeLocationId: String? {
+        session.locations.locations.first { $0.name == "Home" }?.id
+    }
+
     init(inventoryViewModel: InventoryViewModel) {
         _viewModel = StateObject(wrappedValue: AmazonCSVImportViewModel(inventoryViewModel: inventoryViewModel))
     }
@@ -792,8 +867,18 @@ struct AmazonCSVImportView: View {
                             }
                         )) {
                             Text("—").tag("")
-                            ForEach(session.categories.categories, id: \.id) { category in
-                                Text(category.name).tag(category.id)
+                            ForEach(categoryPickerRows) { pickerRow in
+                                let label = pickerRow.indentLevel == 0
+                                    ? pickerRow.category.name
+                                    : String(repeating: "    ", count: pickerRow.indentLevel) + pickerRow.category.name
+                                if pickerRow.isSelectable {
+                                    Text(label).tag(pickerRow.category.id)
+                                } else {
+                                    Text(label)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .disabled(true)
+                                }
                             }
                         }
                         .labelsHidden()
@@ -869,6 +954,9 @@ struct AmazonCSVImportView: View {
     private func binding(for row: AmazonCSVImportViewModel.ImportedAmazonItemRow) -> Binding<AmazonCSVImportViewModel.ImportedAmazonItemRow> {
         guard let index = viewModel.rows.firstIndex(where: { $0.id == row.id }) else {
             fatalError("Row not found")
+        }
+        if viewModel.rows[index].locationId == nil, let homeId = homeLocationId {
+            viewModel.rows[index].locationId = homeId
         }
         return $viewModel.rows[index]
     }
