@@ -97,6 +97,10 @@ final class AmazonCSVImportViewModel: ObservableObject {
             }
 
             let isoFormatter = ISO8601DateFormatter()
+            let ymdFormatter = DateFormatter()
+            ymdFormatter.locale = Locale(identifier: "en_US_POSIX")
+            ymdFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+            ymdFormatter.dateFormat = "yyyy-MM-dd"
 
             var imported: [ImportedAmazonItemRow] = []
             for line in lines.dropFirst() {
@@ -114,15 +118,23 @@ final class AmazonCSVImportViewModel: ObservableObject {
                 let quantity = Int(quantityString.trimmingCharacters(in: .whitespaces)) ?? 1
 
                 let unitPrice = value("Unit Price", in: columns)
-                let currency = value("Currency", in: columns)
+                let rawCurrency = value("Currency", in: columns)
+                let currency = rawCurrency.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "USD" : rawCurrency
                 let orderDateString = value("Order Date", in: columns)
                 let orderId = value("Order ID", in: columns)
                 let asin = value("ASIN", in: columns)
                 let website = value("Website", in: columns)
 
+                let trimmedOrderDate = orderDateString.trimmingCharacters(in: .whitespacesAndNewlines)
                 let purchaseDate: Date?
-                if !orderDateString.isEmpty {
-                    purchaseDate = isoFormatter.date(from: orderDateString)
+                if !trimmedOrderDate.isEmpty {
+                    if let d = isoFormatter.date(from: trimmedOrderDate) {
+                        purchaseDate = d
+                    } else {
+                        // Fallback for non-ISO Amazon formats, e.g. "YYYY-MM-DD …"
+                        let prefix10 = String(trimmedOrderDate.prefix(10))
+                        purchaseDate = ymdFormatter.date(from: prefix10)
+                    }
                 } else {
                     purchaseDate = nil
                 }
@@ -159,7 +171,10 @@ final class AmazonCSVImportViewModel: ObservableObject {
         errorMessage = nil
         defer { isImporting = false }
 
-        let dateFormatter = ISO8601DateFormatter()
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.dateFormat = "yyyy-MM-dd"
         let itemsToImport: [Item] = selected.map { row in
             var item = Item()
             item.name = row.name

@@ -142,8 +142,8 @@ struct ItemFormView: View {
         Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
     }
     private var priceLabel: String {
-        if isWishlistCategory { return "Price (\(priceCurrency))" }
-        return "Price (NIS)"
+        let currencyLabel = priceCurrency == "USD" ? "USD" : "NIS"
+        return "Price (\(currencyLabel))"
     }
 
     private var showCurrentPhoto: Bool {
@@ -277,18 +277,16 @@ struct ItemFormView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if isWishlistCategory {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Currency").font(.subheadline).foregroundStyle(.secondary)
-                    Picker("", selection: $priceCurrency) {
-                        Text("NIS").tag("NIS")
-                        Text("USD").tag("USD")
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Currency").font(.subheadline).foregroundStyle(.secondary)
+                Picker("", selection: $priceCurrency) {
+                    Text("NIS").tag("NIS")
+                    Text("USD").tag("USD")
                 }
+                .pickerStyle(.segmented)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(priceLabel).font(.subheadline).foregroundStyle(.secondary)
@@ -632,7 +630,7 @@ struct ItemFormView: View {
         let link = webLink.trimmingCharacters(in: .whitespaces)
         let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
         let resolvedTags = tags
-        let resolvedPriceCurrency = isWishlistCategory ? priceCurrency : ""
+        let resolvedPriceCurrency = priceCurrency
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)

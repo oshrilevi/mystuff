@@ -62,11 +62,11 @@ struct Item: Identifiable, Equatable {
         return "₪ \(trimmed)"
     }
 
-    /// Returns price string for display: USD symbol when wishlist and priceCurrency is USD, otherwise NIS.
+    /// Returns price string for display: USD symbol when priceCurrency is USD, otherwise NIS.
     static func formattedPrice(price: String, priceCurrency: String, isWishlist: Bool) -> String {
         let trimmed = price.trimmingCharacters(in: .whitespaces)
         if trimmed.isEmpty { return "—" }
-        if isWishlist && priceCurrency == "USD" { return "$ \(trimmed)" }
+        if priceCurrency == "USD" { return "$ \(trimmed)" }
         return priceInNIS(price)
     }
 
