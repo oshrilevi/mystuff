@@ -1061,6 +1061,63 @@ struct ItemContextMenuContent: View {
                 }
             }
 
+            // Move-to-category section (only subcategories are selectable)
+            Divider()
+            Menu {
+                let allCategories = session.categories.categories
+                if allCategories.isEmpty {
+                    Button("No categories") {}
+                        .disabled(true)
+                } else {
+                    let parents = allCategories.filter { $0.parentId == nil }
+                    let subcategoriesByParent = Dictionary(grouping: allCategories.filter { $0.parentId != nil }) { $0.parentId! }
+
+                    ForEach(parents) { parent in
+                        let subcategories = subcategoriesByParent[parent.id] ?? []
+                        if subcategories.isEmpty {
+                            // Show parent only as a label row when it has no subcategories.
+                            Text(parent.name)
+                        } else {
+                            // Parent label
+                            Text(parent.name)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            // Subcategory choices
+                            ForEach(subcategories) { category in
+                                let isCurrentCategory = category.id == item.categoryId
+                                Button {
+                                    guard !isCurrentCategory else { return }
+                                    var updated = item
+                                    updated.categoryId = category.id
+
+                                    // If moving from wishlist to a non-wishlist category, clear price currency
+                                    let currentCategoryName = allCategories.first(where: { $0.id == item.categoryId })?.name ?? ""
+                                    if Category.isWishlist(currentCategoryName), !Category.isWishlist(category.name) {
+                                        updated.priceCurrency = ""
+                                    }
+
+                                    Task {
+                                        await session.inventory.updateItem(updated)
+                                    }
+                                } label: {
+                                    Label(
+                                        category.name,
+                                        systemImage: isCurrentCategory ? "checkmark.circle.fill" : "circle"
+                                    )
+                                }
+                                .disabled(isCurrentCategory)
+                            }
+
+                            // Visual separator between groups
+                            Divider()
+                        }
+                    }
+                }
+            } label: {
+                Label("Move to", systemImage: "folder")
+            }
+
             Divider()
             Text("Item Actions")
                 .font(.caption2)
