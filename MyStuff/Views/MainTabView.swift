@@ -295,7 +295,12 @@ private struct SettingsMenuButton: View {
         action: @escaping () -> Void
     ) -> some View {
         let isSelected = isRowSelected(row)
-        return Button(action: action) {
+        return Button {
+            action()
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isExpanded = false
+            }
+        } label: {
             Label(title, systemImage: systemImage)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 3)
