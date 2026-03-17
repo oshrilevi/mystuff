@@ -263,7 +263,8 @@ private struct SettingsMenuButton: View {
                 Text("SETTINGS")
                     .font(.callout.weight(.semibold))
                     .textCase(.uppercase)
-                    .frame(maxWidth: .infinity, minHeight: 32)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 2)
             }
             .buttonStyle(.plain)
         }
