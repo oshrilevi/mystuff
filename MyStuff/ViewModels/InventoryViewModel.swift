@@ -197,6 +197,19 @@ final class InventoryViewModel: ObservableObject {
         }
     }
 
+    func importItems(_ newItems: [Item]) async {
+        guard let sid = spreadsheetId else { return }
+        guard !newItems.isEmpty else { return }
+
+        let rows = newItems.map { itemToRow($0) }
+        do {
+            try await sheets.appendRows(spreadsheetId: sid, sheetName: "Items", values: rows)
+            await loadItems()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func thumbnailURL(for item: Item) -> URL? {
         guard let first = item.photoIds.first else { return nil }
         return drive.thumbnailURL(fileId: first)
