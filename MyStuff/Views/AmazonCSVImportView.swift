@@ -227,6 +227,11 @@ struct AmazonCSVImportView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showFileImporter = false
 
+    private static let lastCSVPathKey = "mystuff_last_amazon_csv_path"
+    private var hasRecentCSV: Bool {
+        UserDefaults.standard.string(forKey: Self.lastCSVPathKey) != nil
+    }
+
     init(inventoryViewModel: InventoryViewModel) {
         _viewModel = StateObject(wrappedValue: AmazonCSVImportViewModel(inventoryViewModel: inventoryViewModel))
     }
@@ -247,6 +252,14 @@ struct AmazonCSVImportView: View {
             Text("Import from Amazon CSV")
                 .font(.title2.weight(.semibold))
             Spacer()
+            Button("Load last CSV…") {
+                guard let path = UserDefaults.standard.string(forKey: Self.lastCSVPathKey) else { return }
+                let url = URL(fileURLWithPath: path)
+                Task {
+                    await viewModel.loadCSV(from: url)
+                }
+            }
+            .disabled(!hasRecentCSV)
             Button("Choose CSV…") {
                 showFileImporter = true
             }

@@ -2,6 +2,7 @@ import Foundation
 
 @MainActor
 final class AmazonCSVImportViewModel: ObservableObject {
+    private static let lastCSVPathKey = "mystuff_last_amazon_csv_path"
     struct ImportedAmazonItemRow: Identifiable {
         let id = UUID()
         var isSelected: Bool = true
@@ -156,6 +157,8 @@ final class AmazonCSVImportViewModel: ObservableObject {
             }
 
             rows = imported
+            // Remember this CSV for quick re-loading next time.
+            UserDefaults.standard.set(url.path, forKey: Self.lastCSVPathKey)
             selectedYear = nil
             searchText = ""
         } catch {

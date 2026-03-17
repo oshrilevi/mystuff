@@ -455,6 +455,7 @@ private struct SettingsMenuButton: View {
 #if os(macOS)
 @MainActor
 final class AmazonCSVImportViewModel: ObservableObject {
+    private static let lastCSVPathKey = "mystuff_last_amazon_csv_path"
     struct ImportedAmazonItemRow: Identifiable {
         let id = UUID()
         var isSelected: Bool = false
@@ -608,6 +609,8 @@ final class AmazonCSVImportViewModel: ObservableObject {
             }
 
             rows = imported
+            // Remember this CSV for quick re-loading next time.
+            UserDefaults.standard.set(url.path, forKey: Self.lastCSVPathKey)
             selectedYear = nil
             searchText = ""
         } catch {
@@ -700,6 +703,11 @@ struct AmazonCSVImportView: View {
     @StateObject private var viewModel: AmazonCSVImportViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showFileImporter = false
+
+    private static let lastCSVPathKey = "mystuff_last_amazon_csv_path"
+    private var hasRecentCSV: Bool {
+        UserDefaults.standard.string(forKey: Self.lastCSVPathKey) != nil
+    }
 
     // Category hierarchy for the Category picker (matches ItemFormView behavior).
     private var categories: [Category] { session.categories.categories }
@@ -796,6 +804,14 @@ struct AmazonCSVImportView: View {
             Text("Import from Amazon CSV")
                 .font(.title2.weight(.semibold))
             Spacer()
+            Button("Load last CSV…") {
+                guard let path = UserDefaults.standard.string(forKey: Self.lastCSVPathKey) else { return }
+                let url = URL(fileURLWithPath: path)
+                Task {
+                    await viewModel.loadCSV(from: url)
+                }
+            }
+            .disabled(!hasRecentCSV)
             Button("Choose CSV…") {
                 showFileImporter = true
             }
