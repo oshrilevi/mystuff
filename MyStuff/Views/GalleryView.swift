@@ -316,6 +316,36 @@ struct GalleryView: View {
                                                     }
                                                     .padding(.leading, 10)
                                                 }
+                                                Spacer(minLength: 8)
+                                                let subcategoryIds = group.sections
+                                                    .filter { $0.id != group.id }
+                                                    .map(\.id)
+                                                if !subcategoryIds.isEmpty {
+                                                    HStack(spacing: 8) {
+                                                        Button {
+                                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                                var next = inventory.categorySectionCollapsedIds
+                                                                next.formUnion(subcategoryIds)
+                                                                inventory.categorySectionCollapsedIds = next
+                                                            }
+                                                        } label: {
+                                                            Image(systemName: "rectangle.compress.vertical")
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                        .help("Collapse all subcategories in \(group.name)")
+                                                        Button {
+                                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                                var next = inventory.categorySectionCollapsedIds
+                                                                next.subtract(subcategoryIds)
+                                                                inventory.categorySectionCollapsedIds = next
+                                                            }
+                                                        } label: {
+                                                            Image(systemName: "rectangle.expand.vertical")
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                        .help("Expand all subcategories in \(group.name)")
+                                                    }
+                                                }
                                             }
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 8)
