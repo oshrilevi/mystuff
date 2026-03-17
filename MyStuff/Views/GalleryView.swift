@@ -808,11 +808,7 @@ struct ItemCardWithHoverPopover: View {
             drive: drive,
             photoId: item.photoIds.first,
             categoryName: categoryName,
-            thumbnailSize: thumbnailSize,
-            currentStorePrice: session.storePriceCacheKey(webLink: item.webLink).flatMap { session.storePriceCache[$0] },
-            isPriceFetching: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFetching.contains($0) } ?? false,
-            isPriceFailed: session.storePriceCacheKey(webLink: item.webLink).map { session.storePriceFailed.contains($0) } ?? false,
-            hasValidWebLink: session.storePriceCacheKey(webLink: item.webLink) != nil
+            thumbnailSize: thumbnailSize
         )
             .overlay(alignment: .topLeading) {
                 Color.clear
@@ -1100,14 +1096,6 @@ struct ItemCard: View {
     let photoId: String?
     let categoryName: String
     var thumbnailSize: ThumbnailSize = .medium
-    /// When set (wishlist item with cached store price), shown next to the entered price.
-    var currentStorePrice: String? = nil
-    /// True while this item's URL is being fetched for current price.
-    var isPriceFetching: Bool = false
-    /// True when fetch was attempted and failed (show red dash only then).
-    var isPriceFailed: Bool = false
-    /// True when item has a valid web link (so we show fetching/price/dash).
-    var hasValidWebLink: Bool = true
 
     private var titleFont: Font {
         switch thumbnailSize {
@@ -1151,32 +1139,6 @@ struct ItemCard: View {
                 Text(Item.formattedPrice(price: item.price, priceCurrency: item.priceCurrency, isWishlist: Category.isWishlist(categoryName)))
                     .font(priceFont)
                     .foregroundStyle(.secondary)
-                if Category.isWishlist(categoryName), hasValidWebLink, isPriceFetching || currentStorePrice != nil || isPriceFailed {
-                    Text("·")
-                        .font(priceFont)
-                        .foregroundStyle(.tertiary)
-                    if isPriceFetching {
-                        Text("Fetching…")
-                            .font(priceFont)
-                            .foregroundStyle(.secondary)
-                    } else if let current = currentStorePrice, !current.isEmpty {
-                        let trend = Item.priceTrend(entered: item.price, current: current)
-                        HStack(spacing: 2) {
-                            Text("Current: \(Item.formattedPrice(price: current, priceCurrency: item.priceCurrency, isWishlist: true))")
-                                .font(priceFont)
-                                .foregroundStyle(trend == .higher ? .red : (trend == .lower ? .green : .secondary))
-                            if trend != .same {
-                                Image(systemName: trend == .higher ? "arrow.up" : "arrow.down")
-                                    .font(.caption2)
-                                    .foregroundStyle(trend == .higher ? .red : .green)
-                            }
-                        }
-                    } else if isPriceFailed {
-                        Text("—")
-                            .font(priceFont)
-                            .foregroundStyle(.red)
-                    }
-                }
                 if item.quantity > 1 {
                     Text("× \(item.quantity)")
                         .font(priceFont)
