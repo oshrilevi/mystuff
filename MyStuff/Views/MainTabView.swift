@@ -973,10 +973,14 @@ final class AmazonCSVImportViewModel: ObservableObject {
     }
 
     func importSelectedItems() async {
-        guard let itemsToImport = validatedItemsToImport() else {
-            return
+        let selected = rows.filter { $0.isSelected && !$0.isExisting }
+        guard !selected.isEmpty else { return }
+
+        let rowsNeedingCategory = selected.filter {
+            ($0.categoryId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        guard !itemsToImport.isEmpty else {
+        if !rowsNeedingCategory.isEmpty {
+            errorMessage = "Please select a category for all selected items."
             return
         }
 
@@ -984,7 +988,76 @@ final class AmazonCSVImportViewModel: ObservableObject {
         errorMessage = nil
         defer { isImporting = false }
 
-        await inventoryViewModel.importItems(itemsToImport)
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let rate = parsedExchangeRate()
+
+        for row in selected {
+            var item = Item()
+            item.name = row.name
+            item.description = row.detailDescription
+            item.categoryId = row.categoryId ?? ""
+            item.locationId = row.locationId ?? ""
+
+            let trimmedPrice = row.price.trimmingCharacters(in: .whitespaces)
+            if let usd = parsedPrice(from: trimmedPrice) {
+                item.price = String(format: "%.2f", usd * rate)
+            } else {
+                item.price = trimmedPrice
+            }
+
+            if let date = row.purchaseDate {
+                item.purchaseDate = dateFormatter.string(from: date)
+            }
+            item.condition = "New"
+            item.quantity = 1
+            item.priceCurrency = ""
+
+            let trimmedASIN = row.asin.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedASIN.isEmpty {
+                item.webLink = "https://www.amazon.com/gp/product/\(trimmedASIN)/"
+            }
+
+            var imageData: [Data] = []
+            if !trimmedASIN.isEmpty {
+                let cdnURLs = [
+                    URL(string: "https://images-na.ssl-images-amazon.com/images/P/\(trimmedASIN).jpg"),
+                    URL(string: "https://images.amazon.com/images/P/\(trimmedASIN).jpg"),
+                ].compactMap { $0 }
+
+                // Use cached image from preview UI if available
+                var thumbnailImage: NSImage? = cdnURLs.lazy
+                    .compactMap { AmazonThumbnailCache.shared.image(for: $0) }.first
+
+                // Fall back to scraping the product page
+                if thumbnailImage == nil {
+                    let host = row.website.isEmpty ? "www.amazon.com" : row.website
+                    if let productURL = URL(string: "https://\(host)/dp/\(trimmedASIN)"),
+                       let scrapedURL = await AmazonWebViewScraper.shared.imageURL(for: productURL) {
+                        thumbnailImage = AmazonThumbnailCache.shared.image(for: scrapedURL)
+                        if thumbnailImage == nil,
+                           let (data, response) = try? await URLSession.shared.data(from: scrapedURL),
+                           (response as? HTTPURLResponse)?.statusCode == 200,
+                           let img = NSImage(data: data),
+                           (img.representations.first?.pixelsWide ?? 0) >= 50 {
+                            thumbnailImage = img
+                        }
+                    }
+                }
+
+                if let img = thumbnailImage,
+                   let cgImage = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                    let rep = NSBitmapImageRep(cgImage: cgImage)
+                    if let jpeg = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85]) {
+                        imageData = [jpeg]
+                    }
+                }
+            }
+
+            await inventoryViewModel.addItem(item, imageData: imageData)
+        }
     }
 
     private func findExistingItem(forASIN asin: String) -> Item? {
