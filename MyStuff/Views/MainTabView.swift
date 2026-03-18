@@ -607,6 +607,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
     // Filtering
     @Published var selectedYear: Int?
     @Published var searchText: String = ""
+    @Published var hideAlreadyOwned: Bool = true
 
     private let inventoryViewModel: InventoryViewModel
 
@@ -634,6 +635,11 @@ final class AmazonCSVImportViewModel: ObservableObject {
 
     var filteredRows: [ImportedAmazonItemRow] {
         let base = rows.filter { row in
+            // Hide already owned
+            if hideAlreadyOwned && row.isExisting {
+                return false
+            }
+
             // Year filter
             if let year = selectedYear, let date = row.purchaseDate {
                 let rowYear = Calendar.current.component(.year, from: date)
@@ -1099,24 +1105,28 @@ struct AmazonCSVImportView: View {
         }
     }
 
+    private var yearPicker: some View {
+        Picker("Year", selection: Binding(
+            get: { viewModel.selectedYear ?? -1 },
+            set: { newValue in
+                viewModel.selectedYear = newValue == -1 ? nil : newValue
+            }
+        )) {
+            Text("All years").tag(-1)
+            ForEach(viewModel.availableYears, id: \.self) { year in
+                Text(String(year)).tag(year)
+            }
+        }
+        .pickerStyle(.menu)
+    }
+
     private var filters: some View {
         HStack(spacing: 12) {
-            Picker("Year", selection: Binding(
-                get: { viewModel.selectedYear ?? -1 },
-                set: { newValue in
-                    viewModel.selectedYear = newValue == -1 ? nil : newValue
-                }
-            )) {
-                Text("All years").tag(-1)
-                ForEach(viewModel.availableYears, id: \.self) { year in
-                    Text(String(year)).tag(year)
-                }
-            }
-            .pickerStyle(.menu)
-
+            yearPicker
             TextField("Search name or description", text: $viewModel.searchText)
                 .textFieldStyle(.roundedBorder)
-
+            Toggle("Hide already owned", isOn: $viewModel.hideAlreadyOwned)
+                .toggleStyle(.checkbox)
             Spacer()
         }
     }
