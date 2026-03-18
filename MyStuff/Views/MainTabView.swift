@@ -1003,6 +1003,10 @@ struct AmazonCSVImportView: View {
         }
         .padding()
         .frame(minWidth: 1200, minHeight: 700)
+        .task {
+            guard let path = UserDefaults.standard.string(forKey: Self.lastCSVPathKey) else { return }
+            await viewModel.loadCSV(from: URL(fileURLWithPath: path))
+        }
         .sheet(isPresented: $isShowingConfirm) {
             AmazonImportConfirmationView(
                 items: pendingItems,
