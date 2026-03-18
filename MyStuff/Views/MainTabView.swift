@@ -1249,10 +1249,11 @@ struct AmazonCSVImportView: View {
                 categories: session.categories.categories,
                 locations: session.locations.locations,
                 exchangeRate: $viewModel.exchangeRate,
+                isImporting: viewModel.isImporting,
                 onConfirm: {
-                    isShowingConfirm = false
                     Task {
                         await viewModel.importSelectedItems()
+                        isShowingConfirm = false
                         dismiss()
                     }
                 },
@@ -1527,6 +1528,7 @@ private struct AmazonImportConfirmationView: View {
     let categories: [Category]
     let locations: [Location]
     @Binding var exchangeRate: String
+    var isImporting: Bool
     var onConfirm: () -> Void
     var onCancel: () -> Void
 
@@ -1598,15 +1600,34 @@ private struct AmazonImportConfirmationView: View {
                 Button("Cancel") {
                     onCancel()
                 }
+                .disabled(isImporting)
                 Button("Import \(items.count) item(s)") {
                     onConfirm()
                 }
                 .keyboardShortcut(.defaultAction)
+                .disabled(isImporting)
             }
             .padding(.top, 8)
         }
         .padding()
         .frame(minWidth: 1000, minHeight: 500)
+        .overlay {
+            if isImporting {
+                ZStack {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Importing…")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                    }
+                    .padding(24)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                }
+            }
+        }
     }
 }
 #endif
