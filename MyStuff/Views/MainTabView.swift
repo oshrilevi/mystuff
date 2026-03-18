@@ -459,6 +459,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
     struct ImportedAmazonItemRow: Identifiable {
         let id = UUID()
         var isSelected: Bool = false
+        var isExisting: Bool = false
 
         // Raw reference data
         var asin: String
@@ -532,7 +533,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
     /// Returns `nil` if validation fails (e.g. missing category), and an empty
     /// array if there are simply no selected rows.
     func validatedItemsToImport() -> [Item]? {
-        let selected = rows.filter { $0.isSelected }
+        let selected = rows.filter { $0.isSelected && !$0.isExisting }
         if selected.isEmpty {
             return []
         }
@@ -641,7 +642,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
                     purchaseDate = nil
                 }
 
-                let row = ImportedAmazonItemRow(
+                var row = ImportedAmazonItemRow(
                     asin: asin,
                     orderId: orderId,
                     website: website,
@@ -653,6 +654,19 @@ final class AmazonCSVImportViewModel: ObservableObject {
                     locationId: nil,
                     currency: currency
                 )
+
+                if let existing = findExistingItem(forASIN: asin) {
+                    let storedCategoryId = existing.categoryId.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !storedCategoryId.isEmpty {
+                        row.categoryId = storedCategoryId
+                    }
+                    let storedLocationId = existing.locationId.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !storedLocationId.isEmpty {
+                        row.locationId = storedLocationId
+                    }
+                    row.isExisting = true
+                }
+
                 imported.append(row)
             }
 
@@ -679,6 +693,43 @@ final class AmazonCSVImportViewModel: ObservableObject {
         defer { isImporting = false }
 
         await inventoryViewModel.importItems(itemsToImport)
+    }
+
+    private func findExistingItem(forASIN asin: String) -> Item? {
+        let trimmedASIN = asin.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedASIN.isEmpty else { return nil }
+        let loweredASIN = trimmedASIN.lowercased()
+
+        func extractASIN(from link: String) -> String? {
+            let lower = link.lowercased()
+            let markers = ["/gp/product/", "/dp/"]
+            for marker in markers {
+                if let range = lower.range(of: marker) {
+                    let start = range.upperBound
+                    let remainder = lower[start...]
+                    var asinChars: [Character] = []
+                    for ch in remainder {
+                        if ch.isLetter || ch.isNumber {
+                            asinChars.append(ch)
+                            if asinChars.count == 10 {
+                                break
+                            }
+                        } else {
+                            break
+                        }
+                    }
+                    if asinChars.count == 10 {
+                        return String(asinChars)
+                    }
+                }
+            }
+            return nil
+        }
+
+        return inventoryViewModel.items.first { item in
+            guard let linkASIN = extractASIN(from: item.webLink) else { return false }
+            return linkASIN.lowercased() == loweredASIN
+        }
     }
 
     // Simple CSV parser that respects quoted fields.
@@ -908,84 +959,116 @@ struct AmazonCSVImportView: View {
             } else {
                 Table(viewModel.filteredRows) {
                     TableColumn("Import") { row in
-                        Toggle(isOn: binding(for: row).isSelected) {
-                            EmptyView()
+                        if !row.isExisting {
+                            Toggle(isOn: binding(for: row).isSelected) {
+                                EmptyView()
+                            }
+                            .labelsHidden()
                         }
-                        .labelsHidden()
                     }
                     .width(50)
 
                     TableColumn("Name") { row in
-                        TextField("Name", text: binding(for: row).name)
+                        if row.isExisting {
+                            Text(row.name)
+                                .foregroundColor(.green)
+                        } else {
+                            TextField("Name", text: binding(for: row).name)
+                        }
                     }
                     .width(min: 160, ideal: 260)
 
                     TableColumn("Description") { row in
-                        TextField("Description", text: binding(for: row).detailDescription)
+                        if row.isExisting {
+                            Text(row.detailDescription)
+                                .foregroundColor(.green)
+                        } else {
+                            TextField("Description", text: binding(for: row).detailDescription)
+                        }
                     }
                     .width(min: 220, ideal: 400)
 
                     TableColumn("Price") { row in
-                        TextField("Price", text: binding(for: row).price)
-                            .frame(maxWidth: 80)
+                        if row.isExisting {
+                            Text(row.price)
+                                .foregroundColor(.green)
+                        } else {
+                            TextField("Price", text: binding(for: row).price)
+                                .frame(maxWidth: 80)
+                        }
                     }
                     .width(80)
 
                     TableColumn("Category") { row in
-                        Picker("Category", selection: Binding(
-                            get: { binding(for: row).categoryId.wrappedValue ?? "" },
-                            set: { newValue in
-                                binding(for: row).categoryId.wrappedValue = newValue.isEmpty ? nil : newValue
-                            }
-                        )) {
-                            Text("—").tag("")
-                            ForEach(categoryPickerRows) { pickerRow in
-                                let label = pickerRow.indentLevel == 0
-                                    ? pickerRow.category.name
-                                    : String(repeating: "    ", count: pickerRow.indentLevel) + pickerRow.category.name
-                                if pickerRow.isSelectable {
-                                    Text(label).tag(pickerRow.category.id)
-                                } else {
-                                    Text(label)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .disabled(true)
+                        if row.isExisting {
+                            Text(categoryName(for: row.categoryId ?? ""))
+                                .foregroundColor(.green)
+                        } else {
+                            Picker("Category", selection: Binding(
+                                get: { binding(for: row).categoryId.wrappedValue ?? "" },
+                                set: { newValue in
+                                    binding(for: row).categoryId.wrappedValue = newValue.isEmpty ? nil : newValue
+                                }
+                            )) {
+                                Text("—").tag("")
+                                ForEach(categoryPickerRows) { pickerRow in
+                                    let label = pickerRow.indentLevel == 0
+                                        ? pickerRow.category.name
+                                        : String(repeating: "    ", count: pickerRow.indentLevel) + pickerRow.category.name
+                                    if pickerRow.isSelectable {
+                                        Text(label).tag(pickerRow.category.id)
+                                    } else {
+                                        Text(label)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .disabled(true)
+                                    }
                                 }
                             }
+                            .labelsHidden()
                         }
-                        .labelsHidden()
                     }
                     .width(140)
 
                     TableColumn("Location") { row in
-                        Picker("Location", selection: Binding(
-                            get: { binding(for: row).locationId.wrappedValue ?? "" },
-                            set: { newValue in
-                                binding(for: row).locationId.wrappedValue = newValue.isEmpty ? nil : newValue
+                        if row.isExisting {
+                            Text(locationName(for: row.locationId ?? ""))
+                                .foregroundColor(.green)
+                        } else {
+                            Picker("Location", selection: Binding(
+                                get: { binding(for: row).locationId.wrappedValue ?? "" },
+                                set: { newValue in
+                                    binding(for: row).locationId.wrappedValue = newValue.isEmpty ? nil : newValue
+                                }
+                            )) {
+                                Text("—").tag("")
+                                ForEach(session.locations.locations, id: \.id) { location in
+                                    Text(location.name).tag(location.id)
+                                }
                             }
-                        )) {
-                            Text("—").tag("")
-                            ForEach(session.locations.locations, id: \.id) { location in
-                                Text(location.name).tag(location.id)
-                            }
+                            .labelsHidden()
                         }
-                        .labelsHidden()
                     }
                     .width(140)
 
                     TableColumn("Date") { row in
                         if let date = binding(for: row).purchaseDate.wrappedValue {
-                            DatePicker(
-                                "",
-                                selection: Binding(
-                                    get: { date },
-                                    set: { newDate in
-                                        binding(for: row).purchaseDate.wrappedValue = newDate
-                                    }
-                                ),
-                                displayedComponents: .date
-                            )
-                            .labelsHidden()
+                            if row.isExisting {
+                                Text(date, style: .date)
+                                    .foregroundColor(.green)
+                            } else {
+                                DatePicker(
+                                    "",
+                                    selection: Binding(
+                                        get: { date },
+                                        set: { newDate in
+                                            binding(for: row).purchaseDate.wrappedValue = newDate
+                                        }
+                                    ),
+                                    displayedComponents: .date
+                                )
+                                .labelsHidden()
+                            }
                         } else {
                             Text("—")
                                 .foregroundStyle(.secondary)
@@ -996,6 +1079,14 @@ struct AmazonCSVImportView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func categoryName(for id: String) -> String {
+        session.categories.categories.first(where: { $0.id == id })?.name ?? "—"
+    }
+
+    private func locationName(for id: String) -> String {
+        session.locations.locations.first(where: { $0.id == id })?.name ?? "—"
     }
 
     private var footer: some View {
