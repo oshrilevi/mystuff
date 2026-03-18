@@ -470,7 +470,7 @@ private final class AmazonThumbnailCache {
 }
 
 struct CachedURLThumbnailView: View {
-    let url: URL?
+    let urls: [URL]
     let size: CGFloat
 
     @State private var image: NSImage?
@@ -511,48 +511,63 @@ struct CachedURLThumbnailView: View {
             }
         }
         .onAppear(perform: loadIfNeeded)
-        .onChange(of: url) { _ in
+        .onChange(of: urls) { _ in
+            image = nil
+            hasFailed = false
             loadIfNeeded()
         }
     }
 
+    private static let thumbnailSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 8
+        return URLSession(configuration: config)
+    }()
+
     private func loadIfNeeded() {
-        guard let url else { return }
-        if let cached = AmazonThumbnailCache.shared.image(for: url) {
+        guard !urls.isEmpty else { return }
+        if let cached = urls.lazy.compactMap({ AmazonThumbnailCache.shared.image(for: $0) }).first {
             image = cached
             return
         }
         isLoading = true
         Task {
-            do {
-                let (data, response) = try await URLSession.shared.data(from: url)
-                let isValidResponse = (response as? HTTPURLResponse)?.statusCode == 200
-                let finalURL = response.url?.absoluteString ?? ""
-                let isNoImageURL = finalURL.contains("no-img") || finalURL.contains("no_img") || finalURL.contains("no-image")
-                var loaded: NSImage? = nil
-                if isValidResponse && !isNoImageURL, let img = NSImage(data: data) {
-                    let rep = img.representations.first
-                    let w = rep?.pixelsWide ?? 0
-                    let h = rep?.pixelsHigh ?? 0
-                    if w >= 50 && h >= 50 {
-                        loaded = img
+            let img: NSImage? = await withTaskGroup(of: NSImage?.self) { group -> NSImage? in
+                for url in urls {
+                    group.addTask { await fetchImage(from: url) }
+                }
+                for await result in group {
+                    if let img = result {
+                        group.cancelAll()
+                        return img
                     }
                 }
-                await MainActor.run {
-                    if let img = loaded {
-                        AmazonThumbnailCache.shared.insert(img, for: url)
-                        image = img
-                    } else {
-                        hasFailed = true
-                    }
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    hasFailed = true
-                    isLoading = false
-                }
+                return nil
             }
+            await MainActor.run {
+                if let img {
+                    if let url = urls.first { AmazonThumbnailCache.shared.insert(img, for: url) }
+                    image = img
+                } else {
+                    hasFailed = true
+                }
+                isLoading = false
+            }
+        }
+    }
+
+    private func fetchImage(from url: URL) async -> NSImage? {
+        do {
+            let (data, response) = try await Self.thumbnailSession.data(from: url)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+            let finalURL = response.url?.absoluteString ?? ""
+            guard !finalURL.contains("no-img"), !finalURL.contains("no_img"), !finalURL.contains("no-image") else { return nil }
+            guard let img = NSImage(data: data) else { return nil }
+            let rep = img.representations.first
+            guard (rep?.pixelsWide ?? 0) >= 50, (rep?.pixelsHigh ?? 0) >= 50 else { return nil }
+            return img
+        } catch {
+            return nil
         }
     }
 }
@@ -1132,7 +1147,7 @@ struct AmazonCSVImportView: View {
                     .width(50)
 
                     TableColumn("Thumbnail") { row in
-                        CachedURLThumbnailView(url: row.thumbnailURL, size: 48)
+                        CachedURLThumbnailView(urls: thumbnailURLs(for: row), size: 48)
                     }
                     .width(60)
 
@@ -1285,6 +1300,17 @@ struct AmazonCSVImportView: View {
             .disabled(viewModel.rows.allSatisfy { !$0.isSelected })
         }
         .padding(.top, 8)
+    }
+
+    private func thumbnailURLs(for row: AmazonCSVImportViewModel.ImportedAmazonItemRow) -> [URL] {
+        let asin = row.asin.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !asin.isEmpty else { return [] }
+        return [
+            URL(string: "https://images-na.ssl-images-amazon.com/images/P/\(asin).jpg"),
+            URL(string: "https://images.amazon.com/images/P/\(asin).jpg"),
+            URL(string: "https://images-na.ssl-images-amazon.com/images/P/\(asin).png"),
+            URL(string: "https://images.amazon.com/images/P/\(asin).png")
+        ].compactMap { $0 }
     }
 
     private func binding(for row: AmazonCSVImportViewModel.ImportedAmazonItemRow) -> Binding<AmazonCSVImportViewModel.ImportedAmazonItemRow> {
