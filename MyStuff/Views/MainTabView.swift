@@ -528,6 +528,54 @@ final class AmazonCSVImportViewModel: ObservableObject {
         }
     }
 
+    /// Build the list of `Item`s to import from the currently selected rows.
+    /// Returns `nil` if validation fails (e.g. missing category), and an empty
+    /// array if there are simply no selected rows.
+    func validatedItemsToImport() -> [Item]? {
+        let selected = rows.filter { $0.isSelected }
+        if selected.isEmpty {
+            return []
+        }
+
+        // Validate categories
+        let rowsNeedingCategory = selected.filter { row in
+            (row.categoryId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        if !rowsNeedingCategory.isEmpty {
+            errorMessage = "Please select a category for all selected items."
+            return nil
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        let itemsToImport: [Item] = selected.map { row in
+            var item = Item()
+            item.name = row.name
+            item.description = row.detailDescription
+            item.categoryId = row.categoryId ?? ""
+            item.locationId = row.locationId ?? ""
+            item.price = row.price.trimmingCharacters(in: .whitespaces)
+            if let date = row.purchaseDate {
+                item.purchaseDate = dateFormatter.string(from: date)
+            }
+            item.condition = "New"
+            item.quantity = 1
+            item.priceCurrency = "USD"
+
+            let trimmedASIN = row.asin.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedASIN.isEmpty {
+                item.webLink = "https://www.amazon.com/gp/product/\(trimmedASIN)/"
+            }
+
+            return item
+        }
+
+        return itemsToImport
+    }
+
     func loadCSV(from url: URL) async {
         isLoading = true
         errorMessage = nil
@@ -619,41 +667,16 @@ final class AmazonCSVImportViewModel: ObservableObject {
     }
 
     func importSelectedItems() async {
-        let selected = rows.filter { $0.isSelected }
-        guard !selected.isEmpty else { return }
-
-        // Validate categories
-        let rowsNeedingCategory = selected.filter { row in
-            (row.categoryId ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        guard let itemsToImport = validatedItemsToImport() else {
+            return
         }
-        if !rowsNeedingCategory.isEmpty {
-            errorMessage = "Please select a category for all selected items."
+        guard !itemsToImport.isEmpty else {
             return
         }
 
         isImporting = true
         errorMessage = nil
         defer { isImporting = false }
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.timeZone = TimeZone.current
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let itemsToImport: [Item] = selected.map { row in
-            var item = Item()
-            item.name = row.name
-            item.description = row.detailDescription
-            item.categoryId = row.categoryId ?? ""
-            item.locationId = row.locationId ?? ""
-            item.price = row.price.trimmingCharacters(in: .whitespaces)
-            if let date = row.purchaseDate {
-                item.purchaseDate = dateFormatter.string(from: date)
-            }
-            item.condition = "New"
-            item.quantity = 1
-            item.priceCurrency = "USD"
-            return item
-        }
 
         await inventoryViewModel.importItems(itemsToImport)
     }
@@ -703,6 +726,8 @@ struct AmazonCSVImportView: View {
     @StateObject private var viewModel: AmazonCSVImportViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showFileImporter = false
+    @State private var isShowingConfirm = false
+    @State private var pendingItems: [Item] = []
 
     private static let lastCSVPathKey = "mystuff_last_amazon_csv_path"
     private var hasRecentCSV: Bool {
@@ -797,6 +822,23 @@ struct AmazonCSVImportView: View {
         }
         .padding()
         .frame(minWidth: 1200, minHeight: 700)
+        .sheet(isPresented: $isShowingConfirm) {
+            AmazonImportConfirmationView(
+                items: pendingItems,
+                categories: session.categories.categories,
+                locations: session.locations.locations,
+                onConfirm: {
+                    isShowingConfirm = false
+                    Task {
+                        await viewModel.importSelectedItems()
+                        dismiss()
+                    }
+                },
+                onCancel: {
+                    isShowingConfirm = false
+                }
+            )
+        }
     }
 
     private var header: some View {
@@ -971,10 +1013,11 @@ struct AmazonCSVImportView: View {
                 dismiss()
             }
             Button("Import selected") {
-                Task {
-                    await viewModel.importSelectedItems()
-                    dismiss()
+                guard let items = viewModel.validatedItemsToImport(), !items.isEmpty else {
+                    return
                 }
+                pendingItems = items
+                isShowingConfirm = true
             }
             .disabled(viewModel.rows.allSatisfy { !$0.isSelected })
         }
@@ -989,6 +1032,88 @@ struct AmazonCSVImportView: View {
             viewModel.rows[index].locationId = homeId
         }
         return $viewModel.rows[index]
+    }
+}
+
+@available(macOS 13.0, *)
+private struct AmazonImportConfirmationView: View {
+    let items: [Item]
+    let categories: [Category]
+    let locations: [Location]
+    var onConfirm: () -> Void
+    var onCancel: () -> Void
+
+    private func categoryName(for id: String) -> String {
+        categories.first(where: { $0.id == id })?.name ?? "—"
+    }
+
+    private func locationName(for id: String) -> String {
+        locations.first(where: { $0.id == id })?.name ?? "—"
+    }
+
+    private func displayDate(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "—" : value
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Confirm import from Amazon")
+                    .font(.title2.weight(.semibold))
+                Spacer()
+            }
+
+            Text("These \(items.count) item(s) will be added to MyStuff. Review the details below, then confirm or cancel.")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Table(items) {
+                TableColumn("Name") { item in
+                    Text(item.name)
+                }
+                TableColumn("Description") { item in
+                    Text(item.description)
+                }
+                TableColumn("Price") { item in
+                    Text(item.price)
+                }
+                TableColumn("Qty") { item in
+                    Text("\(item.quantity)")
+                }
+                TableColumn("Currency") { item in
+                    Text(item.priceCurrency.isEmpty ? "USD" : item.priceCurrency)
+                }
+                TableColumn("Purchase Date") { item in
+                    Text(displayDate(item.purchaseDate))
+                }
+                TableColumn("Category") { item in
+                    Text(categoryName(for: item.categoryId))
+                }
+                TableColumn("Location") { item in
+                    Text(locationName(for: item.locationId))
+                }
+                TableColumn("Web Link") { item in
+                    Text(item.webLink.isEmpty ? "—" : item.webLink)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    onCancel()
+                }
+                Button("Import \(items.count) item(s)") {
+                    onConfirm()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding(.top, 8)
+        }
+        .padding()
+        .frame(minWidth: 1000, minHeight: 500)
     }
 }
 #endif
