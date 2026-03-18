@@ -475,6 +475,7 @@ struct CachedURLThumbnailView: View {
 
     @State private var image: NSImage?
     @State private var isLoading = false
+    @State private var hasFailed = false
 
     var body: some View {
         ZStack {
@@ -492,6 +493,16 @@ struct CachedURLThumbnailView: View {
             } else if isLoading {
                 ProgressView()
                     .frame(width: size, height: size)
+            } else if hasFailed {
+                VStack(spacing: 2) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: size * 0.35))
+                        .foregroundStyle(.orange)
+                    Text("No image")
+                        .font(.system(size: size * 0.18))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: size, height: size)
             } else {
                 Image(systemName: "photo")
                     .font(.title3)
@@ -513,17 +524,34 @@ struct CachedURLThumbnailView: View {
         }
         isLoading = true
         Task {
-            defer { isLoading = false }
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                if let img = NSImage(data: data) {
-                    AmazonThumbnailCache.shared.insert(img, for: url)
-                    await MainActor.run {
-                        image = img
+                let (data, response) = try await URLSession.shared.data(from: url)
+                let isValidResponse = (response as? HTTPURLResponse)?.statusCode == 200
+                let finalURL = response.url?.absoluteString ?? ""
+                let isNoImageURL = finalURL.contains("no-img") || finalURL.contains("no_img") || finalURL.contains("no-image")
+                var loaded: NSImage? = nil
+                if isValidResponse && !isNoImageURL, let img = NSImage(data: data) {
+                    let rep = img.representations.first
+                    let w = rep?.pixelsWide ?? 0
+                    let h = rep?.pixelsHigh ?? 0
+                    if w >= 50 && h >= 50 {
+                        loaded = img
                     }
                 }
+                await MainActor.run {
+                    if let img = loaded {
+                        AmazonThumbnailCache.shared.insert(img, for: url)
+                        image = img
+                    } else {
+                        hasFailed = true
+                    }
+                    isLoading = false
+                }
             } catch {
-                // Ignore failures; placeholder will remain.
+                await MainActor.run {
+                    hasFailed = true
+                    isLoading = false
+                }
             }
         }
     }
