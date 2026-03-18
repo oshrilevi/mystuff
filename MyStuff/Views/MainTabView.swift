@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import WebKit
 #if os(macOS)
 import AppKit
 #endif
@@ -456,6 +457,91 @@ private struct SettingsMenuButton: View {
 import AppKit
 
 // In-app cache for Amazon product thumbnails so we don't refetch on every redraw.
+/// Loads Amazon product pages in a hidden WKWebView to extract the real product image URL.
+/// Requests are serialised — only one page loads at a time — to avoid hammering the network.
+@MainActor
+private final class AmazonWebViewScraper: NSObject, WKNavigationDelegate {
+    static let shared = AmazonWebViewScraper()
+
+    private let webView: WKWebView
+    private var queue: [(URL, CheckedContinuation<URL?, Never>)] = []
+    private var activeContinuation: CheckedContinuation<URL?, Never>?
+    private var timeoutTask: Task<Void, Never>?
+
+    override init() {
+        webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+        super.init()
+        webView.navigationDelegate = self
+    }
+
+    func imageURL(for productURL: URL) async -> URL? {
+        await withCheckedContinuation { continuation in
+            queue.append((productURL, continuation))
+            if activeContinuation == nil { loadNext() }
+        }
+    }
+
+    private func loadNext() {
+        guard activeContinuation == nil, !queue.isEmpty else { return }
+        let (url, continuation) = queue.removeFirst()
+        activeContinuation = continuation
+        webView.load(URLRequest(url: url))
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.webView.stopLoading()
+            self.complete(with: nil)
+        }
+    }
+
+    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        Task { @MainActor [weak self] in
+            // Brief pause so synchronous page JS can run
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard let self, !Task.isCancelled else { return }
+            await self.extractAndComplete()
+        }
+    }
+
+    nonisolated func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        Task { @MainActor [weak self] in self?.complete(with: nil) }
+    }
+
+    nonisolated func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        Task { @MainActor [weak self] in self?.complete(with: nil) }
+    }
+
+    private func extractAndComplete() async {
+        guard activeContinuation != nil else { return }
+        let js = """
+        (function() {
+            var og = document.querySelector('meta[property="og:image"]');
+            if (og && og.content && og.content.length > 10) return og.content;
+            var img = document.querySelector('#landingImage') || document.querySelector('#imgBlkFront');
+            if (img) {
+                var h = img.getAttribute('data-old-hires');
+                if (h && h.length > 10) return h;
+                if (img.src && img.src.indexOf('http') === 0) return img.src;
+            }
+            return null;
+        })()
+        """
+        let result = await withCheckedContinuation { (cont: CheckedContinuation<Any?, Never>) in
+            webView.evaluateJavaScript(js) { value, _ in cont.resume(returning: value) }
+        }
+        complete(with: (result as? String).flatMap { URL(string: $0) })
+    }
+
+    private func complete(with url: URL?) {
+        guard activeContinuation != nil else { return }
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        activeContinuation?.resume(returning: url)
+        activeContinuation = nil
+        loadNext()
+    }
+}
+
 private final class AmazonThumbnailCache {
     static let shared = AmazonThumbnailCache()
     private let cache = NSCache<NSURL, NSImage>()
@@ -479,7 +565,6 @@ struct CachedURLThumbnailView: View {
     @State private var isLoading = false
     @State private var hasFailed = false
 
-    private static let pageMetadataService = PageMetadataService()
     private static var scrapeCache: [String: URL?] = [:]
 
     var body: some View {
@@ -554,21 +639,19 @@ struct CachedURLThumbnailView: View {
                 if let url = urls.first { AmazonThumbnailCache.shared.insert(img, for: url) }
             }
 
-            // CDN failed — scrape the Amazon product page for og:image
+            // CDN failed — load the Amazon product page in a WKWebView and extract the image
             if img == nil, !asin.isEmpty {
                 let host = website.isEmpty ? "www.amazon.com" : website
                 let cacheKey = "\(host)|\(asin)"
                 let scrapedURL: URL?
-                if let cached = Self.scrapeCache[cacheKey] {
-                    scrapedURL = cached
-                } else if let productURL = URL(string: "https://\(host)/dp/\(asin)"),
-                          let imageString = try? await Self.pageMetadataService.fetchMetadata(from: productURL).imageURL,
-                          let resolved = URL(string: imageString.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                    scrapedURL = resolved
-                    Self.scrapeCache[cacheKey] = resolved
+                if Self.scrapeCache.keys.contains(cacheKey) {
+                    scrapedURL = Self.scrapeCache[cacheKey] ?? nil
+                } else if let productURL = URL(string: "https://\(host)/dp/\(asin)") {
+                    let result = await AmazonWebViewScraper.shared.imageURL(for: productURL)
+                    Self.scrapeCache[cacheKey] = result
+                    scrapedURL = result
                 } else {
                     scrapedURL = nil
-                    Self.scrapeCache[cacheKey] = nil
                 }
                 if let scrapedURL, let scrapedImg = await fetchImage(from: scrapedURL) {
                     img = scrapedImg
