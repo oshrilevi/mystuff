@@ -579,6 +579,16 @@ final class AmazonCSVImportViewModel: ObservableObject {
         return Array(Set(years)).sorted()
     }
 
+    var filteredTotal: Double {
+        filteredRows.reduce(0.0) { sum, row in
+            let cleaned = row.price
+                .trimmingCharacters(in: .whitespaces)
+                .replacingOccurrences(of: ",", with: "")
+            let price = Double(cleaned) ?? 0
+            return sum + price
+        }
+    }
+
     var filteredRows: [ImportedAmazonItemRow] {
         let base = rows.filter { row in
             // Year filter
@@ -1217,9 +1227,13 @@ struct AmazonCSVImportView: View {
 
     private var footer: some View {
         HStack {
-            if let message = viewModel.errorMessage {
-                Text(message)
-                    .foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Total: $\(viewModel.filteredTotal, specifier: "%.2f")")
+                    .font(.subheadline.weight(.medium))
+                if let message = viewModel.errorMessage {
+                    Text(message)
+                        .foregroundStyle(.red)
+                }
             }
             Spacer()
             let selectedCount = viewModel.rows.filter { $0.isSelected }.count

@@ -49,6 +49,16 @@ final class AmazonCSVImportViewModel: ObservableObject {
         return Array(Set(years)).sorted()
     }
 
+    var selectedTotal: Double {
+        rows.filter { $0.isSelected }.reduce(0.0) { sum, row in
+            let cleaned = row.price
+                .trimmingCharacters(in: .whitespaces)
+                .replacingOccurrences(of: ",", with: "")
+            let price = Double(cleaned) ?? 0
+            return sum + price * Double(row.quantity)
+        }
+    }
+
     var filteredRows: [ImportedAmazonItemRow] {
         rows.filter { row in
             // Year filter
