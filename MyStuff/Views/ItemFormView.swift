@@ -26,7 +26,6 @@ struct ItemFormView: View {
     @State private var webLink = ""
     @State private var tags: [String] = []
     @State private var locationId = ""
-    @State private var priceCurrency = "NIS"
     @State private var isExtracting = false
     @State private var showImagePicker = false
     @State private var showCamera = false
@@ -142,8 +141,7 @@ struct ItemFormView: View {
         Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
     }
     private var priceLabel: String {
-        let currencyLabel = priceCurrency == "USD" ? "USD" : "NIS"
-        return "Price (\(currencyLabel))"
+        "Price (NIS)"
     }
 
     private var showCurrentPhoto: Bool {
@@ -276,17 +274,6 @@ struct ItemFormView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Currency").font(.subheadline).foregroundStyle(.secondary)
-                Picker("", selection: $priceCurrency) {
-                    Text("NIS").tag("NIS")
-                    Text("USD").tag("USD")
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(priceLabel).font(.subheadline).foregroundStyle(.secondary)
@@ -573,21 +560,20 @@ struct ItemFormView: View {
     }
 
     private func fillForm() {
-        if let item = existingItem {
-            name = item.name
-            description = item.description
-            var cid = item.categoryId
-            if cid.isEmpty, let first = firstSelectableCategoryId { cid = first }
-            categoryId = cid
-            price = item.price
-            priceCurrency = item.priceCurrency.isEmpty ? "NIS" : item.priceCurrency
-            purchaseDateValue = Self.dateFormatter.date(from: item.purchaseDate) ?? Date()
-            quantity = item.quantity
-            quantityText = "\(item.quantity)"
-            webLink = item.webLink
-            tags = item.tags
-            locationId = item.locationId
-        }
+            if let item = existingItem {
+                name = item.name
+                description = item.description
+                var cid = item.categoryId
+                if cid.isEmpty, let first = firstSelectableCategoryId { cid = first }
+                categoryId = cid
+                price = item.price
+                purchaseDateValue = Self.dateFormatter.date(from: item.purchaseDate) ?? Date()
+                quantity = item.quantity
+                quantityText = "\(item.quantity)"
+                webLink = item.webLink
+                tags = item.tags
+                locationId = item.locationId
+            }
     }
 
     private func extractFromLink() async {
@@ -630,14 +616,14 @@ struct ItemFormView: View {
         let link = webLink.trimmingCharacters(in: .whitespaces)
         let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
         let resolvedTags = tags
-        let resolvedPriceCurrency = priceCurrency
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)
             updated.description = description
             updated.categoryId = categoryId
             updated.price = price
-            updated.priceCurrency = resolvedPriceCurrency
+            // Once items are in the inventory, their price is always stored in NIS.
+            updated.priceCurrency = ""
             updated.purchaseDate = purchaseDateString
             updated.condition = existing.condition
             updated.quantity = quantity
@@ -658,7 +644,8 @@ struct ItemFormView: View {
                 webLink: link,
                 tags: resolvedTags,
                 locationId: locationId,
-                priceCurrency: resolvedPriceCurrency
+                // New items are always created with prices stored in NIS.
+                priceCurrency: ""
             )
             await inventory.addItem(newItem, imageData: imageData)
             if inventory.errorMessage == nil {
@@ -674,7 +661,7 @@ struct ItemFormView: View {
                 updated.description = description
                 updated.categoryId = categoryId
                 updated.price = price
-                updated.priceCurrency = resolvedPriceCurrency
+                updated.priceCurrency = ""
                 updated.purchaseDate = Self.dateFormatter.string(from: purchaseDateValue)
                 updated.quantity = quantity
                 updated.webLink = webLink.trimmingCharacters(in: .whitespaces)

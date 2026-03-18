@@ -480,6 +480,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isImporting = false
     @Published var errorMessage: String?
+    @Published var exchangeRate: String = "3.3"
 
     // Filtering
     @Published var selectedYear: Int?
@@ -551,6 +552,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         dateFormatter.timeZone = TimeZone.current
         dateFormatter.dateFormat = "yyyy-MM-dd"
+        let rate = parsedExchangeRate()
 
         let itemsToImport: [Item] = selected.map { row in
             var item = Item()
@@ -558,13 +560,24 @@ final class AmazonCSVImportViewModel: ObservableObject {
             item.description = row.detailDescription
             item.categoryId = row.categoryId ?? ""
             item.locationId = row.locationId ?? ""
-            item.price = row.price.trimmingCharacters(in: .whitespaces)
+
+            let trimmedPrice = row.price.trimmingCharacters(in: .whitespaces)
+            if let usd = parsedPrice(from: trimmedPrice) {
+                let nis = usd * rate
+                item.price = String(format: "%.2f", nis)
+            } else {
+                // If we cannot parse the price, keep the original string and still
+                // treat it as NIS so the user can correct it later.
+                item.price = trimmedPrice
+            }
+
             if let date = row.purchaseDate {
                 item.purchaseDate = dateFormatter.string(from: date)
             }
             item.condition = "New"
             item.quantity = 1
-            item.priceCurrency = "USD"
+            // Once imported, prices are always stored in NIS for inventory items.
+            item.priceCurrency = ""
 
             let trimmedASIN = row.asin.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedASIN.isEmpty {
@@ -575,6 +588,24 @@ final class AmazonCSVImportViewModel: ObservableObject {
         }
 
         return itemsToImport
+    }
+
+    private func parsedExchangeRate() -> Double {
+        let trimmed = exchangeRate.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let value = Double(trimmed), value > 0 {
+            return value
+        }
+        return 3.3
+    }
+
+    private func parsedPrice(from string: String) -> Double? {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return nil
+        }
+        // Allow prices with commas (e.g. "1,234.56") by normalizing before parsing.
+        let normalized = trimmed.replacingOccurrences(of: ",", with: "")
+        return Double(normalized)
     }
 
     func loadCSV(from url: URL) async {
@@ -878,6 +909,7 @@ struct AmazonCSVImportView: View {
                 items: pendingItems,
                 categories: session.categories.categories,
                 locations: session.locations.locations,
+                exchangeRate: $viewModel.exchangeRate,
                 onConfirm: {
                     isShowingConfirm = false
                     Task {
@@ -1099,7 +1131,7 @@ struct AmazonCSVImportView: View {
             let selectedCount = viewModel.rows.filter { $0.isSelected }.count
             Text("\(selectedCount) selected")
                 .foregroundStyle(.secondary)
-            Spacer()
+            Spacer(minLength: 12)
             Button("Cancel") {
                 dismiss()
             }
@@ -1131,6 +1163,7 @@ private struct AmazonImportConfirmationView: View {
     let items: [Item]
     let categories: [Category]
     let locations: [Location]
+    @Binding var exchangeRate: String
     var onConfirm: () -> Void
     var onCancel: () -> Void
 
@@ -1158,6 +1191,15 @@ private struct AmazonImportConfirmationView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            HStack(spacing: 8) {
+                Text("Exchange rate (USD → NIS)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                TextField("", text: $exchangeRate)
+                    .frame(width: 80)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Table(items) {
                 TableColumn("Name") { item in
                     Text(item.name)
@@ -1165,14 +1207,11 @@ private struct AmazonImportConfirmationView: View {
                 TableColumn("Description") { item in
                     Text(item.description)
                 }
-                TableColumn("Price") { item in
+                TableColumn("Price (NIS)") { item in
                     Text(item.price)
                 }
                 TableColumn("Qty") { item in
                     Text("\(item.quantity)")
-                }
-                TableColumn("Currency") { item in
-                    Text(item.priceCurrency.isEmpty ? "USD" : item.priceCurrency)
                 }
                 TableColumn("Purchase Date") { item in
                     Text(displayDate(item.purchaseDate))
