@@ -13,6 +13,9 @@ final class AmazonCSVImportViewModel: ObservableObject {
         var orderId: String
         var website: String
 
+        /// Thumbnail URL derived from the ASIN for Amazon image preview in the import UI only.
+        var thumbnailURL: URL?
+
         // User-editable fields
         var name: String
         var detailDescription: String
@@ -122,26 +125,35 @@ final class AmazonCSVImportViewModel: ObservableObject {
                 let asin = value("ASIN", in: columns)
                 let website = value("Website", in: columns)
 
-                let purchaseDate: Date?
-                if !orderDateString.isEmpty {
-                    purchaseDate = isoFormatter.date(from: orderDateString)
-                } else {
-                    purchaseDate = nil
-                }
+            let trimmedASIN = asin.trimmingCharacters(in: .whitespacesAndNewlines)
+            let thumbnailURL: URL?
+            if !trimmedASIN.isEmpty {
+                thumbnailURL = URL(string: "https://images-na.ssl-images-amazon.com/images/P/\(trimmedASIN).jpg")
+            } else {
+                thumbnailURL = nil
+            }
 
-                let row = ImportedAmazonItemRow(
-                    asin: asin,
-                    orderId: orderId,
-                    website: website,
-                    name: productName,
-                    detailDescription: productName,
-                    price: unitPrice,
-                    quantity: max(1, quantity),
-                    purchaseDate: purchaseDate,
-                    categoryId: nil,
-                    locationId: nil,
-                    currency: currency
-                )
+            let purchaseDate: Date?
+            if !orderDateString.isEmpty {
+                purchaseDate = isoFormatter.date(from: orderDateString)
+            } else {
+                purchaseDate = nil
+            }
+
+            let row = ImportedAmazonItemRow(
+                asin: asin,
+                orderId: orderId,
+                website: website,
+                thumbnailURL: thumbnailURL,
+                name: productName,
+                detailDescription: productName,
+                price: unitPrice,
+                quantity: max(1, quantity),
+                purchaseDate: purchaseDate,
+                categoryId: nil,
+                locationId: nil,
+                currency: currency
+            )
                 imported.append(row)
             }
 
@@ -313,6 +325,39 @@ struct AmazonCSVImportView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Table(viewModel.filteredRows) {
+                    TableColumn("Thumbnail") { row in
+                        if let url = row.thumbnailURL {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(width: 48, height: 48)
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 48, height: 48)
+                                        .clipped()
+                                        .cornerRadius(6)
+                                case .failure:
+                                    Image(systemName: "photo")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 48, height: 48)
+                                @unknown default:
+                                    Image(systemName: "photo")
+                                        .font(.title3)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 48, height: 48)
+                                }
+                            }
+                        } else {
+                            Image(systemName: "photo")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 48, height: 48)
+                        }
+                    }
                     TableColumn("Import") { row in
                         Toggle(isOn: binding(for: row).isSelected) {
                             EmptyView()

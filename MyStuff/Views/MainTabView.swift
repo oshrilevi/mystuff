@@ -453,6 +453,82 @@ private struct SettingsMenuButton: View {
 #endif
 
 #if os(macOS)
+import AppKit
+
+// In-app cache for Amazon product thumbnails so we don't refetch on every redraw.
+private final class AmazonThumbnailCache {
+    static let shared = AmazonThumbnailCache()
+    private let cache = NSCache<NSURL, NSImage>()
+
+    func image(for url: URL) -> NSImage? {
+        cache.object(forKey: url as NSURL)
+    }
+
+    func insert(_ image: NSImage, for url: URL) {
+        cache.setObject(image, forKey: url as NSURL)
+    }
+}
+
+struct CachedURLThumbnailView: View {
+    let url: URL?
+    let size: CGFloat
+
+    @State private var image: NSImage?
+    @State private var isLoading = false
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.gray.opacity(0.15))
+                .frame(width: size, height: size)
+
+            if let img = image {
+                Image(nsImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: size, height: size)
+                    .clipped()
+                    .cornerRadius(6)
+            } else if isLoading {
+                ProgressView()
+                    .frame(width: size, height: size)
+            } else {
+                Image(systemName: "photo")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: size, height: size)
+            }
+        }
+        .onAppear(perform: loadIfNeeded)
+        .onChange(of: url) { _ in
+            loadIfNeeded()
+        }
+    }
+
+    private func loadIfNeeded() {
+        guard let url else { return }
+        if let cached = AmazonThumbnailCache.shared.image(for: url) {
+            image = cached
+            return
+        }
+        isLoading = true
+        Task {
+            defer { isLoading = false }
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let img = NSImage(data: data) {
+                    AmazonThumbnailCache.shared.insert(img, for: url)
+                    await MainActor.run {
+                        image = img
+                    }
+                }
+            } catch {
+                // Ignore failures; placeholder will remain.
+            }
+        }
+    }
+}
+
 @MainActor
 final class AmazonCSVImportViewModel: ObservableObject {
     private static let lastCSVPathKey = "mystuff_last_amazon_csv_path"
@@ -465,6 +541,9 @@ final class AmazonCSVImportViewModel: ObservableObject {
         var asin: String
         var orderId: String
         var website: String
+
+        /// Thumbnail URL derived from the ASIN for Amazon image preview in the import UI only.
+        var thumbnailURL: URL?
 
         // User-editable fields
         var name: String
@@ -659,6 +738,14 @@ final class AmazonCSVImportViewModel: ObservableObject {
                 let asin = value("ASIN", in: columns)
                 let website = value("Website", in: columns)
 
+            let trimmedASIN = asin.trimmingCharacters(in: .whitespacesAndNewlines)
+            let thumbnailURL: URL?
+            if !trimmedASIN.isEmpty {
+                thumbnailURL = URL(string: "https://images-na.ssl-images-amazon.com/images/P/\(trimmedASIN).jpg")
+            } else {
+                thumbnailURL = nil
+            }
+
                 let trimmedOrderDate = orderDateString.trimmingCharacters(in: .whitespacesAndNewlines)
                 let purchaseDate: Date?
                 if !trimmedOrderDate.isEmpty {
@@ -677,6 +764,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
                     asin: asin,
                     orderId: orderId,
                     website: website,
+                    thumbnailURL: thumbnailURL,
                     name: productName,
                     detailDescription: productName,
                     price: unitPrice,
@@ -762,6 +850,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
             return linkASIN.lowercased() == loweredASIN
         }
     }
+
 
     // Simple CSV parser that respects quoted fields.
     private func parseCSVRow(_ line: String) -> [String] {
@@ -999,6 +1088,11 @@ struct AmazonCSVImportView: View {
                         }
                     }
                     .width(50)
+
+                    TableColumn("Thumbnail") { row in
+                        CachedURLThumbnailView(url: row.thumbnailURL, size: 48)
+                    }
+                    .width(60)
 
                     TableColumn("Name") { row in
                         if row.isExisting {

@@ -12,6 +12,9 @@ final class AmazonCSVImportViewModel: ObservableObject {
         var orderId: String
         var website: String
 
+        /// Thumbnail URL derived from the ASIN for Amazon image preview in the import UI only.
+        var thumbnailURL: URL?
+
         // User-editable fields
         var name: String
         var detailDescription: String
@@ -126,6 +129,14 @@ final class AmazonCSVImportViewModel: ObservableObject {
                 let asin = value("ASIN", in: columns)
                 let website = value("Website", in: columns)
 
+                let trimmedASIN = asin.trimmingCharacters(in: .whitespacesAndNewlines)
+                let thumbnailURL: URL?
+                if !trimmedASIN.isEmpty {
+                    thumbnailURL = URL(string: "https://images-na.ssl-images-amazon.com/images/P/\(trimmedASIN).jpg")
+                } else {
+                    thumbnailURL = nil
+                }
+
                 let trimmedOrderDate = orderDateString.trimmingCharacters(in: .whitespacesAndNewlines)
                 let purchaseDate: Date?
                 if !trimmedOrderDate.isEmpty {
@@ -144,6 +155,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
                     asin: asin,
                     orderId: orderId,
                     website: website,
+                    thumbnailURL: thumbnailURL,
                     name: productName,
                     detailDescription: productName,
                     price: unitPrice,
