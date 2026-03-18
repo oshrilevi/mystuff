@@ -46,7 +46,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
             guard let date = row.purchaseDate else { return nil }
             return Calendar.current.component(.year, from: date)
         }
-        return Array(Set(years)).sorted()
+        return Array(Set(years)).sorted(by: >)
     }
 
     var selectedTotal: Double {
