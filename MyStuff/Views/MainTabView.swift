@@ -717,6 +717,7 @@ final class AmazonCSVImportViewModel: ObservableObject {
     @Published var isImporting = false
     @Published var errorMessage: String?
     @Published var exchangeRate: String = "3.3"
+    @Published var lastSelectedCategoryId: String?
 
     // Filtering
     @Published var selectedYear: Int?
@@ -1336,7 +1337,17 @@ struct AmazonCSVImportView: View {
                 Table(viewModel.filteredRows) {
                     TableColumn("Import") { row in
                         if !row.isExisting {
-                            Toggle(isOn: binding(for: row).isSelected) {
+                            Toggle(isOn: Binding(
+                                get: { binding(for: row).isSelected.wrappedValue },
+                                set: { newValue in
+                                    binding(for: row).isSelected.wrappedValue = newValue
+                                    if newValue,
+                                       (binding(for: row).categoryId.wrappedValue ?? "").isEmpty,
+                                       let lastCat = viewModel.lastSelectedCategoryId {
+                                        binding(for: row).categoryId.wrappedValue = lastCat
+                                    }
+                                }
+                            )) {
                                 EmptyView()
                             }
                             .labelsHidden()
@@ -1388,7 +1399,9 @@ struct AmazonCSVImportView: View {
                             Picker("Category", selection: Binding(
                                 get: { binding(for: row).categoryId.wrappedValue ?? "" },
                                 set: { newValue in
-                                    binding(for: row).categoryId.wrappedValue = newValue.isEmpty ? nil : newValue
+                                    let resolved = newValue.isEmpty ? nil : newValue
+                                    binding(for: row).categoryId.wrappedValue = resolved
+                                    viewModel.lastSelectedCategoryId = resolved
                                 }
                             )) {
                                 Text("—").tag("")
