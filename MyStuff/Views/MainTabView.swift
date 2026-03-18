@@ -472,10 +472,15 @@ private final class AmazonThumbnailCache {
 struct CachedURLThumbnailView: View {
     let urls: [URL]
     let size: CGFloat
+    var asin: String = ""
+    var website: String = "www.amazon.com"
 
     @State private var image: NSImage?
     @State private var isLoading = false
     @State private var hasFailed = false
+
+    private static let pageMetadataService = PageMetadataService()
+    private static var scrapeCache: [String: URL?] = [:]
 
     var body: some View {
         ZStack {
@@ -525,14 +530,15 @@ struct CachedURLThumbnailView: View {
     }()
 
     private func loadIfNeeded() {
-        guard !urls.isEmpty else { return }
+        guard !urls.isEmpty || !asin.isEmpty else { return }
         if let cached = urls.lazy.compactMap({ AmazonThumbnailCache.shared.image(for: $0) }).first {
             image = cached
             return
         }
         isLoading = true
         Task {
-            let img: NSImage? = await withTaskGroup(of: NSImage?.self) { group -> NSImage? in
+            // Try CDN URLs first — fast, no scraping needed
+            var img: NSImage? = await withTaskGroup(of: NSImage?.self) { group -> NSImage? in
                 for url in urls {
                     group.addTask { await fetchImage(from: url) }
                 }
@@ -544,9 +550,34 @@ struct CachedURLThumbnailView: View {
                 }
                 return nil
             }
+            if let img {
+                if let url = urls.first { AmazonThumbnailCache.shared.insert(img, for: url) }
+            }
+
+            // CDN failed — scrape the Amazon product page for og:image
+            if img == nil, !asin.isEmpty {
+                let host = website.isEmpty ? "www.amazon.com" : website
+                let cacheKey = "\(host)|\(asin)"
+                let scrapedURL: URL?
+                if let cached = Self.scrapeCache[cacheKey] {
+                    scrapedURL = cached
+                } else if let productURL = URL(string: "https://\(host)/dp/\(asin)"),
+                          let imageString = try? await Self.pageMetadataService.fetchMetadata(from: productURL).imageURL,
+                          let resolved = URL(string: imageString.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    scrapedURL = resolved
+                    Self.scrapeCache[cacheKey] = resolved
+                } else {
+                    scrapedURL = nil
+                    Self.scrapeCache[cacheKey] = nil
+                }
+                if let scrapedURL, let scrapedImg = await fetchImage(from: scrapedURL) {
+                    img = scrapedImg
+                    AmazonThumbnailCache.shared.insert(scrapedImg, for: scrapedURL)
+                }
+            }
+
             await MainActor.run {
                 if let img {
-                    if let url = urls.first { AmazonThumbnailCache.shared.insert(img, for: url) }
                     image = img
                 } else {
                     hasFailed = true
@@ -1157,7 +1188,7 @@ struct AmazonCSVImportView: View {
                     .width(50)
 
                     TableColumn("Thumbnail") { row in
-                        CachedURLThumbnailView(urls: thumbnailURLs(for: row), size: 48)
+                        CachedURLThumbnailView(urls: thumbnailURLs(for: row), size: 48, asin: row.asin, website: row.website)
                     }
                     .width(60)
 
