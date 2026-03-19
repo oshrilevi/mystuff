@@ -269,6 +269,9 @@ private struct SettingsMenuButton: View {
                     ) {
                         isImportingAmazonCSV = true
                     }
+
+                    Divider()
+                        .padding(.top, 4)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
