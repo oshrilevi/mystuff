@@ -23,7 +23,7 @@ struct MainTabView: View {
     @EnvironmentObject var authService: GoogleAuthService
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: MainSidebarSelection = .items
-    @State private var itemViewMode: ItemViewMode = .grid
+    @AppStorage("itemViewMode") private var itemViewMode: ItemViewMode = .grid
     var body: some View {
         #if os(iOS)
         TabView(selection: $selection) {
@@ -1716,7 +1716,9 @@ struct ItemsTabView: View {
 
     var body: some View {
         Group {
-            if viewMode == .grid {
+            if viewMode == .graph {
+                NodeGraphView(viewMode: $viewMode)
+            } else if viewMode == .grid {
                 GalleryView(viewMode: $viewMode)
             } else {
                 ItemsListView(viewMode: $viewMode)

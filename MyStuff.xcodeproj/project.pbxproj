@@ -59,6 +59,9 @@
 		B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000039 /* AttachmentsViewModel.swift */; };
 		B0010000000000000000003B /* DocumentPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000003B /* DocumentPreviewView.swift */; };
 		B0010000000000000000003C /* TagChipsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000003C /* TagChipsView.swift */; };
+		B00100000000000000000050 /* GraphNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000054 /* GraphNode.swift */; };
+		B00100000000000000000051 /* GraphLayoutEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000055 /* GraphLayoutEngine.swift */; };
+		B00100000000000000000052 /* NodeGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000056 /* NodeGraphView.swift */; };
 		B0010000000000000000003D /* List.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000041 /* List.swift */; };
 		B0010000000000000000003E /* ListItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000042 /* ListItem.swift */; };
 		B0010000000000000000003F /* ListsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000043 /* ListsViewModel.swift */; };
@@ -127,6 +130,9 @@
 		F00100000000000000000039 /* AttachmentsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentsViewModel.swift; sourceTree = "<group>"; };
 		F0010000000000000000003B /* DocumentPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPreviewView.swift; sourceTree = "<group>"; };
 		F0010000000000000000003C /* TagChipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChipsView.swift; sourceTree = "<group>"; };
+		F00100000000000000000054 /* GraphNode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphNode.swift; sourceTree = "<group>"; };
+		F00100000000000000000055 /* GraphLayoutEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GraphLayoutEngine.swift; sourceTree = "<group>"; };
+		F00100000000000000000056 /* NodeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeGraphView.swift; sourceTree = "<group>"; };
 		F00100000000000000000041 /* List.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = List.swift; sourceTree = "<group>"; };
 		F00100000000000000000042 /* ListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListItem.swift; sourceTree = "<group>"; };
 		F00100000000000000000043 /* ListsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsViewModel.swift; sourceTree = "<group>"; };
@@ -217,6 +223,9 @@
 				F00100000000000000000015 /* DriveImageView.swift */,
 				F0010000000000000000003B /* DocumentPreviewView.swift */,
 				F0010000000000000000003C /* TagChipsView.swift */,
+				F00100000000000000000054 /* GraphNode.swift */,
+				F00100000000000000000055 /* GraphLayoutEngine.swift */,
+				F00100000000000000000056 /* NodeGraphView.swift */,
 				F0010000000000000000002F /* PDFExportBuilder.swift */,
 				F0010000000000000000000C /* GalleryView.swift */,
 				F0010000000000000000000D /* ItemDetailView.swift */,
@@ -398,6 +407,9 @@
 				B00100000000000000000039 /* AttachmentsViewModel.swift in Sources */,
 				B0010000000000000000003B /* DocumentPreviewView.swift in Sources */,
 				B0010000000000000000003C /* TagChipsView.swift in Sources */,
+				B00100000000000000000050 /* GraphNode.swift in Sources */,
+				B00100000000000000000051 /* GraphLayoutEngine.swift in Sources */,
+				B00100000000000000000052 /* NodeGraphView.swift in Sources */,
 				B0010000000000000000003D /* List.swift in Sources */,
 				B0010000000000000000003E /* ListItem.swift in Sources */,
 				B0010000000000000000003F /* ListsViewModel.swift in Sources */,

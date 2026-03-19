@@ -4,11 +4,13 @@ import SwiftUI
 enum ItemViewMode: String, CaseIterable {
     case grid = "Grid"
     case list = "List"
+    case graph = "Graph"
 
     var icon: String {
         switch self {
         case .grid: return "square.grid.2x2"
         case .list: return "list.bullet"
+        case .graph: return "circle.hexagongrid"
         }
     }
 }
@@ -163,16 +165,19 @@ struct ItemsListView: View {
         }
     }
 
-    /// Same single bar as GalleryView: Compact | Medium | Large | List.
+    /// Same single bar as GalleryView: Compact | Medium | Large | List | Graph.
     private var displayChoiceBinding: Binding<ItemsDisplayChoice> {
         Binding(
             get: {
                 if viewMode == .list { return .list }
+                if viewMode == .graph { return .graph }
                 return ItemsDisplayChoice(rawValue: thumbnailSizeRaw) ?? .gridMedium
             },
             set: { choice in
                 if choice == .list {
                     viewMode = .list
+                } else if choice == .graph {
+                    viewMode = .graph
                 } else {
                     viewMode = .grid
                     thumbnailSizeRaw = choice.thumbnailSizeRaw

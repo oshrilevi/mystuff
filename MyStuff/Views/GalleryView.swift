@@ -45,6 +45,7 @@ enum ItemsDisplayChoice: String, CaseIterable {
     case gridMedium = "Medium"
     case gridLarge = "Large"
     case list = "List"
+    case graph = "Graph"
 
     var icon: String {
         switch self {
@@ -52,6 +53,7 @@ enum ItemsDisplayChoice: String, CaseIterable {
         case .gridMedium: return ThumbnailSize.medium.icon
         case .gridLarge: return ThumbnailSize.large.icon
         case .list: return "list.bullet"
+        case .graph: return "circle.hexagongrid"
         }
     }
 
@@ -61,6 +63,7 @@ enum ItemsDisplayChoice: String, CaseIterable {
         case .gridMedium: return ThumbnailSize.medium.rawValue
         case .gridLarge: return ThumbnailSize.large.rawValue
         case .list: return ThumbnailSize.medium.rawValue
+        case .graph: return ThumbnailSize.medium.rawValue
         }
     }
 }
@@ -125,11 +128,14 @@ struct GalleryView: View {
         Binding(
             get: {
                 if viewMode == .list { return .list }
+                if viewMode == .graph { return .graph }
                 return ItemsDisplayChoice(rawValue: thumbnailSizeRaw) ?? .gridMedium
             },
             set: { choice in
                 if choice == .list {
                     viewMode = .list
+                } else if choice == .graph {
+                    viewMode = .graph
                 } else {
                     viewMode = .grid
                     thumbnailSizeRaw = choice.thumbnailSizeRaw
