@@ -141,7 +141,7 @@ struct ItemFormView: View {
         Category.isWishlist(categories.first(where: { $0.id == categoryId })?.name ?? "")
     }
     private var priceLabel: String {
-        "Price (NIS)"
+        isWishlistCategory ? "Price (USD)" : "Price (NIS)"
     }
 
     private var showCurrentPhoto: Bool {
@@ -616,14 +616,14 @@ struct ItemFormView: View {
         let link = webLink.trimmingCharacters(in: .whitespaces)
         let purchaseDateString = Self.dateFormatter.string(from: purchaseDateValue)
         let resolvedTags = tags
+        let resolvedCurrency = isWishlistCategory ? "USD" : ""
         if isEdit, let existing = existingItem {
             var updated = existing
             updated.name = name.trimmingCharacters(in: .whitespaces)
             updated.description = description
             updated.categoryId = categoryId
             updated.price = price
-            // Once items are in the inventory, their price is always stored in NIS.
-            updated.priceCurrency = ""
+            updated.priceCurrency = resolvedCurrency
             updated.purchaseDate = purchaseDateString
             updated.condition = existing.condition
             updated.quantity = quantity
@@ -644,8 +644,7 @@ struct ItemFormView: View {
                 webLink: link,
                 tags: resolvedTags,
                 locationId: locationId,
-                // New items are always created with prices stored in NIS.
-                priceCurrency: ""
+                priceCurrency: resolvedCurrency
             )
             await inventory.addItem(newItem, imageData: imageData)
             if inventory.errorMessage == nil {
@@ -661,7 +660,7 @@ struct ItemFormView: View {
                 updated.description = description
                 updated.categoryId = categoryId
                 updated.price = price
-                updated.priceCurrency = ""
+                updated.priceCurrency = resolvedCurrency
                 updated.purchaseDate = Self.dateFormatter.string(from: purchaseDateValue)
                 updated.quantity = quantity
                 updated.webLink = webLink.trimmingCharacters(in: .whitespaces)
