@@ -109,7 +109,7 @@ struct MainTabView: View {
                         .padding(.vertical, 8)
                 }
                 .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+                .padding(.bottom, 4)
             }
             .listStyle(.sidebar)
         } detail: {
