@@ -177,7 +177,7 @@ private struct SettingsMenuButton: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 12) {
             if isExpanded {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Settings")
