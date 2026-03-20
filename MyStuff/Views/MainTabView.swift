@@ -18,14 +18,48 @@ enum MainSidebarSelection: Hashable {
     case sourcesList
     case source(UserSource)
     case youtube
+
+    /// Stable string key for UserDefaults persistence. Empty for associated-value cases.
+    var storageKey: String {
+        switch self {
+        case .items:         return "items"
+        case .lists:         return "lists"
+        case .combos:        return "combos"
+        case .trips:         return "trips"
+        case .tripLocations: return "tripLocations"
+        case .categories:    return "categories"
+        case .locations:     return "locations"
+        case .storesList:    return "storesList"
+        case .sourcesList:   return "sourcesList"
+        case .youtube:       return "youtube"
+        case .store, .source: return ""
+        }
+    }
+
+    static func from(storageKey: String) -> MainSidebarSelection? {
+        switch storageKey {
+        case "items":         return .items
+        case "lists":         return .lists
+        case "combos":        return .combos
+        case "trips":         return .trips
+        case "tripLocations": return .tripLocations
+        case "categories":    return .categories
+        case "locations":     return .locations
+        case "storesList":    return .storesList
+        case "sourcesList":   return .sourcesList
+        case "youtube":       return .youtube
+        default:              return nil
+        }
+    }
 }
 
 struct MainTabView: View {
     @EnvironmentObject var session: Session
     @EnvironmentObject var authService: GoogleAuthService
     @Environment(\.scenePhase) private var scenePhase
-    @State private var selection: MainSidebarSelection = .items
+    @AppStorage("lastSidebarSelection") private var lastSidebarKey: String = "items"
     @AppStorage("itemViewMode") private var itemViewMode: ItemViewMode = .grid
+    @State private var selection: MainSidebarSelection = .items
     var body: some View {
         #if os(iOS)
         TabView(selection: $selection) {
@@ -67,6 +101,14 @@ struct MainTabView: View {
             if newPhase == .active {
                 Task { await session.prefetchWishlistPricesIfNeeded() }
             }
+        }
+        .onAppear {
+            if let saved = MainSidebarSelection.from(storageKey: lastSidebarKey) {
+                selection = saved
+            }
+        }
+        .onChange(of: selection) { _, newVal in
+            if !newVal.storageKey.isEmpty { lastSidebarKey = newVal.storageKey }
         }
         #else
         NavigationSplitView {
@@ -160,6 +202,14 @@ struct MainTabView: View {
             if newPhase == .active {
                 Task { await session.prefetchWishlistPricesIfNeeded() }
             }
+        }
+        .onAppear {
+            if let saved = MainSidebarSelection.from(storageKey: lastSidebarKey) {
+                selection = saved
+            }
+        }
+        .onChange(of: selection) { _, newVal in
+            if !newVal.storageKey.isEmpty { lastSidebarKey = newVal.storageKey }
         }
         #endif
     }

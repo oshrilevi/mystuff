@@ -31,14 +31,6 @@ struct TripDetailView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { editingTrip = true } label: {
-                        Label("Edit", systemImage: "pencil")
-                    }
-                    .help("Edit trip")
-                }
-            }
             .sheet(isPresented: $editingTrip) {
                 TripFormSheet(trip: currentTrip) { name, description, tags in
                     var updated = currentTrip
@@ -131,6 +123,20 @@ struct TripDetailView: View {
 
     private var leftPaneContent: some View {
         VStack(alignment: .leading, spacing: 24) {
+            // Trip name + edit button
+            HStack(alignment: .firstTextBaseline) {
+                Text(currentTrip.name)
+                    .font(.title2.bold())
+                Spacer()
+                Button { editingTrip = true } label: {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.plain)
+                .help("Edit trip")
+            }
+            .padding(.horizontal)
+            .padding(.top, 16)
+
             if !currentTrip.description.isEmpty || !currentTrip.tags.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     if !currentTrip.description.isEmpty {
@@ -142,7 +148,6 @@ struct TripDetailView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.top, 16)
             }
             locationsSection
             visitsSection

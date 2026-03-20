@@ -1,10 +1,62 @@
 import SwiftUI
 import MapKit
 
+// MARK: - Map Style
+
+enum TripMapStyle: String, CaseIterable, Identifiable {
+    case standard
+    case topo
+    case satellite
+    case hybrid
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .standard:  return "Roads"
+        case .topo:      return "Terrain"
+        case .satellite: return "Satellite"
+        case .hybrid:    return "Hybrid"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .standard:  return "road.lanes"
+        case .topo:      return "mountain.2"
+        case .satellite: return "globe"
+        case .hybrid:    return "map"
+        }
+    }
+
+    @available(iOS 17.0, macOS 14.0, *)
+    var mapStyle: MapStyle {
+        switch self {
+        case .standard:  return .standard(elevation: .flat)
+        case .topo:      return .standard(elevation: .realistic)
+        case .satellite: return .imagery(elevation: .realistic)
+        case .hybrid:    return .hybrid(elevation: .realistic)
+        }
+    }
+
+    var legacyMapType: MKMapType {
+        switch self {
+        case .standard:  return .standard
+        case .topo:      return .standard
+        case .satellite: return .satellite
+        case .hybrid:    return .hybrid
+        }
+    }
+}
+
+// MARK: - TripMapView
+
 struct TripMapView: View {
     let locations: [TripLocation]
     var focusedLocationId: String? = nil
     var onLocationTapped: ((String) -> Void)? = nil
+
+    @AppStorage("tripMapStyle") private var mapStyle: TripMapStyle = .standard
 
     private var coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)] {
         locations.enumerated().compactMap { idx, loc in
@@ -37,20 +89,62 @@ struct TripMapView: View {
     }
 
     var body: some View {
-        if #available(iOS 17.0, macOS 14.0, *) {
-            ModernTripMapView(
-                coordinatedLocations: coordinatedLocations,
-                initialRegion: boundingRegion,
-                focusedLocationId: focusedLocationId,
-                onLocationTapped: onLocationTapped
-            )
-        } else {
-            TripMapLegacyView(
-                region: boundingRegion,
-                coordinatedLocations: coordinatedLocations,
-                focusedLocationId: focusedLocationId,
-                onLocationTapped: onLocationTapped
-            )
+        ZStack(alignment: .topTrailing) {
+            if #available(iOS 17.0, macOS 14.0, *) {
+                ModernTripMapView(
+                    coordinatedLocations: coordinatedLocations,
+                    initialRegion: boundingRegion,
+                    focusedLocationId: focusedLocationId,
+                    mapStyle: mapStyle,
+                    onLocationTapped: onLocationTapped
+                )
+            } else {
+                TripMapLegacyView(
+                    region: boundingRegion,
+                    coordinatedLocations: coordinatedLocations,
+                    focusedLocationId: focusedLocationId,
+                    mapStyle: mapStyle,
+                    onLocationTapped: onLocationTapped
+                )
+            }
+
+            MapStylePicker(selected: $mapStyle)
+                .padding(10)
+        }
+    }
+}
+
+// MARK: - Style Picker
+
+private struct MapStylePicker: View {
+    @Binding var selected: TripMapStyle
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(TripMapStyle.allCases) { style in
+                let isSelected = style == selected
+                Button { selected = style } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: style.systemImage)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(style.label)
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                    .foregroundStyle(isSelected ? .white : .primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(isSelected ? Color.accentColor : Color.clear)
+                }
+                .buttonStyle(.plain)
+                .help(style.label)
+            }
+        }
+        .background(.thickMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(.separator, lineWidth: 0.5)
         }
     }
 }
@@ -85,9 +179,25 @@ private struct ModernTripMapView: View {
     let coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)]
     let initialRegion: MKCoordinateRegion
     let focusedLocationId: String?
+    let mapStyle: TripMapStyle
     let onLocationTapped: ((String) -> Void)?
 
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var cameraPosition: MapCameraPosition
+
+    init(
+        coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)],
+        initialRegion: MKCoordinateRegion,
+        focusedLocationId: String?,
+        mapStyle: TripMapStyle,
+        onLocationTapped: ((String) -> Void)?
+    ) {
+        self.coordinatedLocations = coordinatedLocations
+        self.initialRegion = initialRegion
+        self.focusedLocationId = focusedLocationId
+        self.mapStyle = mapStyle
+        self.onLocationTapped = onLocationTapped
+        _cameraPosition = State(initialValue: .region(initialRegion))
+    }
 
     var body: some View {
         Map(position: $cameraPosition) {
@@ -101,15 +211,13 @@ private struct ModernTripMapView: View {
                 }
             }
         }
+        .mapStyle(mapStyle.mapStyle)
         #if os(macOS)
         .mapControls {
             MapZoomStepper()
             MapCompass()
         }
         #endif
-        .onAppear {
-            cameraPosition = .region(initialRegion)
-        }
         .onChange(of: focusedLocationId) { _, newId in
             guard let newId,
                   let item = coordinatedLocations.first(where: { $0.location.id == newId }) else { return }
@@ -129,6 +237,7 @@ private struct TripMapLegacyView {
     let region: MKCoordinateRegion
     let coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)]
     let focusedLocationId: String?
+    let mapStyle: TripMapStyle
     let onLocationTapped: ((String) -> Void)?
 }
 
@@ -145,6 +254,7 @@ extension TripMapLegacyView: UIViewRepresentable {
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
         context.coordinator.onLocationTapped = onLocationTapped
+        mapView.mapType = mapStyle.legacyMapType
         let ids = coordinatedLocations.map { $0.location.id }
         if context.coordinator.lastLocationIds != ids {
             context.coordinator.lastLocationIds = ids
@@ -172,6 +282,7 @@ extension TripMapLegacyView: NSViewRepresentable {
 
     func updateNSView(_ mapView: MKMapView, context: Context) {
         context.coordinator.onLocationTapped = onLocationTapped
+        mapView.mapType = mapStyle.legacyMapType
         let ids = coordinatedLocations.map { $0.location.id }
         if context.coordinator.lastLocationIds != ids {
             context.coordinator.lastLocationIds = ids
