@@ -55,6 +55,7 @@ struct TripMapView: View {
     let locations: [TripLocation]
     var focusedLocationId: String? = nil
     var onLocationTapped: ((String) -> Void)? = nil
+    var onMapLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
 
     @AppStorage("tripMapStyle") private var mapStyle: TripMapStyle = .standard
 
@@ -96,7 +97,8 @@ struct TripMapView: View {
                     initialRegion: boundingRegion,
                     focusedLocationId: focusedLocationId,
                     mapStyle: mapStyle,
-                    onLocationTapped: onLocationTapped
+                    onLocationTapped: onLocationTapped,
+                    onMapLongPress: onMapLongPress
                 )
             } else {
                 TripMapLegacyView(
@@ -181,51 +183,93 @@ private struct ModernTripMapView: View {
     let focusedLocationId: String?
     let mapStyle: TripMapStyle
     let onLocationTapped: ((String) -> Void)?
+    let onMapLongPress: ((CLLocationCoordinate2D) -> Void)?
 
     @State private var cameraPosition: MapCameraPosition
+    #if os(macOS)
+    @State private var hoveredCoord: CLLocationCoordinate2D?
+    #endif
 
     init(
         coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)],
         initialRegion: MKCoordinateRegion,
         focusedLocationId: String?,
         mapStyle: TripMapStyle,
-        onLocationTapped: ((String) -> Void)?
+        onLocationTapped: ((String) -> Void)?,
+        onMapLongPress: ((CLLocationCoordinate2D) -> Void)?
     ) {
         self.coordinatedLocations = coordinatedLocations
         self.initialRegion = initialRegion
         self.focusedLocationId = focusedLocationId
         self.mapStyle = mapStyle
         self.onLocationTapped = onLocationTapped
-        _cameraPosition = State(initialValue: .region(initialRegion))
+        self.onMapLongPress = onMapLongPress
+        if let focusedId = focusedLocationId,
+           let item = coordinatedLocations.first(where: { $0.location.id == focusedId }) {
+            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
+                center: item.coord,
+                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            )))
+        } else {
+            _cameraPosition = State(initialValue: .region(initialRegion))
+        }
     }
 
     var body: some View {
-        Map(position: $cameraPosition) {
-            ForEach(coordinatedLocations, id: \.location.id) { item in
-                Annotation(item.location.name, coordinate: item.coord) {
-                    TripMapPin(
-                        index: item.index,
-                        isFocused: item.location.id == focusedLocationId,
-                        onTap: { onLocationTapped?(item.location.id) }
-                    )
+        MapReader { proxy in
+            Map(position: $cameraPosition) {
+                ForEach(coordinatedLocations, id: \.location.id) { item in
+                    Annotation(item.location.name, coordinate: item.coord) {
+                        TripMapPin(
+                            index: item.index,
+                            isFocused: item.location.id == focusedLocationId,
+                            onTap: { onLocationTapped?(item.location.id) }
+                        )
+                    }
                 }
             }
-        }
-        .mapStyle(mapStyle.mapStyle)
-        #if os(macOS)
-        .mapControls {
-            MapZoomStepper()
-            MapCompass()
-        }
-        #endif
-        .onChange(of: focusedLocationId) { _, newId in
-            guard let newId,
-                  let item = coordinatedLocations.first(where: { $0.location.id == newId }) else { return }
-            withAnimation(.easeInOut(duration: 0.5)) {
-                cameraPosition = .region(MKCoordinateRegion(
-                    center: item.coord,
-                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                ))
+            .mapStyle(mapStyle.mapStyle)
+            #if os(macOS)
+            .mapControls {
+                MapZoomStepper()
+                MapCompass()
+            }
+            .onContinuousHover { phase in
+                if case .active(let location) = phase {
+                    hoveredCoord = proxy.convert(location, from: .local)
+                }
+            }
+            .contextMenu {
+                if onMapLongPress != nil {
+                    Button("New Location Here") {
+                        if let coord = hoveredCoord {
+                            onMapLongPress?(coord)
+                        }
+                    }
+                }
+            }
+            #else
+            .gesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+                    .onEnded { value in
+                        if case .second(true, let drag) = value,
+                           let location = drag?.location,
+                           let coord = proxy.convert(location, from: .local) {
+                            onMapLongPress?(coord)
+                        }
+                    }
+            )
+            #endif
+            .onChange(of: focusedLocationId) { _, newId in
+                guard let newId,
+                      let item = coordinatedLocations.first(where: { $0.location.id == newId }) else { return }
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    cameraPosition = .region(MKCoordinateRegion(
+                        center: item.coord,
+                        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    ))
+                }
             }
         }
     }

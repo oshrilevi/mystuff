@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 struct TripDetailView: View {
     @EnvironmentObject var session: Session
@@ -10,6 +11,8 @@ struct TripDetailView: View {
     @State private var editingLocation: TripLocation?
     @State private var editingVisit: TripVisit?
     @State private var focusedLocationId: String? = nil
+    @State private var newLocationCoord: IdentifiableCoordinate? = nil
+    @State private var headerHovered = false
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -31,11 +34,23 @@ struct TripDetailView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
+            .onAppear {
+                if focusedLocationId == nil {
+                    focusedLocationId = orderedLocations.first(where: { $0.latitude != nil })?.id
+                }
+            }
+            .onChange(of: orderedLocations) { _, newLocations in
+                // If locations arrive after the view appeared (async load), focus the first one
+                if focusedLocationId == nil {
+                    focusedLocationId = newLocations.first(where: { $0.latitude != nil })?.id
+                }
+            }
             .sheet(isPresented: $editingTrip) {
-                TripFormSheet(trip: currentTrip) { name, description, tags in
+                TripFormSheet(trip: currentTrip) { name, description, wikiURL, tags in
                     var updated = currentTrip
                     updated.name = name
                     updated.description = description
+                    updated.wikiURL = wikiURL
                     updated.tags = tags
                     Task { await tripsVM.updateTrip(updated) }
                 }
@@ -58,14 +73,29 @@ struct TripDetailView: View {
                 }
             }
             .sheet(item: $editingLocation) { loc in
-                TripLocationFormSheet(location: loc) { name, description, tags, lat, lon in
+                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon in
                     var updated = loc
                     updated.name = name
                     updated.description = description
+                    updated.wikiURL = wikiURL
                     updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
                     Task { await tripsVM.updateTripLocation(updated) }
+                }
+            }
+            .sheet(item: $newLocationCoord) { item in
+                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon in
+                    Task {
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon)
+                        if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
+                            var updated = currentTrip
+                            if !updated.locationIds.contains(created.id) {
+                                updated.locationIds.append(created.id)
+                            }
+                            await tripsVM.updateTrip(updated)
+                        }
+                    }
                 }
             }
             .sheet(item: $editingVisit) { visit in
@@ -89,16 +119,22 @@ struct TripDetailView: View {
             leftPane
                 .frame(width: 320)
             Divider()
-            TripMapView(locations: orderedLocations, focusedLocationId: focusedLocationId) { id in
-                focusedLocationId = id
-            }
+            TripMapView(
+                locations: orderedLocations,
+                focusedLocationId: focusedLocationId ?? orderedLocations.first(where: { $0.latitude != nil })?.id,
+                onLocationTapped: { id in focusedLocationId = id },
+                onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) }
+            )
         }
         #else
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                TripMapView(locations: orderedLocations, focusedLocationId: focusedLocationId) { id in
-                    focusedLocationId = id
-                }
+                TripMapView(
+                    locations: orderedLocations,
+                    focusedLocationId: focusedLocationId ?? orderedLocations.first(where: { $0.latitude != nil })?.id,
+                    onLocationTapped: { id in focusedLocationId = id },
+                    onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) }
+                )
                 .frame(height: 280)
                 leftPaneContent
                     .padding(.bottom, 24)
@@ -123,7 +159,7 @@ struct TripDetailView: View {
 
     private var leftPaneContent: some View {
         VStack(alignment: .leading, spacing: 24) {
-            // Trip name + edit button
+            // Trip name + edit button (hover to reveal)
             HStack(alignment: .firstTextBaseline) {
                 Text(currentTrip.name)
                     .font(.title2.bold())
@@ -133,21 +169,20 @@ struct TripDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Edit trip")
+                #if os(macOS)
+                .opacity(headerHovered ? 1 : 0)
+                #endif
             }
             .padding(.horizontal)
             .padding(.top, 16)
+            #if os(macOS)
+            .onHover { headerHovered = $0 }
+            #endif
 
-            if !currentTrip.description.isEmpty || !currentTrip.tags.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    if !currentTrip.description.isEmpty {
-                        Text(currentTrip.description)
-                            .foregroundStyle(.secondary)
-                    }
-                    if !currentTrip.tags.isEmpty {
-                        tripTagsView(tags: currentTrip.tags)
-                    }
-                }
-                .padding(.horizontal)
+            if !currentTrip.description.isEmpty {
+                Text(currentTrip.description)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
             }
             locationsSection
             visitsSection
@@ -200,26 +235,26 @@ struct TripDetailView: View {
         }
     }
 
-    // MARK: - Visits Section
+    // MARK: - Sightings Section
 
     private var visitsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Visits")
+                Text("Sightings")
                     .font(.title3.bold())
                 Spacer()
                 Button { showAddVisit = true } label: {
                     Label("Add", systemImage: "plus")
                         .labelStyle(.iconOnly)
                 }
-                .help("Log a visit")
+                .help("Log a sighting")
                 .disabled(orderedLocations.isEmpty)
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
 
             if visits.isEmpty {
-                Text("No visits logged yet.")
+                Text("No sightings logged yet.")
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                     .padding(.vertical, 8)
@@ -262,9 +297,11 @@ private struct TripLocationRowView: View {
     let onEdit: () -> Void
     let onRemove: () -> Void
 
+    @State private var isHovered = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Pin badge — single tap focuses on map
+            // Pin badge — tap focuses on map
             ZStack {
                 Circle()
                     .fill(isFocused ? Color.orange : Color.accentColor)
@@ -284,14 +321,7 @@ private struct TripLocationRowView: View {
                     Text(location.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
-                if !location.tags.isEmpty {
-                    TagChipsView(tags: location.tags)
-                }
-                if let lat = location.latitude, let lon = location.longitude {
-                    Text(String(format: "%.4f, %.4f", lat, lon))
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .lineLimit(3)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -299,7 +329,7 @@ private struct TripLocationRowView: View {
             .onTapGesture(count: 2) { onEdit() }
             .onTapGesture(count: 1) { onFocus() }
 
-            // Menu — isolated so it never competes with row gestures
+            // Menu — shown on hover (macOS), always visible (iOS)
             Menu {
                 if location.latitude != nil {
                     Button("Focus on Map") { onFocus() }
@@ -315,10 +345,16 @@ private struct TripLocationRowView: View {
             .buttonStyle(.plain)
             .menuStyle(.borderlessButton)
             .fixedSize()
+            #if os(macOS)
+            .opacity(isHovered ? 1 : 0)
+            #endif
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(isFocused ? Color.accentColor.opacity(0.06) : .clear)
+        #if os(macOS)
+        .onHover { isHovered = $0 }
+        #endif
         Divider()
             .padding(.leading, 52)
     }
@@ -397,4 +433,11 @@ private struct TripVisitRowView: View {
         Divider()
             .padding(.leading)
     }
+}
+
+// MARK: - Helpers
+
+struct IdentifiableCoordinate: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
 }

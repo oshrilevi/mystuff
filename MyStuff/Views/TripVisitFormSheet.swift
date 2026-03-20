@@ -60,7 +60,7 @@ struct TripVisitFormSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(visit == nil ? "New Visit" : "Edit Visit")
+            .navigationTitle(visit == nil ? "New Sighting" : "Edit Sighting")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

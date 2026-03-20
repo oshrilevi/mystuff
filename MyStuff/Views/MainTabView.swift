@@ -76,7 +76,7 @@ struct MainTabView: View {
                 .tabItem { Label("Stores", systemImage: "cart") }
                 .tag(MainSidebarSelection.storesList)
             TripsView()
-                .tabItem { Label("Trips", systemImage: "map") }
+                .tabItem { Label("Locations", systemImage: "map") }
                 .tag(MainSidebarSelection.trips)
             SourcesTabContent()
                 .tabItem { Label("Sources", systemImage: "link") }
@@ -116,7 +116,7 @@ struct MainTabView: View {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
                 NavigationLink(value: MainSidebarSelection.combos) { Label("Combos", systemImage: "square.stack.3d.up") }
                 NavigationLink(value: MainSidebarSelection.lists) { Label("My Lists", systemImage: "checklist") }
-                NavigationLink(value: MainSidebarSelection.trips) { Label("My Trips", systemImage: "map") }
+                NavigationLink(value: MainSidebarSelection.trips) { Label("Shooting Locations", systemImage: "map") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
                         Label {

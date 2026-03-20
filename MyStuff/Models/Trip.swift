@@ -9,6 +9,8 @@ struct Trip: Identifiable, Equatable, Hashable {
     var order: Int
     var createdAt: String
     var updatedAt: String
+    var wikiURL: String
 
-    static let columnOrder = ["id", "name", "description", "tags", "locationIds", "order", "createdAt", "updatedAt"]
+    // wikiURL appended at end for backwards compatibility with existing sheets
+    static let columnOrder = ["id", "name", "description", "tags", "locationIds", "order", "createdAt", "updatedAt", "wikiURL"]
 }

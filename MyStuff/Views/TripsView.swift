@@ -15,18 +15,18 @@ struct TripsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if tripsVM.trips.isEmpty {
                     ContentUnavailableView(
-                        "No Trips Yet",
+                        "No Shooting Locations Yet",
                         systemImage: "map",
-                        description: Text("Tap + to add your first trip.")
+                        description: Text("Tap + to add your first location.")
                     )
                 } else {
-                    tripList
+                    tripGrid
                 }
             }
-            .navigationTitle("My Trips")
+            .navigationTitle("Shooting Locations")
             .searchable(
                 text: Binding(get: { tripsVM.searchText }, set: { tripsVM.searchText = $0 }),
-                prompt: "Search trips"
+                prompt: "Search locations"
             )
             .toolbar {
                 #if os(iOS)
@@ -48,8 +48,8 @@ struct TripsView: View {
                 #endif
             }
             .sheet(isPresented: $showAddTrip) {
-                TripFormSheet(trip: nil) { name, description, tags in
-                    Task { await tripsVM.addTrip(name: name, description: description, tags: tags) }
+                TripFormSheet(trip: nil) { name, description, wikiURL, tags in
+                    Task { await tripsVM.addTrip(name: name, description: description, wikiURL: wikiURL, tags: tags) }
                 }
             }
             .navigationDestination(item: $selectedTrip) { trip in
@@ -60,118 +60,115 @@ struct TripsView: View {
         }
     }
 
-    private var tripList: some View {
-        List {
+    private static let gridColumns = [
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16)
+    ]
+
+    private var tripGrid: some View {
+        ScrollView {
             if let err = tripsVM.errorMessage {
-                Section {
-                    Text(err).foregroundStyle(.red)
+                Text(err)
+                    .foregroundStyle(.red)
+                    .padding()
+            }
+            LazyVGrid(columns: Self.gridColumns, spacing: 16) {
+                ForEach(tripsVM.filteredTrips) { trip in
+                    TripCardView(
+                        trip: trip,
+                        locations: tripsVM.locations(for: trip),
+                        visitCount: tripsVM.visits(for: trip).count
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 12))
+                    .onTapGesture { selectedTrip = trip }
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            Task { await tripsVM.deleteTrips([trip]) }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
-            ForEach(tripsVM.filteredTrips) { trip in
-                TripRowView(
-                    trip: trip,
-                    locations: tripsVM.locations(for: trip),
-                    visitCount: tripsVM.visits(for: trip).count
-                )
-                .contentShape(Rectangle())
-                .onTapGesture { selectedTrip = trip }
-            }
-            .onDelete { offsets in
-                let toDelete = offsets.map { tripsVM.filteredTrips[$0] }
-                Task { await tripsVM.deleteTrips(toDelete) }
-            }
+            .padding(16)
         }
-        #if os(iOS)
-        .listStyle(.insetGrouped)
-        #else
-        .listStyle(.inset)
-        #endif
     }
 }
 
-private struct TripRowView: View {
+private struct TripCardView: View {
     let trip: Trip
     let locations: [TripLocation]
     let visitCount: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Title row
-            HStack {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            VStack(alignment: .leading, spacing: 6) {
                 Text(trip.name)
                     .font(.headline)
-                Spacer()
+                    .lineLimit(2)
+
+                if !trip.description.isEmpty {
+                    Text(trip.description)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider()
+
+            // Footer stats
+            HStack(spacing: 12) {
+                Label("\(locations.count)", systemImage: "mappin")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 if visitCount > 0 {
-                    Label("\(visitCount)", systemImage: "calendar")
+                    Label("\(visitCount)", systemImage: "camera")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer()
             }
-
-            // Description
-            if !trip.description.isEmpty {
-                Text(trip.description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            // Locations strip
-            if !locations.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(Array(locations.enumerated()), id: \.element.id) { idx, loc in
-                            HStack(spacing: 4) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.accentColor.opacity(0.15))
-                                        .frame(width: 18, height: 18)
-                                    Text("\(idx + 1)")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundStyle(Color.accentColor)
-                                }
-                                Text(loc.name)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-                            if idx < locations.count - 1 {
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Tags
-            if !trip.tags.isEmpty {
-                TagChipsView(tags: trip.tags)
-            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
-        .padding(.vertical, 4)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(.separator, lineWidth: 0.5)
+        }
     }
 }
 
 struct TripFormSheet: View {
     let trip: Trip?
-    let onSave: (String, String, [String]) -> Void
+    let onSave: (String, String, String, [String]) -> Void
 
     @EnvironmentObject var session: Session
     @State private var name: String
-    @State private var description: String
     @State private var tags: [String]
+    @State private var wikiURL = ""
+    @State private var wikiSummary: WikiSummary?
+    @State private var isFetchingWiki = false
+    @State private var wikiTask: Task<Void, Never>?
+    @State private var nameDebounceTask: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
 
-    init(trip: Trip?, onSave: @escaping (String, String, [String]) -> Void) {
+    init(trip: Trip?, onSave: @escaping (String, String, String, [String]) -> Void) {
         self.trip = trip
         self.onSave = onSave
         _name = State(initialValue: trip?.name ?? "")
-        _description = State(initialValue: trip?.description ?? "")
         _tags = State(initialValue: trip?.tags ?? [])
+        _wikiURL = State(initialValue: trip?.wikiURL ?? "")
+        if let desc = trip?.description, !desc.isEmpty {
+            _wikiSummary = State(initialValue: WikiSummary(title: trip?.name ?? "", extract: desc, pageURL: nil))
+        }
     }
 
     var body: some View {
@@ -179,13 +176,51 @@ struct TripFormSheet: View {
             Form {
                 Section("Name") {
                     TextField("Trip name", text: $name)
-                }
-                Section("Description") {
-                    TextField("Optional description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
+                        .onChange(of: name) { _, newValue in
+                            scheduleNameWikiFetch(name: newValue)
+                        }
                 }
                 Section("Tags") {
                     TagChipsEditor(tags: $tags, suggestions: session.allTags)
+                }
+                Section {
+                    HStack {
+                        TextField("Wikipedia URL", text: $wikiURL)
+                            .onSubmit { fetchFromURL() }
+                        if isFetchingWiki {
+                            ProgressView()
+                        } else {
+                            Button {
+                                if !wikiURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    fetchFromURL()
+                                } else {
+                                    scheduleWikiFetch(name: name)
+                                }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if let wiki = wikiSummary {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(wiki.title)
+                                .font(.subheadline.bold())
+                            Text(wiki.extract)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if let url = wiki.pageURL {
+                                Link("Open in Wikipedia", destination: url)
+                                    .font(.caption)
+                            }
+                        }
+                    } else if !isFetchingWiki {
+                        Text("No Wikipedia article found.")
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                    }
+                } header: {
+                    Text("About")
                 }
             }
             .formStyle(.grouped)
@@ -199,13 +234,55 @@ struct TripFormSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(name.trimmingCharacters(in: .whitespaces), description, tags)
+                        onSave(name.trimmingCharacters(in: .whitespaces), wikiSummary?.extract ?? "", wikiURL, tags)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
+    }
+
+    private func scheduleNameWikiFetch(name: String) {
+        nameDebounceTask?.cancel()
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        nameDebounceTask = Task {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard !Task.isCancelled else { return }
+            scheduleWikiFetch(name: name)
+        }
+    }
+
+    private func fetchFromURL() {
+        let url = wikiURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return }
+        wikiTask?.cancel()
+        isFetchingWiki = true
+        wikiSummary = nil
+        wikiTask = Task {
+            let result = await WikipediaService.fetchSummary(wikiURL: url)
+            guard !Task.isCancelled else { return }
+            isFetchingWiki = false
+            wikiSummary = result
+            if let pageURL = result?.pageURL {
+                wikiURL = pageURL.absoluteString
+            }
+        }
+    }
+
+    private func scheduleWikiFetch(name: String) {
+        wikiTask?.cancel()
+        isFetchingWiki = true
+        wikiSummary = nil
+        wikiTask = Task {
+            let result = await WikipediaService.fetchSummary(name: name)
+            guard !Task.isCancelled else { return }
+            isFetchingWiki = false
+            wikiSummary = result
+            if let pageURL = result?.pageURL {
+                wikiURL = pageURL.absoluteString
+            }
+        }
     }
 }

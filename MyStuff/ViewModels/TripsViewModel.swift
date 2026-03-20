@@ -71,7 +71,7 @@ final class TripsViewModel: ObservableObject {
 
     // MARK: - Trips CRUD
 
-    func addTrip(name: String, description: String = "", tags: [String] = [], locationIds: [String] = []) async {
+    func addTrip(name: String, description: String = "", wikiURL: String = "", tags: [String] = [], locationIds: [String] = []) async {
         guard let sid = spreadsheetId else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -85,7 +85,8 @@ final class TripsViewModel: ObservableObject {
             locationIds: locationIds,
             order: nextOrder,
             createdAt: now,
-            updatedAt: now
+            updatedAt: now,
+            wikiURL: wikiURL
         )
         do {
             try await ensureSheetsExist(spreadsheetId: sid)
@@ -142,7 +143,7 @@ final class TripsViewModel: ObservableObject {
 
     // MARK: - TripLocation CRUD
 
-    func addTripLocation(name: String, description: String = "", tags: [String] = [], latitude: Double? = nil, longitude: Double? = nil) async {
+    func addTripLocation(name: String, description: String = "", wikiURL: String = "", tags: [String] = [], latitude: Double? = nil, longitude: Double? = nil) async {
         guard let sid = spreadsheetId else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -154,6 +155,7 @@ final class TripsViewModel: ObservableObject {
             tags: tags,
             latitude: latitude,
             longitude: longitude,
+            wikiURL: wikiURL,
             createdAt: now,
             updatedAt: now
         )
@@ -310,7 +312,8 @@ final class TripsViewModel: ObservableObject {
             trip.locationIds.joined(separator: ","),
             "\(trip.order)",
             trip.createdAt,
-            trip.updatedAt
+            trip.updatedAt,
+            trip.wikiURL
         ]
     }
 
@@ -323,6 +326,7 @@ final class TripsViewModel: ObservableObject {
             let order = row.count > 5 ? (Int(row[5]) ?? index + 2) : index + 2
             let createdAt = row.count > 6 ? row[6] : ""
             let updatedAt = row.count > 7 ? row[7] : ""
+            let wikiURL = row.count > 8 ? row[8] : ""
             return Trip(
                 id: row[0],
                 name: row[1],
@@ -331,7 +335,8 @@ final class TripsViewModel: ObservableObject {
                 locationIds: locationIds,
                 order: order,
                 createdAt: createdAt,
-                updatedAt: updatedAt
+                updatedAt: updatedAt,
+                wikiURL: wikiURL
             )
         }
     }
@@ -345,7 +350,8 @@ final class TripsViewModel: ObservableObject {
             loc.latitude.map { "\($0)" } ?? "",
             loc.longitude.map { "\($0)" } ?? "",
             loc.createdAt,
-            loc.updatedAt
+            loc.updatedAt,
+            loc.wikiURL
         ]
     }
 
@@ -358,6 +364,7 @@ final class TripsViewModel: ObservableObject {
             let longitude = row.count > 5 ? Double(row[5]) : nil
             let createdAt = row.count > 6 ? row[6] : ""
             let updatedAt = row.count > 7 ? row[7] : ""
+            let wikiURL = row.count > 8 ? row[8] : ""
             return TripLocation(
                 id: row[0],
                 name: row[1],
@@ -365,6 +372,7 @@ final class TripsViewModel: ObservableObject {
                 tags: tags,
                 latitude: latitude,
                 longitude: longitude,
+                wikiURL: wikiURL,
                 createdAt: createdAt,
                 updatedAt: updatedAt
             )

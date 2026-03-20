@@ -3,47 +3,40 @@ import MapKit
 
 struct TripLocationFormSheet: View {
     let location: TripLocation?
-    let onSave: (String, String, [String], Double?, Double?) -> Void
+    let onSave: (String, String, String, [String], Double?, Double?) -> Void
 
     @State private var name: String
-    @State private var description: String
     @State private var tags: [String]
-    @State private var latitude: String
-    @State private var longitude: String
     @State private var searchText = ""
     @State private var searchResults: [MKMapItem] = []
     @State private var searchTask: Task<Void, Never>?
-    @State private var isManualCoordinates = false
     @State private var selectedCoordinate: CLLocationCoordinate2D?
-    @State private var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 31.0, longitude: 35.0),
-        span: MKCoordinateSpan(latitudeDelta: 20, longitudeDelta: 20)
-    )
+
+    // Wikipedia
+    @State private var wikiURL = ""
+    @State private var wikiSummary: WikiSummary? = nil
+    @State private var isFetchingWiki = false
+    @State private var wikiTask: Task<Void, Never>?
+    @State private var nameDebounceTask: Task<Void, Never>?
+
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
-    init(location: TripLocation?, onSave: @escaping (String, String, [String], Double?, Double?) -> Void) {
+    init(location: TripLocation?, initialCoordinate: CLLocationCoordinate2D? = nil, onSave: @escaping (String, String, String, [String], Double?, Double?) -> Void) {
         self.location = location
         self.onSave = onSave
         _name = State(initialValue: location?.name ?? "")
-        _description = State(initialValue: location?.description ?? "")
         _tags = State(initialValue: location?.tags ?? [])
-        let lat = location?.latitude
-        let lon = location?.longitude
-        _latitude = State(initialValue: lat.map { String($0) } ?? "")
-        _longitude = State(initialValue: lon.map { String($0) } ?? "")
-        if let lat, let lon {
-            let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        _wikiURL = State(initialValue: location?.wikiURL ?? "")
+        if let lat = location?.latitude, let lon = location?.longitude {
+            _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        } else if let coord = initialCoordinate {
             _selectedCoordinate = State(initialValue: coord)
-            _mapRegion = State(initialValue: MKCoordinateRegion(
-                center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
-            ))
+        }
+        if let desc = location?.description, !desc.isEmpty {
+            _wikiSummary = State(initialValue: WikiSummary(title: location?.name ?? "", extract: desc, pageURL: nil))
         }
     }
-
-    private var parsedLatitude: Double? { Double(latitude) }
-    private var parsedLongitude: Double? { Double(longitude) }
 
     var body: some View {
         NavigationStack {
@@ -51,87 +44,94 @@ struct TripLocationFormSheet: View {
                 Section("Name") {
                     TextField("Location name", text: $name)
                         .onChange(of: name) { _, newValue in
-                            if !isManualCoordinates && selectedCoordinate == nil {
+                            if selectedCoordinate == nil {
                                 searchText = newValue
                                 scheduleSearch(query: newValue)
                             }
+                            scheduleNameWikiFetch(name: newValue)
                         }
-                }
-                Section("Description") {
-                    TextField("Optional description", text: $description, axis: .vertical)
-                        .lineLimit(2...4)
-                }
-                Section("Tags") {
-                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
 
                 Section {
-                    Toggle("Enter coordinates manually", isOn: $isManualCoordinates)
+                    HStack {
+                        TextField("Wikipedia URL", text: $wikiURL)
+                            .onSubmit { fetchFromURL() }
+                        if isFetchingWiki {
+                            ProgressView()
+                        } else {
+                            Button {
+                                if !wikiURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    fetchFromURL()
+                                } else {
+                                    scheduleWikiFetch(name: name)
+                                }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if let wiki = wikiSummary {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(wiki.title)
+                                .font(.subheadline.bold())
+                            Text(wiki.extract)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if let url = wiki.pageURL {
+                                Link("Open in Wikipedia", destination: url)
+                                    .font(.caption)
+                            }
+                        }
+                    } else if !isFetchingWiki {
+                        Text("No Wikipedia article found.")
+                            .foregroundStyle(.secondary)
+                            .font(.subheadline)
+                    }
                 } header: {
-                    Text("Coordinates")
+                    Text("About")
                 }
 
-                if isManualCoordinates {
-                    Section {
-                        HStack {
-                            Text("Latitude")
-                            Spacer()
-                            TextField("e.g. 31.7683", text: $latitude)
-                                .multilineTextAlignment(.trailing)
-                                #if os(iOS)
-                                .keyboardType(.decimalPad)
-                                #endif
+                Section("Search for a place") {
+                    TextField("Place name or address", text: $searchText)
+                        .onChange(of: searchText) { _, newValue in
+                            scheduleSearch(query: newValue)
                         }
-                        HStack {
-                            Text("Longitude")
-                            Spacer()
-                            TextField("e.g. 35.2137", text: $longitude)
-                                .multilineTextAlignment(.trailing)
-                                #if os(iOS)
-                                .keyboardType(.decimalPad)
-                                #endif
-                        }
-                        if let lat = parsedLatitude, let lon = parsedLongitude {
-                            mapPreview(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
-                        }
-                    }
-                } else {
-                    Section("Search for a place") {
-                        TextField("Place name or address", text: $searchText)
-                            .onChange(of: searchText) { _, newValue in
-                                scheduleSearch(query: newValue)
-                            }
-                        if !searchResults.isEmpty {
-                            ForEach(searchResults, id: \.self) { item in
-                                Button {
-                                    selectMapItem(item)
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(item.name ?? "Unknown")
-                                            .foregroundStyle(.primary)
-                                        if let subtitle = item.placemark.title, subtitle != item.name {
-                                            Text(subtitle)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
+                    if !searchResults.isEmpty {
+                        ForEach(searchResults, id: \.self) { item in
+                            Button {
+                                selectMapItem(item)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name ?? "Unknown")
+                                        .foregroundStyle(.primary)
+                                    if let subtitle = item.placemark.title, subtitle != item.name {
+                                        Text(subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
-                    if let coord = selectedCoordinate {
-                        Section("Selected Location") {
-                            mapPreview(coordinate: coord)
-                            HStack {
-                                Text("Lat: \(String(format: "%.5f", coord.latitude))")
-                                Spacer()
-                                Text("Lon: \(String(format: "%.5f", coord.longitude))")
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                }
+
+                if let coord = selectedCoordinate {
+                    Section("Selected Location") {
+                        mapPreview(coordinate: coord)
+                        HStack {
+                            Text("Lat: \(String(format: "%.5f", coord.latitude))")
+                            Spacer()
+                            Text("Lon: \(String(format: "%.5f", coord.longitude))")
                         }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
+                }
+
+                Section("Tags") {
+                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
             }
             .formStyle(.grouped)
@@ -145,16 +145,14 @@ struct TripLocationFormSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let finalLat: Double?
-                        let finalLon: Double?
-                        if isManualCoordinates {
-                            finalLat = parsedLatitude
-                            finalLon = parsedLongitude
-                        } else {
-                            finalLat = selectedCoordinate?.latitude
-                            finalLon = selectedCoordinate?.longitude
-                        }
-                        onSave(name.trimmingCharacters(in: .whitespaces), description, tags, finalLat, finalLon)
+                        onSave(
+                            name.trimmingCharacters(in: .whitespaces),
+                            wikiSummary?.extract ?? "",
+                            wikiURL,
+                            tags,
+                            selectedCoordinate?.latitude,
+                            selectedCoordinate?.longitude
+                        )
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -196,16 +194,58 @@ struct TripLocationFormSheet: View {
         }
     }
 
+    private func scheduleNameWikiFetch(name: String) {
+        nameDebounceTask?.cancel()
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        nameDebounceTask = Task {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard !Task.isCancelled else { return }
+            scheduleWikiFetch(name: name)
+        }
+    }
+
+    private func fetchFromURL() {
+        let url = wikiURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else { return }
+        wikiTask?.cancel()
+        isFetchingWiki = true
+        wikiSummary = nil
+        wikiTask = Task {
+            let result = await WikipediaService.fetchSummary(wikiURL: url)
+            guard !Task.isCancelled else { return }
+            isFetchingWiki = false
+            wikiSummary = result
+            if let pageURL = result?.pageURL {
+                wikiURL = pageURL.absoluteString
+            }
+        }
+    }
+
+    private func scheduleWikiFetch(name: String) {
+        wikiTask?.cancel()
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isFetchingWiki = true
+        wikiSummary = nil
+        wikiTask = Task {
+            let result = await WikipediaService.fetchSummary(name: name)
+            guard !Task.isCancelled else { return }
+            isFetchingWiki = false
+            wikiSummary = result
+            if let pageURL = result?.pageURL {
+                wikiURL = pageURL.absoluteString
+            }
+        }
+    }
+
     private func selectMapItem(_ item: MKMapItem) {
         let coord = item.placemark.coordinate
         selectedCoordinate = coord
-        latitude = String(coord.latitude)
-        longitude = String(coord.longitude)
         if let itemName = item.name, name.trimmingCharacters(in: .whitespaces).isEmpty {
             name = itemName
         }
         searchResults = []
         searchText = item.name ?? ""
+        scheduleWikiFetch(name: item.name ?? name)
     }
 }
 
