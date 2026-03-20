@@ -182,6 +182,7 @@ struct TripDetailView: View {
             if !currentTrip.description.isEmpty {
                 Text(currentTrip.description)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
             }
             locationsSection
@@ -317,11 +318,13 @@ private struct TripLocationRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(location.name)
                     .font(.headline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if !location.description.isEmpty {
                     Text(location.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -4,6 +4,9 @@ struct TripsView: View {
     @EnvironmentObject var session: Session
     @State private var showAddTrip = false
     @State private var selectedTrip: Trip?
+    @State private var editingTrip: Trip?
+    @State private var tripPendingDelete: Trip?
+    @State private var deletingTripId: String?
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -52,8 +55,41 @@ struct TripsView: View {
                     Task { await tripsVM.addTrip(name: name, description: description, wikiURL: wikiURL, tags: tags) }
                 }
             }
+            .sheet(item: $editingTrip) { trip in
+                TripFormSheet(trip: trip) { name, description, wikiURL, tags in
+                    var updated = trip
+                    updated.name = name
+                    updated.description = description
+                    updated.wikiURL = wikiURL
+                    updated.tags = tags
+                    Task { await tripsVM.updateTrip(updated) }
+                }
+            }
+            .confirmationDialog(
+                "Delete \"\(tripPendingDelete?.name ?? "")\"?",
+                isPresented: Binding(
+                    get: { tripPendingDelete != nil },
+                    set: { if !$0 { tripPendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    guard let trip = tripPendingDelete else { return }
+                    tripPendingDelete = nil
+                    deletingTripId = trip.id
+                    Task {
+                        await tripsVM.deleteTrips([trip])
+                        deletingTripId = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { tripPendingDelete = nil }
+            } message: {
+                Text("This cannot be undone.")
+            }
             .navigationDestination(item: $selectedTrip) { trip in
                 TripDetailView(trip: trip)
+                    .environment(\.layoutDirection, .rightToLeft)
+                    .multilineTextAlignment(.leading)
             }
             .task { await tripsVM.load() }
             .refreshable { await tripsVM.load() }
@@ -73,25 +109,30 @@ struct TripsView: View {
                     .foregroundStyle(.red)
                     .padding()
             }
-            LazyVGrid(columns: Self.gridColumns, spacing: 16) {
-                ForEach(tripsVM.filteredTrips) { trip in
-                    TripCardView(
-                        trip: trip,
-                        locations: tripsVM.locations(for: trip),
-                        visitCount: tripsVM.visits(for: trip).count
-                    )
-                    .contentShape(RoundedRectangle(cornerRadius: 12))
-                    .onTapGesture { selectedTrip = trip }
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            Task { await tripsVM.deleteTrips([trip]) }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
+            if tripsVM.filteredTrips.isEmpty {
+                ContentUnavailableView(
+                    "No Results",
+                    systemImage: "magnifyingglass",
+                    description: Text("No shooting locations match your search.")
+                )
+                .padding(.top, 60)
+            } else {
+                LazyVGrid(columns: Self.gridColumns, spacing: 16) {
+                    ForEach(tripsVM.filteredTrips) { trip in
+                        TripCardView(
+                            trip: trip,
+                            locations: tripsVM.locations(for: trip),
+                            visitCount: tripsVM.visits(for: trip).count,
+                            isDeleting: deletingTripId == trip.id,
+                            onEdit: { editingTrip = trip },
+                            onDelete: { tripPendingDelete = trip }
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
+                        .onTapGesture { if deletingTripId != trip.id { selectedTrip = trip } }
                     }
                 }
+                .padding(16)
             }
-            .padding(16)
         }
     }
 }
@@ -100,6 +141,11 @@ private struct TripCardView: View {
     let trip: Trip
     let locations: [TripLocation]
     let visitCount: Int
+    let isDeleting: Bool
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    @State private var locationsExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -108,12 +154,14 @@ private struct TripCardView: View {
                 Text(trip.name)
                     .font(.headline)
                     .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 if !trip.description.isEmpty {
                     Text(trip.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(12)
@@ -121,27 +169,99 @@ private struct TripCardView: View {
 
             Divider()
 
-            // Footer stats
-            HStack(spacing: 12) {
-                Label("\(locations.count)", systemImage: "mappin")
-                    .font(.caption)
+            // Expandable locations section
+            if !locations.isEmpty {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { locationsExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "mappin")
+                            .font(.caption)
+                        Text("\(locations.count) location\(locations.count == 1 ? "" : "s")")
+                            .font(.caption)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.bold())
+                            .rotationEffect(.degrees(locationsExpanded ? 90 : 0))
+                    }
                     .foregroundStyle(.secondary)
-                if visitCount > 0 {
-                    Label("\(visitCount)", systemImage: "camera")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
                 }
-                Spacer()
+                .buttonStyle(.plain)
+
+                if locationsExpanded {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(Array(locations.enumerated()), id: \.element.id) { idx, loc in
+                            HStack(spacing: 8) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.accentColor.opacity(0.15))
+                                        .frame(width: 18, height: 18)
+                                    Text("\(idx + 1)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                                Text(loc.name)
+                                    .font(.caption)
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
+                            if idx < locations.count - 1 {
+                                Divider().padding(.trailing, 38)
+                            }
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+
+                    Divider()
+                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+
+            // Spacer pushes footer to bottom so all cards align
+            Spacer(minLength: 0)
+
+            // Footer: sightings count (no action button — use right-click)
+            if visitCount > 0 || isDeleting {
+                Divider()
+                HStack(spacing: 12) {
+                    if visitCount > 0 {
+                        Label("\(visitCount)", systemImage: "camera")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if isDeleting {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .padding(.trailing, 4)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+            }
         }
+        .environment(\.layoutDirection, .rightToLeft)
+        .multilineTextAlignment(.leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(.separator, lineWidth: 0.5)
+        }
+        .opacity(isDeleting ? 0.5 : 1)
+        .contextMenu {
+            Button { onEdit() } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            Divider()
+            Button(role: .destructive) { onDelete() } label: {
+                Label("Delete", systemImage: "trash")
+            }
         }
     }
 }
@@ -175,7 +295,7 @@ struct TripFormSheet: View {
         NavigationStack {
             Form {
                 Section("Name") {
-                    TextField("Trip name", text: $name)
+                    TextField("Shooting location name", text: $name)
                         .onChange(of: name) { _, newValue in
                             scheduleNameWikiFetch(name: newValue)
                         }
@@ -224,7 +344,7 @@ struct TripFormSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(trip == nil ? "New Trip" : "Edit Trip")
+            .navigationTitle(trip == nil ? "New Shooting Location" : "Edit Shooting Location")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -241,6 +361,7 @@ struct TripFormSheet: View {
                 }
             }
         }
+        .environment(\.layoutDirection, .leftToRight)
         .presentationDetents([.large])
     }
 
