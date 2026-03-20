@@ -99,12 +99,24 @@ struct TagChipsView: View {
     }
 }
 
-/// Editable chips used in ItemFormView. Persists changes through the binding (save still happens in the form).
+/// Editable chips used in forms. Persists changes through the binding (save still happens in the form).
+/// Pass `suggestions` to enable autocomplete from a shared tag pool.
 struct TagChipsEditor: View {
     @Binding var tags: [String]
+    var suggestions: [String] = []
+
     @State private var newTagText: String = ""
     @State private var editingIndex: Int? = nil
     @State private var editingText: String = ""
+
+    private var filteredSuggestions: [String] {
+        let q = newTagText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matches = suggestions.filter { s in
+            guard !tags.contains(where: { $0.caseInsensitiveCompare(s) == .orderedSame }) else { return false }
+            return q.isEmpty || s.localizedCaseInsensitiveContains(q)
+        }
+        return Array(matches.prefix(30))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -134,6 +146,24 @@ struct TagChipsEditor: View {
                 Button("Add") { commitNewTags() }
                     .disabled(newTagText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+
+            if !filteredSuggestions.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(filteredSuggestions, id: \.self) { tag in
+                            Button { addSuggestion(tag) } label: {
+                                Text(tag)
+                                    .font(.caption)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 4)
+                                    .background(Color.accentColor.opacity(0.1), in: Capsule())
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
         }
         .onChange(of: tags) { _, _ in
             if let idx = editingIndex, idx >= tags.count {
@@ -141,6 +171,12 @@ struct TagChipsEditor: View {
                 editingText = ""
             }
         }
+    }
+
+    private func addSuggestion(_ tag: String) {
+        guard !tags.contains(where: { $0.caseInsensitiveCompare(tag) == .orderedSame }) else { return }
+        tags = normalizeTags(tags + [tag])
+        newTagText = ""
     }
 
     private func beginEdit(index: Int) {

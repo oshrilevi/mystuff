@@ -9,6 +9,7 @@ struct TripVisitFormSheet: View {
     @State private var date: Date
     @State private var summary: String
     @State private var tags: [String]
+    @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
     private static let dateFormatter: DateFormatter = {
@@ -55,7 +56,7 @@ struct TripVisitFormSheet: View {
                         .lineLimit(3...8)
                 }
                 Section("Tags") {
-                    TagChipsEditor(tags: $tags)
+                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
             }
             .formStyle(.grouped)

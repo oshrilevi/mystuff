@@ -170,6 +170,31 @@ final class Session: ObservableObject {
         await prefetchWishlistPrices()
     }
 
+    /// All unique tags used across trips, trip locations, and trip visits, sorted by frequency (most-used first).
+    var allTags: [String] {
+        var freq: [String: Int] = [:]
+        let allTagArrays: [[String]] = trips.trips.map(\.tags)
+            + trips.tripLocations.map(\.tags)
+            + trips.tripVisits.map(\.tags)
+        for tagList in allTagArrays {
+            for tag in tagList {
+                freq[tag.lowercased(), default: 0] += 1
+            }
+        }
+        var seen = Set<String>()
+        var result: [(tag: String, count: Int)] = []
+        for tagList in allTagArrays {
+            for tag in tagList {
+                let key = tag.lowercased()
+                if !seen.contains(key) {
+                    seen.insert(key)
+                    result.append((tag, freq[key] ?? 1))
+                }
+            }
+        }
+        return result.sorted { $0.count > $1.count }.map(\.tag)
+    }
+
     /// Returns a stable cache key for a product URL, or nil if the link is empty or invalid.
     func storePriceCacheKey(webLink: String) -> String? {
         let s = webLink.trimmingCharacters(in: .whitespaces)

@@ -160,6 +160,7 @@ struct TripFormSheet: View {
     let trip: Trip?
     let onSave: (String, String, [String]) -> Void
 
+    @EnvironmentObject var session: Session
     @State private var name: String
     @State private var description: String
     @State private var tags: [String]
@@ -184,7 +185,7 @@ struct TripFormSheet: View {
                         .lineLimit(3...6)
                 }
                 Section("Tags") {
-                    TagChipsEditor(tags: $tags)
+                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
             }
             .formStyle(.grouped)

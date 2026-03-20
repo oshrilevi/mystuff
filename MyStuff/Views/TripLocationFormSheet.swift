@@ -19,6 +19,7 @@ struct TripLocationFormSheet: View {
         center: CLLocationCoordinate2D(latitude: 31.0, longitude: 35.0),
         span: MKCoordinateSpan(latitudeDelta: 20, longitudeDelta: 20)
     )
+    @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
     init(location: TripLocation?, onSave: @escaping (String, String, [String], Double?, Double?) -> Void) {
@@ -61,7 +62,7 @@ struct TripLocationFormSheet: View {
                         .lineLimit(2...4)
                 }
                 Section("Tags") {
-                    TagChipsEditor(tags: $tags)
+                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
 
                 Section {
