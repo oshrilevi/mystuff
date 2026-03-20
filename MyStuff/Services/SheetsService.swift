@@ -22,7 +22,10 @@ final class SheetsService {
                 ["properties": ["title": "Locations"]],
                 ["properties": ["title": "Stores"]],
                 ["properties": ["title": "Sources"]],
-                ["properties": ["title": "Attachments"]]
+                ["properties": ["title": "Attachments"]],
+                ["properties": ["title": "TripLocations"]],
+                ["properties": ["title": "Trips"]],
+                ["properties": ["title": "TripVisits"]]
             ]
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -52,6 +55,9 @@ final class SheetsService {
         try await appendRows(spreadsheetId: id, sheetName: "Stores", values: defaultStores)
         try await appendRows(spreadsheetId: id, sheetName: "Sources", values: [["id", "name", "url", "order"]])
         try await appendRows(spreadsheetId: id, sheetName: "Attachments", values: [ItemAttachment.columnOrder])
+        try await appendRows(spreadsheetId: id, sheetName: "TripLocations", values: [TripLocation.columnOrder])
+        try await appendRows(spreadsheetId: id, sheetName: "Trips", values: [Trip.columnOrder])
+        try await appendRows(spreadsheetId: id, sheetName: "TripVisits", values: [TripVisit.columnOrder])
         return (id, "https://docs.google.com/spreadsheets/d/\(id)")
     }
 

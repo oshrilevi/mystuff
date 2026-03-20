@@ -9,6 +9,8 @@ enum MainSidebarSelection: Hashable {
     case items
     case lists
     case combos
+    case trips
+    case tripLocations
     case categories
     case locations
     case storesList
@@ -39,6 +41,9 @@ struct MainTabView: View {
             StoresTabContent()
                 .tabItem { Label("Stores", systemImage: "cart") }
                 .tag(MainSidebarSelection.storesList)
+            TripsView()
+                .tabItem { Label("Trips", systemImage: "map") }
+                .tag(MainSidebarSelection.trips)
             SourcesTabContent()
                 .tabItem { Label("Sources", systemImage: "link") }
                 .tag(MainSidebarSelection.sourcesList)
@@ -69,6 +74,7 @@ struct MainTabView: View {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
                 NavigationLink(value: MainSidebarSelection.combos) { Label("Combos", systemImage: "square.stack.3d.up") }
                 NavigationLink(value: MainSidebarSelection.lists) { Label("My Lists", systemImage: "checklist") }
+                NavigationLink(value: MainSidebarSelection.trips) { Label("My Trips", systemImage: "map") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
                         Label {
@@ -119,6 +125,10 @@ struct MainTabView: View {
                     ItemsTabView(viewMode: $itemViewMode)
                 case .lists:
                     ListsView()
+                case .trips:
+                    TripsView()
+                case .tripLocations:
+                    TripLocationsManagementView()
                 case .combos:
                     CombosView()
                 case .categories:
@@ -168,6 +178,7 @@ private struct SettingsMenuButton: View {
     private enum SettingsRow: Hashable {
         case categories
         case locations
+        case tripLocations
         case stores
         case sources
         case exportCSV
@@ -198,6 +209,14 @@ private struct SettingsMenuButton: View {
                         row: .locations
                     ) {
                         selection = .locations
+                    }
+
+                    settingsRowButton(
+                        title: "Trip Locations",
+                        systemImage: "mappin.and.ellipse",
+                        row: .tripLocations
+                    ) {
+                        selection = .tripLocations
                     }
 
                     settingsRowButton(
@@ -369,6 +388,8 @@ private struct SettingsMenuButton: View {
             return selection == .categories
         case .locations:
             return selection == .locations
+        case .tripLocations:
+            return selection == .tripLocations
         case .stores:
             return selection == .storesList
         case .sources:

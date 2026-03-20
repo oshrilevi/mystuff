@@ -34,6 +34,7 @@ final class Session: ObservableObject {
     let attachments: AttachmentsViewModel
     let lists: ListsViewModel
     let combos: CombosViewModel
+    let trips: TripsViewModel
 
     private let authService: GoogleAuthService
     private var cancellables = Set<AnyCancellable>()
@@ -60,6 +61,7 @@ final class Session: ObservableObject {
         self.sources = SourcesViewModel(sheets: self.sheets, appState: self.appState)
         self.lists = ListsViewModel(sheets: self.sheets, appState: self.appState)
         self.combos = CombosViewModel(sheets: self.sheets, appState: self.appState)
+        self.trips = TripsViewModel(sheets: self.sheets, appState: self.appState)
 
         // Forward child view model updates so views observing Session re-render when items/categories load
         appState.objectWillChange
@@ -95,6 +97,10 @@ final class Session: ObservableObject {
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         combos.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        trips.objectWillChange
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
@@ -136,6 +142,7 @@ final class Session: ObservableObject {
                     await self.attachments.load()
                     await self.lists.load()
                     await self.combos.load()
+                    await self.trips.load()
                 }
                 return true
             }
