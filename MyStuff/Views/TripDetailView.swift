@@ -56,16 +56,20 @@ struct TripDetailView: View {
                 }
             }
             .sheet(isPresented: $showAddLocation) {
-                TripLocationPickerView(
-                    existingLocationIds: currentTrip.locationIds,
-                    tripsVM: tripsVM
-                ) { location in
-                    var updated = currentTrip
-                    if !updated.locationIds.contains(location.id) {
-                        updated.locationIds.append(location.id)
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon in
+                    Task {
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon)
+                        if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
+                            var updated = currentTrip
+                            if !updated.locationIds.contains(created.id) {
+                                updated.locationIds.append(created.id)
+                            }
+                            await tripsVM.updateTrip(updated)
+                        }
                     }
-                    Task { await tripsVM.updateTrip(updated) }
                 }
+                .environment(\.layoutDirection, .rightToLeft)
+                .multilineTextAlignment(.leading)
             }
             .sheet(isPresented: $showAddVisit) {
                 TripVisitFormSheet(visit: nil, locations: orderedLocations) { locationId, date, summary, tags in
@@ -298,8 +302,6 @@ private struct TripLocationRowView: View {
     let onEdit: () -> Void
     let onRemove: () -> Void
 
-    @State private var isHovered = false
-
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Pin badge — tap focuses on map
@@ -331,33 +333,14 @@ private struct TripLocationRowView: View {
             .contentShape(Rectangle())
             .onTapGesture(count: 2) { onEdit() }
             .onTapGesture(count: 1) { onFocus() }
-
-            // Menu — shown on hover (macOS), always visible (iOS)
-            Menu {
-                if location.latitude != nil {
-                    Button("Focus on Map") { onFocus() }
-                    Divider()
-                }
-                Button("Edit Location") { onEdit() }
-                Button("Remove from Trip", role: .destructive) { onRemove() }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .padding(8)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            #if os(macOS)
-            .opacity(isHovered ? 1 : 0)
-            #endif
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(isFocused ? Color.accentColor.opacity(0.06) : .clear)
-        #if os(macOS)
-        .onHover { isHovered = $0 }
-        #endif
+        .contextMenu {
+            Button("Edit Location") { onEdit() }
+            Button("Remove", role: .destructive) { onRemove() }
+        }
         Divider()
             .padding(.leading, 52)
     }

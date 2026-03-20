@@ -1,6 +1,15 @@
 import SwiftUI
 import MapKit
 
+// MARK: - Description Source
+
+private enum DescriptionSource: String, CaseIterable {
+    case wikipedia = "Wikipedia"
+    case manual    = "Manual"
+}
+
+// MARK: - Form Sheet
+
 struct TripLocationFormSheet: View {
     let location: TripLocation?
     let onSave: (String, String, String, [String], Double?, Double?) -> Void
@@ -12,6 +21,10 @@ struct TripLocationFormSheet: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var selectedCoordinate: CLLocationCoordinate2D?
 
+    // Description
+    @State private var descriptionSource: DescriptionSource
+    @State private var manualDescription: String
+
     // Wikipedia
     @State private var wikiURL = ""
     @State private var wikiSummary: WikiSummary? = nil
@@ -22,25 +35,53 @@ struct TripLocationFormSheet: View {
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
-    init(location: TripLocation?, initialCoordinate: CLLocationCoordinate2D? = nil, onSave: @escaping (String, String, String, [String], Double?, Double?) -> Void) {
+    init(location: TripLocation?, initialCoordinate: CLLocationCoordinate2D? = nil,
+         onSave: @escaping (String, String, String, [String], Double?, Double?) -> Void) {
         self.location = location
         self.onSave = onSave
         _name = State(initialValue: location?.name ?? "")
         _tags = State(initialValue: location?.tags ?? [])
         _wikiURL = State(initialValue: location?.wikiURL ?? "")
+
         if let lat = location?.latitude, let lon = location?.longitude {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
         } else if let coord = initialCoordinate {
             _selectedCoordinate = State(initialValue: coord)
         }
-        if let desc = location?.description, !desc.isEmpty {
-            _wikiSummary = State(initialValue: WikiSummary(title: location?.name ?? "", extract: desc, pageURL: nil))
+
+        let existingDesc = location?.description ?? ""
+        let hasWikiURL   = !(location?.wikiURL ?? "").isEmpty
+
+        // If there's a description but no wiki URL, default to manual mode
+        if !existingDesc.isEmpty && !hasWikiURL {
+            _descriptionSource  = State(initialValue: .manual)
+            _manualDescription  = State(initialValue: existingDesc)
+            _wikiSummary        = State(initialValue: nil)
+        } else {
+            _descriptionSource  = State(initialValue: .wikipedia)
+            _manualDescription  = State(initialValue: "")
+            // Seed the wiki summary so the existing description is shown
+            if !existingDesc.isEmpty {
+                _wikiSummary = State(initialValue: WikiSummary(
+                    title: location?.name ?? "", extract: existingDesc, pageURL: nil))
+            } else {
+                _wikiSummary = State(initialValue: nil)
+            }
+        }
+    }
+
+    // The description that will actually be saved
+    private var activeDescription: String {
+        switch descriptionSource {
+        case .wikipedia: return wikiSummary?.extract ?? ""
+        case .manual:    return manualDescription
         }
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                // MARK: Name
                 Section("Name") {
                     TextField("Location name", text: $name)
                         .onChange(of: name) { _, newValue in
@@ -48,50 +89,33 @@ struct TripLocationFormSheet: View {
                                 searchText = newValue
                                 scheduleSearch(query: newValue)
                             }
-                            scheduleNameWikiFetch(name: newValue)
+                            // Only auto-fetch wiki when in wiki mode and no description yet
+                            if descriptionSource == .wikipedia && wikiSummary == nil {
+                                scheduleNameWikiFetch(name: newValue)
+                            }
                         }
                 }
 
+                // MARK: About
                 Section {
-                    HStack {
-                        TextField("Wikipedia URL", text: $wikiURL)
-                            .onSubmit { fetchFromURL() }
-                        if isFetchingWiki {
-                            ProgressView()
-                        } else {
-                            Button {
-                                if !wikiURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    fetchFromURL()
-                                } else {
-                                    scheduleWikiFetch(name: name)
-                                }
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                            }
-                            .buttonStyle(.plain)
+                    Picker("Source", selection: $descriptionSource) {
+                        ForEach(DescriptionSource.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
                         }
                     }
-                    if let wiki = wikiSummary {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(wiki.title)
-                                .font(.subheadline.bold())
-                            Text(wiki.extract)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if let url = wiki.pageURL {
-                                Link("Open in Wikipedia", destination: url)
-                                    .font(.caption)
-                            }
-                        }
-                    } else if !isFetchingWiki {
-                        Text("No Wikipedia article found.")
-                            .foregroundStyle(.secondary)
-                            .font(.subheadline)
+                    .pickerStyle(.segmented)
+
+                    if descriptionSource == .wikipedia {
+                        wikipediaContent
+                    } else {
+                        TextEditor(text: $manualDescription)
+                            .frame(minHeight: 100)
                     }
                 } header: {
                     Text("About")
                 }
 
+                // MARK: Search for a place
                 Section("Search for a place") {
                     TextField("Place name or address", text: $searchText)
                         .onChange(of: searchText) { _, newValue in
@@ -117,6 +141,7 @@ struct TripLocationFormSheet: View {
                     }
                 }
 
+                // MARK: Selected location preview
                 if let coord = selectedCoordinate {
                     Section("Selected Location") {
                         mapPreview(coordinate: coord)
@@ -130,6 +155,7 @@ struct TripLocationFormSheet: View {
                     }
                 }
 
+                // MARK: Tags
                 Section("Tags") {
                     TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
@@ -147,7 +173,7 @@ struct TripLocationFormSheet: View {
                     Button("Save") {
                         onSave(
                             name.trimmingCharacters(in: .whitespaces),
-                            wikiSummary?.extract ?? "",
+                            activeDescription,
                             wikiURL,
                             tags,
                             selectedCoordinate?.latitude,
@@ -162,6 +188,49 @@ struct TripLocationFormSheet: View {
         .presentationDetents([.large])
     }
 
+    // MARK: - Wikipedia sub-view
+
+    @ViewBuilder
+    private var wikipediaContent: some View {
+        HStack {
+            TextField("Wikipedia URL", text: $wikiURL)
+                .onSubmit { fetchFromURL() }
+            if isFetchingWiki {
+                ProgressView()
+            } else {
+                Button {
+                    if !wikiURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        fetchFromURL()
+                    } else {
+                        scheduleWikiFetch(name: name)
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        if let wiki = wikiSummary {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(wiki.title)
+                    .font(.subheadline.bold())
+                Text(wiki.extract)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let url = wiki.pageURL {
+                    Link("Open in Wikipedia", destination: url)
+                        .font(.caption)
+                }
+            }
+        } else if !isFetchingWiki {
+            Text("No Wikipedia article found.")
+                .foregroundStyle(.secondary)
+                .font(.subheadline)
+        }
+    }
+
+    // MARK: - Map preview
+
     @ViewBuilder
     private func mapPreview(coordinate: CLLocationCoordinate2D) -> some View {
         let region = MKCoordinateRegion(
@@ -175,6 +244,8 @@ struct TripLocationFormSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .allowsHitTesting(false)
     }
+
+    // MARK: - Search
 
     private func scheduleSearch(query: String) {
         searchTask?.cancel()
@@ -194,7 +265,25 @@ struct TripLocationFormSheet: View {
         }
     }
 
+    private func selectMapItem(_ item: MKMapItem) {
+        let coord = item.placemark.coordinate
+        selectedCoordinate = coord
+        if let itemName = item.name, name.trimmingCharacters(in: .whitespaces).isEmpty {
+            name = itemName
+        }
+        searchResults = []
+        searchText = item.name ?? ""
+        // Only fetch wiki if in wiki mode and nothing found yet
+        if descriptionSource == .wikipedia && wikiSummary == nil {
+            scheduleWikiFetch(name: item.name ?? name)
+        }
+    }
+
+    // MARK: - Wikipedia fetching
+
+    /// Auto-triggered by name changes — only when no description exists yet.
     private func scheduleNameWikiFetch(name: String) {
+        guard wikiSummary == nil else { return }   // skip if we already have content
         nameDebounceTask?.cancel()
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         nameDebounceTask = Task {
@@ -236,18 +325,9 @@ struct TripLocationFormSheet: View {
             }
         }
     }
-
-    private func selectMapItem(_ item: MKMapItem) {
-        let coord = item.placemark.coordinate
-        selectedCoordinate = coord
-        if let itemName = item.name, name.trimmingCharacters(in: .whitespaces).isEmpty {
-            name = itemName
-        }
-        searchResults = []
-        searchText = item.name ?? ""
-        scheduleWikiFetch(name: item.name ?? name)
-    }
 }
+
+// MARK: - Helpers
 
 private struct AnnotationItem: Identifiable {
     let id = UUID()

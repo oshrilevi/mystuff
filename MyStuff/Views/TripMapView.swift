@@ -100,6 +100,9 @@ struct TripMapView: View {
                     onLocationTapped: onLocationTapped,
                     onMapLongPress: onMapLongPress
                 )
+                // Force full recreation when the set of locations changes so MapKit
+                // correctly renders all annotations from the start.
+                .id(coordinatedLocations.map(\.location.id).joined(separator: ","))
             } else {
                 TripMapLegacyView(
                     region: boundingRegion,
