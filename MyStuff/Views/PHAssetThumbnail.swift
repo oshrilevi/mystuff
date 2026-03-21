@@ -33,7 +33,8 @@ struct PHAssetThumbnail: View {
                     }
             }
         }
-        .onTapGesture(count: 2) { openInPhotos() }
+        .onTapGesture { openInPhotos() }
+        .help("Click to open in Photos")
         .task(id: identifier) {
             image = await loadThumbnail()
         }

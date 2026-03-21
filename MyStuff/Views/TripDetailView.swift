@@ -20,6 +20,7 @@ struct TripDetailView: View {
     @State private var sightingSortKey: SightingSortKey = .name
     @State private var sightingSortAsc: Bool = true
     @State private var sightingViewMode: SightingViewMode = .byDate
+    @State private var selectedSpeciesName: String? = nil
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -37,6 +38,21 @@ struct TripDetailView: View {
 
     private var visits: [TripVisit] {
         tripsVM.visits(for: currentTrip)
+    }
+
+    /// IDs of sighting pins that should be highlighted on the map.
+    private var focusedSightingIds: Set<String> {
+        if let species = selectedSpeciesName {
+            return Set(visits.filter { $0.sightings.contains { $0.name == species } }.map(\.id))
+        }
+        if let id = focusedSightingId { return [id] }
+        return []
+    }
+
+    /// Visits that contain the currently selected species (for the aggregated popup).
+    private var speciesMatchingVisits: [TripVisit] {
+        guard let species = selectedSpeciesName else { return [] }
+        return visits.filter { $0.sightings.contains { $0.name == species } }
     }
 
     var body: some View {
@@ -154,18 +170,31 @@ struct TripDetailView: View {
                     locations: filteredLocations,
                     sightings: showSightingsOnMap ? visits : [],
                     fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
-                    focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
-                    focusedSightingId: focusedSightingId,
-                    onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
+                    focusedLocationId: focusedSightingIds.isEmpty ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : nil,
+                    focusedSightingIds: focusedSightingIds,
+                    onLocationTapped: { id in
+                        focusedLocationId = id
+                        focusedSightingId = nil
+                        withAnimation { selectedSpeciesName = nil; sightingPopup = nil }
+                    },
                     onSightingTapped: { id in
                         focusedSightingId = id
                         focusedLocationId = nil
+                        selectedSpeciesName = nil
                         withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
                     },
                     onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
                     onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
                 )
-                if let visit = sightingPopup {
+                if let species = selectedSpeciesName,
+                   let group = sortedSpeciesGroups.first(where: { $0.name == species }) {
+                    SpeciesAggregatedPopupCard(
+                        group: group,
+                        matchingVisits: speciesMatchingVisits
+                    ) { withAnimation { selectedSpeciesName = nil } }
+                    .padding(12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let visit = sightingPopup {
                     SightingPopupCard(visit: visit) {
                         withAnimation { sightingPopup = nil }
                     }
@@ -182,18 +211,31 @@ struct TripDetailView: View {
                         locations: filteredLocations,
                         sightings: showSightingsOnMap ? visits : [],
                         fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
-                        focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
-                        focusedSightingId: focusedSightingId,
-                        onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
+                        focusedLocationId: focusedSightingIds.isEmpty ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : nil,
+                        focusedSightingIds: focusedSightingIds,
+                        onLocationTapped: { id in
+                            focusedLocationId = id
+                            focusedSightingId = nil
+                            withAnimation { selectedSpeciesName = nil; sightingPopup = nil }
+                        },
                         onSightingTapped: { id in
                             focusedSightingId = id
                             focusedLocationId = nil
+                            selectedSpeciesName = nil
                             withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
                         },
                         onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
                         onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
                     )
-                    if let visit = sightingPopup {
+                    if let species = selectedSpeciesName,
+                       let group = sortedSpeciesGroups.first(where: { $0.name == species }) {
+                        SpeciesAggregatedPopupCard(
+                            group: group,
+                            matchingVisits: speciesMatchingVisits
+                        ) { withAnimation { selectedSpeciesName = nil } }
+                        .padding(12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else if let visit = sightingPopup {
                         SightingPopupCard(visit: visit) {
                             withAnimation { sightingPopup = nil }
                         }
@@ -405,6 +447,9 @@ struct TripDetailView: View {
                 Spacer()
                 // View mode toggle — centered between title and sort
                 SightingViewModeControl(mode: $sightingViewMode)
+                    .onChange(of: sightingViewMode) { _, _ in
+                        withAnimation { selectedSpeciesName = nil; sightingPopup = nil }
+                    }
                 Spacer()
                 SightingSortControl(sortKey: $sightingSortKey, ascending: $sightingSortAsc)
             }
@@ -432,7 +477,18 @@ struct TripDetailView: View {
                 }
             } else {
                 ForEach(sortedSpeciesGroups) { group in
-                    SpeciesGroupRowView(group: group)
+                    SpeciesGroupRowView(
+                        group: group,
+                        isFocused: selectedSpeciesName == group.name,
+                        onSelect: {
+                            focusedLocationId = nil
+                            focusedSightingId = nil
+                            withAnimation { sightingPopup = nil }
+                            withAnimation {
+                                selectedSpeciesName = (selectedSpeciesName == group.name) ? nil : group.name
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -626,8 +682,13 @@ private struct TripVisitRowView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(s.name)
-                            .font(.subheadline.bold())
+                        if let url = URL(string: s.wikiURL), !s.wikiURL.isEmpty {
+                            Link(s.name, destination: url)
+                                .font(.subheadline.bold())
+                        } else {
+                            Text(s.name)
+                                .font(.subheadline.bold())
+                        }
                         if !s.wikiDescription.isEmpty {
                             Text(s.wikiDescription)
                                 .font(.caption)
@@ -808,6 +869,8 @@ private struct SpeciesGroup: Identifiable {
 
 private struct SpeciesGroupRowView: View {
     let group: SpeciesGroup
+    var isFocused: Bool = false
+    var onSelect: (() -> Void)? = nil
 
     private static let parseFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
@@ -887,7 +950,111 @@ private struct SpeciesGroupRowView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+        .background(isFocused ? Color.pink.opacity(0.07) : .clear)
+        .contentShape(Rectangle())
+        .onTapGesture { onSelect?() }
         Divider().padding(.leading)
+    }
+}
+
+// MARK: - Species aggregated popup
+
+private struct SpeciesAggregatedPopupCard: View {
+    let group: SpeciesGroup
+    let matchingVisits: [TripVisit]
+    let onDismiss: () -> Void
+
+    private static let parseFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
+    }()
+    private static let displayFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .none; return f
+    }()
+    private func fmt(_ s: String) -> String {
+        guard let d = Self.parseFmt.date(from: s) else { return s }
+        return Self.displayFmt.string(from: d)
+    }
+
+    private var allPhotoIds: [String] {
+        var seen = Set<String>()
+        return matchingVisits.flatMap(\.photoIds).filter { seen.insert($0).inserted }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header
+            HStack {
+                HStack(alignment: .top, spacing: 10) {
+                    if let url = URL(string: group.imageURL), !group.imageURL.isEmpty {
+                        AsyncImage(url: url) { phase in
+                            if case .success(let img) = phase { img.resizable().aspectRatio(contentMode: .fill) }
+                            else { Color.secondary.opacity(0.1) }
+                        }
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !group.wikiURL.isEmpty, let url = URL(string: group.wikiURL) {
+                            Link(group.name, destination: url).font(.headline.bold())
+                        } else {
+                            Text(group.name).font(.headline.bold())
+                        }
+                        if !group.wikiDescription.isEmpty {
+                            Text(group.wikiDescription)
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        }
+                    }
+                }
+                Spacer()
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Divider()
+
+            // Observations list
+            Text("תצפיות")
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(group.observations.enumerated()), id: \.offset) { _, obs in
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar").font(.caption2).foregroundStyle(.tertiary)
+                        Text(fmt(obs.date)).font(.caption).foregroundStyle(.secondary)
+                        if !obs.timeOfDay.isEmpty {
+                            Text("·").foregroundStyle(.tertiary)
+                            Image(systemName: "clock").font(.caption2).foregroundStyle(.tertiary)
+                            Text(TimeOfDay(rawValue: obs.timeOfDay)?.hebrewLabel ?? obs.timeOfDay)
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            // Photos
+            if !allPhotoIds.isEmpty {
+                Divider()
+                Text("תמונות")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(allPhotoIds, id: \.self) { identifier in
+                            PHAssetThumbnail(identifier: identifier, size: 80)
+                                .frame(width: 80, height: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(.thickMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .frame(maxWidth: 420)
     }
 }
 
