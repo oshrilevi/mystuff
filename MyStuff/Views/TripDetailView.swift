@@ -484,12 +484,11 @@ struct TripDetailView: View {
                             .filter { $0.sightings.contains { $0.name == group.name } }
                             .contains { !$0.photoIds.isEmpty },
                         onSelect: {
+                            guard selectedSpeciesName != group.name else { return }
                             focusedLocationId = nil
                             focusedSightingId = nil
                             withAnimation { sightingPopup = nil }
-                            withAnimation {
-                                selectedSpeciesName = (selectedSpeciesName == group.name) ? nil : group.name
-                            }
+                            withAnimation { selectedSpeciesName = group.name }
                         }
                     )
                 }
