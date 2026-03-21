@@ -89,21 +89,20 @@ struct TripDetailView: View {
                 }
             }
             .sheet(isPresented: $editingTrip) {
-                TripFormSheet(trip: currentTrip) { name, description, wikiURL, tags, lat, lon in
+                TripFormSheet(trip: currentTrip) { name, description, wikiURL, lat, lon in
                     var updated = currentTrip
                     updated.name = name
                     updated.description = description
                     updated.wikiURL = wikiURL
-                    updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
                     Task { await tripsVM.updateTrip(updated) }
                 }
             }
             .sheet(isPresented: $showAddLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type, photoIds in
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, lat, lon, type, photoIds in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             var updated = currentTrip
                             if !updated.locationIds.contains(created.id) {
@@ -116,12 +115,11 @@ struct TripDetailView: View {
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $editingLocation) { loc in
-                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type, photoIds in
+                TripLocationFormSheet(location: loc) { name, description, wikiURL, lat, lon, type, photoIds in
                     var updated = loc
                     updated.name = name
                     updated.description = description
                     updated.wikiURL = wikiURL
-                    updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
                     updated.type = type
@@ -131,9 +129,9 @@ struct TripDetailView: View {
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $newLocationCoord) { item in
-                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon, type, photoIds in
+                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, lat, lon, type, photoIds in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             var updated = currentTrip
                             if !updated.locationIds.contains(created.id) {
@@ -146,21 +144,20 @@ struct TripDetailView: View {
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $editingVisit) { visit in
-                TripVisitFormSheet(visit: visit) { sightings, lat, lon, date, timeOfDay, tags, photoIds in
+                TripVisitFormSheet(visit: visit) { sightings, lat, lon, date, timeOfDay, photoIds in
                     var updated = visit
                     updated.sightings = sightings
                     updated.latitude = lat
                     updated.longitude = lon
                     updated.date = date
                     updated.timeOfDay = timeOfDay
-                    updated.tags = tags
                     updated.photoIds = photoIds
                     Task { await tripsVM.updateVisit(updated) }
                 }
             }
             .sheet(item: $newSightingCoord) { item in
-                TripVisitFormSheet(visit: nil, initialCoordinate: item.coordinate) { sightings, lat, lon, date, timeOfDay, tags, photoIds in
-                    Task { await tripsVM.addVisit(tripId: currentTrip.id, sightings: sightings, latitude: lat, longitude: lon, date: date, timeOfDay: timeOfDay, tags: tags, photoIds: photoIds) }
+                TripVisitFormSheet(visit: nil, initialCoordinate: item.coordinate) { sightings, lat, lon, date, timeOfDay, photoIds in
+                    Task { await tripsVM.addVisit(tripId: currentTrip.id, sightings: sightings, latitude: lat, longitude: lon, date: date, timeOfDay: timeOfDay, photoIds: photoIds) }
                 }
             }
     }
@@ -523,20 +520,6 @@ struct TripDetailView: View {
         }
     }
 
-    private func tripTagsView(tags: [String]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                ForEach(tags, id: \.self) { tag in
-                    Text(tag)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.accentColor.opacity(0.12), in: Capsule())
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Type Filter Button
@@ -722,21 +705,6 @@ private struct TripVisitRowView: View {
                 }
             }
 
-            // Tags
-            if !visit.tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(visit.tags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(Color.secondary.opacity(0.15), in: Capsule())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
@@ -803,20 +771,6 @@ private struct LocationPopupCard: View {
                     .lineLimit(5)
             }
 
-            if !location.tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
-                        ForEach(location.tags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.secondary.opacity(0.12), in: Capsule())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
         }
         .padding(14)
         .background(.thickMaterial)

@@ -5,12 +5,11 @@ import PhotosUI
 struct TripVisitFormSheet: View {
     let visit: TripVisit?
     let initialCoordinate: CLLocationCoordinate2D?
-    let onSave: ([VisitSighting], Double?, Double?, String, String, [String], [String]) -> Void
+    let onSave: ([VisitSighting], Double?, Double?, String, String, [String]) -> Void
 
     @State private var sightings: [VisitSighting]
     @State private var date: Date
     @State private var timeOfDay: TimeOfDay
-    @State private var tags: [String]
     @State private var selectedCoordinate: CLLocationCoordinate2D?
     @State private var photoIds: [String]
     @State private var pendingItems: [PhotosPickerItem] = []
@@ -23,13 +22,12 @@ struct TripVisitFormSheet: View {
     }()
 
     init(visit: TripVisit?, initialCoordinate: CLLocationCoordinate2D? = nil,
-         onSave: @escaping ([VisitSighting], Double?, Double?, String, String, [String], [String]) -> Void) {
+         onSave: @escaping ([VisitSighting], Double?, Double?, String, String, [String]) -> Void) {
         self.visit = visit
         self.initialCoordinate = initialCoordinate
         self.onSave = onSave
 
         _sightings = State(initialValue: visit?.sightings.isEmpty == false ? visit!.sightings : [VisitSighting(name: "")])
-        _tags      = State(initialValue: visit?.tags ?? [])
         _timeOfDay = State(initialValue: TimeOfDay(rawValue: visit?.timeOfDay ?? "") ?? .morning)
         _photoIds  = State(initialValue: visit?.photoIds ?? [])
 
@@ -72,11 +70,6 @@ struct TripVisitFormSheet: View {
                             Text(tod.hebrewLabel).tag(tod)
                         }
                     }
-                }
-
-                // MARK: Tags
-                Section("Tags") {
-                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
 
                 // MARK: Photos
@@ -130,7 +123,6 @@ struct TripVisitFormSheet: View {
                                 selectedCoordinate?.longitude,
                                 dateStr,
                                 timeOfDay.rawValue,
-                                tags,
                                 photoIds
                             )
                             dismiss()

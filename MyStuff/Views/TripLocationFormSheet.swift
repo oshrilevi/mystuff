@@ -13,11 +13,10 @@ private enum DescriptionSource: String, CaseIterable {
 
 struct TripLocationFormSheet: View {
     let location: TripLocation?
-    let onSave: (String, String, String, [String], Double?, Double?, LocationType, [String]) -> Void
+    let onSave: (String, String, String, Double?, Double?, LocationType, [String]) -> Void
 
     @State private var name: String
     @State private var type: LocationType
-    @State private var tags: [String]
     @State private var searchText = ""
     @State private var searchResults: [MKMapItem] = []
     @State private var searchTask: Task<Void, Never>?
@@ -42,12 +41,11 @@ struct TripLocationFormSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     init(location: TripLocation?, initialCoordinate: CLLocationCoordinate2D? = nil,
-         onSave: @escaping (String, String, String, [String], Double?, Double?, LocationType, [String]) -> Void) {
+         onSave: @escaping (String, String, String, Double?, Double?, LocationType, [String]) -> Void) {
         self.location = location
         self.onSave = onSave
         _name = State(initialValue: location?.name ?? "")
         _type = State(initialValue: location?.type ?? .natureReserve)
-        _tags = State(initialValue: location?.tags ?? [])
         _wikiURL = State(initialValue: location?.wikiURL ?? "")
         _photoIds = State(initialValue: location?.photoIds ?? [])
 
@@ -186,11 +184,6 @@ struct TripLocationFormSheet: View {
                     }
                 }
 
-                // MARK: Tags
-                Section("Tags") {
-                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
-                }
-
                 // MARK: Photos
                 Section("Photos") {
                     PhotosPicker(selection: $pendingItems, maxSelectionCount: 10, matching: .images) {
@@ -237,7 +230,6 @@ struct TripLocationFormSheet: View {
                             name.trimmingCharacters(in: .whitespaces),
                             activeDescription,
                             wikiURL,
-                            tags,
                             selectedCoordinate?.latitude,
                             selectedCoordinate?.longitude,
                             type,

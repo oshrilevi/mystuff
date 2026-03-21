@@ -76,7 +76,6 @@ struct TripVisit: Identifiable, Equatable, Hashable {
     var longitude: Double?
     var date: String      // YYYY-MM-DD
     var timeOfDay: String // TimeOfDay rawValue
-    var tags: [String]
     var createdAt: String
     var updatedAt: String
     var photoIds: [String]
@@ -88,7 +87,7 @@ struct TripVisit: Identifiable, Equatable, Hashable {
 
     init(id: String = UUID().uuidString, tripId: String, sightings: [VisitSighting] = [],
          latitude: Double? = nil, longitude: Double? = nil, date: String, timeOfDay: String = "",
-         tags: [String] = [], createdAt: String = "", updatedAt: String = "", photoIds: [String] = []) {
+         createdAt: String = "", updatedAt: String = "", photoIds: [String] = []) {
         self.id = id
         self.tripId = tripId
         self.sightings = sightings
@@ -96,7 +95,6 @@ struct TripVisit: Identifiable, Equatable, Hashable {
         self.longitude = longitude
         self.date = date
         self.timeOfDay = timeOfDay
-        self.tags = tags
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.photoIds = photoIds

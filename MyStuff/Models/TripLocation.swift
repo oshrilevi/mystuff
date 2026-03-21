@@ -54,7 +54,6 @@ struct TripLocation: Identifiable, Equatable, Hashable {
     let id: String
     var name: String
     var description: String
-    var tags: [String]
     var latitude: Double?
     var longitude: Double?
     var wikiURL: String
@@ -66,14 +65,13 @@ struct TripLocation: Identifiable, Equatable, Hashable {
     // New columns always appended for backwards compatibility
     static let columnOrder = ["id", "name", "description", "tags", "latitude", "longitude", "createdAt", "updatedAt", "wikiURL", "type", "photos"]
 
-    init(id: String = UUID().uuidString, name: String, description: String = "", tags: [String] = [],
+    init(id: String = UUID().uuidString, name: String, description: String = "",
          latitude: Double? = nil, longitude: Double? = nil, wikiURL: String = "",
          createdAt: String = "", updatedAt: String = "", type: LocationType = .natureReserve,
          photoIds: [String] = []) {
         self.id = id
         self.name = name
         self.description = description
-        self.tags = tags
         self.latitude = latitude
         self.longitude = longitude
         self.wikiURL = wikiURL

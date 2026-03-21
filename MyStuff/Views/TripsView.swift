@@ -77,17 +77,16 @@ struct TripsView: View {
                 #endif
             }
             .sheet(isPresented: $showAddTrip) {
-                TripFormSheet(trip: nil) { name, description, wikiURL, tags, lat, lon in
-                    Task { await tripsVM.addTrip(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon) }
+                TripFormSheet(trip: nil) { name, description, wikiURL, lat, lon in
+                    Task { await tripsVM.addTrip(name: name, description: description, wikiURL: wikiURL, latitude: lat, longitude: lon) }
                 }
             }
             .sheet(item: $editingTrip) { trip in
-                TripFormSheet(trip: trip) { name, description, wikiURL, tags, lat, lon in
+                TripFormSheet(trip: trip) { name, description, wikiURL, lat, lon in
                     var updated = trip
                     updated.name = name
                     updated.description = description
                     updated.wikiURL = wikiURL
-                    updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
                     Task { await tripsVM.updateTrip(updated) }
@@ -852,11 +851,10 @@ private struct TripCardView: View {
 
 struct TripFormSheet: View {
     let trip: Trip?
-    let onSave: (String, String, String, [String], Double?, Double?) -> Void
+    let onSave: (String, String, String, Double?, Double?) -> Void
 
     @EnvironmentObject var session: Session
     @State private var name: String
-    @State private var tags: [String]
     @State private var wikiURL = ""
     @State private var wikiSummary: WikiSummary?
     @State private var isFetchingWiki = false
@@ -871,11 +869,10 @@ struct TripFormSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    init(trip: Trip?, onSave: @escaping (String, String, String, [String], Double?, Double?) -> Void) {
+    init(trip: Trip?, onSave: @escaping (String, String, String, Double?, Double?) -> Void) {
         self.trip = trip
         self.onSave = onSave
         _name = State(initialValue: trip?.name ?? "")
-        _tags = State(initialValue: trip?.tags ?? [])
         _wikiURL = State(initialValue: trip?.wikiURL ?? "")
         if let desc = trip?.description, !desc.isEmpty {
             _wikiSummary = State(initialValue: WikiSummary(title: trip?.name ?? "", extract: desc, pageURL: nil, thumbnailURL: nil))
@@ -898,10 +895,6 @@ struct TripFormSheet: View {
                             scheduleNameWikiFetch(name: newValue)
                         }
                 }
-                Section("Tags") {
-                    TagChipsEditor(tags: $tags, suggestions: session.allTags)
-                }
-
                 // MARK: Search for a place
                 Section("Search for a place") {
                     TextField("Place name or address", text: $searchText)
@@ -1003,7 +996,6 @@ struct TripFormSheet: View {
                             name.trimmingCharacters(in: .whitespaces),
                             wikiSummary?.extract ?? "",
                             wikiURL,
-                            tags,
                             selectedCoordinate?.latitude,
                             selectedCoordinate?.longitude
                         )
