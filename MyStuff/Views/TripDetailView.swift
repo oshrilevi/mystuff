@@ -753,7 +753,7 @@ private struct SightingPopupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
-            HStack {
+            HStack(alignment: .top) {
                 Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
                 if !visit.timeOfDay.isEmpty {
                     TimeOfDayIcon(rawValue: visit.timeOfDay)
@@ -1014,7 +1014,7 @@ private struct SpeciesAggregatedPopupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
-            HStack {
+            HStack(alignment: .top) {
                 HStack(alignment: .top, spacing: 10) {
                     if let url = URL(string: group.imageURL), !group.imageURL.isEmpty {
                         AsyncImage(url: url) { phase in
@@ -1032,7 +1032,7 @@ private struct SpeciesAggregatedPopupCard: View {
                         }
                         if !group.wikiDescription.isEmpty {
                             Text(group.wikiDescription)
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
