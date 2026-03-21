@@ -60,6 +60,9 @@ struct MainTabView: View {
     @AppStorage("lastSidebarSelection") private var lastSidebarKey: String = "items"
     @AppStorage("itemViewMode") private var itemViewMode: ItemViewMode = .grid
     @State private var selection: MainSidebarSelection = .items
+    #if os(macOS)
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    #endif
     var body: some View {
         #if os(iOS)
         TabView(selection: $selection) {
@@ -111,7 +114,7 @@ struct MainTabView: View {
             if !newVal.storageKey.isEmpty { lastSidebarKey = newVal.storageKey }
         }
         #else
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $selection) {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
                 NavigationLink(value: MainSidebarSelection.combos) { Label("Combos", systemImage: "square.stack.3d.up") }
@@ -206,10 +209,12 @@ struct MainTabView: View {
         .onAppear {
             if let saved = MainSidebarSelection.from(storageKey: lastSidebarKey) {
                 selection = saved
+                columnVisibility = saved == .trips ? .detailOnly : .all
             }
         }
         .onChange(of: selection) { _, newVal in
             if !newVal.storageKey.isEmpty { lastSidebarKey = newVal.storageKey }
+            columnVisibility = newVal == .trips ? .detailOnly : .all
         }
         #endif
     }
