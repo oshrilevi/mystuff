@@ -5,7 +5,6 @@ import MapKit
 
 enum TripMapStyle: String, CaseIterable, Identifiable {
     case standard
-    case topo
     case satellite
     case hybrid
 
@@ -13,8 +12,7 @@ enum TripMapStyle: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .standard:  return "Roads"
-        case .topo:      return "Terrain"
+        case .standard:  return "Map"
         case .satellite: return "Satellite"
         case .hybrid:    return "Hybrid"
         }
@@ -23,7 +21,6 @@ enum TripMapStyle: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .standard:  return "road.lanes"
-        case .topo:      return "mountain.2"
         case .satellite: return "globe"
         case .hybrid:    return "map"
         }
@@ -33,7 +30,6 @@ enum TripMapStyle: String, CaseIterable, Identifiable {
     var mapStyle: MapStyle {
         switch self {
         case .standard:  return .standard(elevation: .flat)
-        case .topo:      return .standard(elevation: .realistic)
         case .satellite: return .imagery(elevation: .realistic)
         case .hybrid:    return .hybrid(elevation: .realistic)
         }
@@ -42,7 +38,6 @@ enum TripMapStyle: String, CaseIterable, Identifiable {
     var legacyMapType: MKMapType {
         switch self {
         case .standard:  return .standard
-        case .topo:      return .standard
         case .satellite: return .satellite
         case .hybrid:    return .hybrid
         }
