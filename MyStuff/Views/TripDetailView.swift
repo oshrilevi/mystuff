@@ -754,9 +754,11 @@ private struct SightingPopupCard: View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
             HStack(alignment: .top) {
-                Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
-                if !visit.timeOfDay.isEmpty {
-                    TimeOfDayIcon(rawValue: visit.timeOfDay)
+                HStack(spacing: 4) {
+                    if !visit.timeOfDay.isEmpty {
+                        TimeOfDayIcon(rawValue: visit.timeOfDay)
+                    }
+                    Text(formattedDate).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button { onDismiss() } label: {
@@ -1059,11 +1061,10 @@ private struct SpeciesAggregatedPopupCard: View {
                     : Array(group.observations.prefix(Self.collapsedLimit).enumerated())
                 ForEach(visible, id: \.offset) { _, obs in
                     HStack(spacing: 4) {
-                        Image(systemName: "calendar").font(.caption2).foregroundStyle(.tertiary)
-                        Text(fmt(obs.date)).font(.caption).foregroundStyle(.secondary)
                         if !obs.timeOfDay.isEmpty {
                             TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
                         }
+                        Text(fmt(obs.date)).font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
