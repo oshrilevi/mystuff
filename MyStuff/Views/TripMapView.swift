@@ -62,7 +62,9 @@ struct TripMapView: View {
     var onMapLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
     var onSightingLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
 
-    @AppStorage("tripMapStyle") private var mapStyle: TripMapStyle = .standard
+    @AppStorage("tripMapStyle")    private var mapStyle: TripMapStyle = .standard
+    @AppStorage("inatTaxonFilter") private var inatTaxonFilter: InatTaxonFilter = .birds
+    @AppStorage("showInatOverlay") private var showInatOverlay = true
 
     private var coordinatedSightings: [(sighting: TripVisit, coord: CLLocationCoordinate2D)] {
         sightings.compactMap { s in
@@ -108,7 +110,7 @@ struct TripMapView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             if #available(iOS 17.0, macOS 14.0, *) {
                 ModernTripMapView(
                     coordinatedLocations: coordinatedLocations,
@@ -117,6 +119,8 @@ struct TripMapView: View {
                     focusedLocationId: focusedLocationId,
                     focusedSightingIds: focusedSightingIds,
                     mapStyle: mapStyle,
+                    showInatOverlay: showInatOverlay,
+                    inatTaxonFilter: inatTaxonFilter,
                     onLocationTapped: onLocationTapped,
                     onSightingTapped: onSightingTapped,
                     onMapLongPress: onMapLongPress,
@@ -132,7 +136,14 @@ struct TripMapView: View {
                     onLocationTapped: onLocationTapped
                 )
             }
-
+        }
+        .overlay(alignment: .topLeading) {
+            if #available(iOS 17.0, macOS 14.0, *) {
+                InatOverlayButton(showOverlay: $showInatOverlay, taxonFilter: $inatTaxonFilter)
+                    .padding(10)
+            }
+        }
+        .overlay(alignment: .topTrailing) {
             MapStylePicker(selected: $mapStyle)
                 .padding(10)
         }
@@ -164,6 +175,53 @@ private struct MapStylePicker: View {
                 .help(style.label)
             }
         }
+        .background(.thickMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .strokeBorder(.separator, lineWidth: 0.5)
+        }
+    }
+}
+
+// MARK: - iNaturalist Overlay Toggle
+
+@available(iOS 17.0, macOS 14.0, *)
+private struct InatOverlayButton: View {
+    @Binding var showOverlay: Bool
+    @Binding var taxonFilter: InatTaxonFilter
+
+    var body: some View {
+        Menu {
+            Toggle(isOn: $showOverlay) {
+                Label("iNaturalist Overlay", systemImage: "binoculars.fill")
+            }
+            if showOverlay {
+                Divider()
+                Picker("Filter", selection: $taxonFilter) {
+                    ForEach(InatTaxonFilter.allCases) { filter in
+                        Text(filter.label).tag(filter)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: "binoculars.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Wildlife")
+                    .font(.system(size: 9, weight: .medium))
+            }
+            .foregroundStyle(showOverlay ? .white : .primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(showOverlay ? Color.teal : Color.clear)
+        }
+        #if os(macOS)
+        .menuStyle(.borderlessButton)
+        #endif
+        .fixedSize()
         .background(.thickMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 9))
         .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
@@ -227,6 +285,100 @@ private struct SightingMapPin: View {
     }
 }
 
+// MARK: - iNaturalist Pin
+
+private struct InatMapPin: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.teal.opacity(0.9))
+                .frame(width: 24, height: 24)
+            Image(systemName: "binoculars.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+}
+
+// MARK: - iNaturalist Observation Detail
+
+@available(iOS 16.0, macOS 13.0, *)
+private struct InatObservationDetailView: View {
+    let observation: iNaturalistObservation
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let photoURL = observation.photoURL {
+                        AsyncImage(url: photoURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 220)
+                                    .clipped()
+                            case .failure:
+                                Rectangle()
+                                    .fill(Color.teal.opacity(0.15))
+                                    .frame(height: 220)
+                                    .overlay { Image(systemName: "binoculars.fill").font(.largeTitle).foregroundStyle(.teal) }
+                            case .empty:
+                                Rectangle()
+                                    .fill(Color.secondary.opacity(0.1))
+                                    .frame(height: 220)
+                                    .overlay { ProgressView() }
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .cornerRadius(12)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(observation.displayName)
+                            .font(.title2.bold())
+                        if observation.commonName != nil {
+                            Text(observation.taxonName)
+                                .font(.subheadline.italic())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Divider()
+
+                    if let date = observation.observedOn {
+                        LabeledContent("Observed", value: date)
+                    }
+
+                    if let url = observation.observationURL {
+                        Link(destination: url) {
+                            Label("View on iNaturalist", systemImage: "arrow.up.right.square")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.teal)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Wildlife Sighting")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            .presentationDetents([.medium, .large])
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Modern Map (iOS 17+ / macOS 14+)
 
 @available(iOS 17.0, macOS 14.0, *)
@@ -237,12 +389,17 @@ private struct ModernTripMapView: View {
     let focusedLocationId: String?
     let focusedSightingIds: Set<String>
     let mapStyle: TripMapStyle
+    let showInatOverlay: Bool
+    let inatTaxonFilter: InatTaxonFilter
     let onLocationTapped: ((String) -> Void)?
     let onSightingTapped: ((String) -> Void)?
     let onMapLongPress: ((CLLocationCoordinate2D) -> Void)?
     let onSightingLongPress: ((CLLocationCoordinate2D) -> Void)?
 
     @State private var cameraPosition: MapCameraPosition
+    @State private var currentRegion: MKCoordinateRegion
+    @State private var inatObservations: [iNaturalistObservation] = []
+    @State private var selectedInatObs: iNaturalistObservation? = nil
     #if os(macOS)
     @State private var hoveredCoord: CLLocationCoordinate2D?
     #endif
@@ -254,6 +411,8 @@ private struct ModernTripMapView: View {
         focusedLocationId: String?,
         focusedSightingIds: Set<String>,
         mapStyle: TripMapStyle,
+        showInatOverlay: Bool,
+        inatTaxonFilter: InatTaxonFilter,
         onLocationTapped: ((String) -> Void)?,
         onSightingTapped: ((String) -> Void)?,
         onMapLongPress: ((CLLocationCoordinate2D) -> Void)?,
@@ -265,6 +424,8 @@ private struct ModernTripMapView: View {
         self.focusedLocationId = focusedLocationId
         self.focusedSightingIds = focusedSightingIds
         self.mapStyle = mapStyle
+        self.showInatOverlay = showInatOverlay
+        self.inatTaxonFilter = inatTaxonFilter
         self.onLocationTapped = onLocationTapped
         self.onSightingTapped = onSightingTapped
         self.onMapLongPress = onMapLongPress
@@ -272,7 +433,16 @@ private struct ModernTripMapView: View {
         // Start the camera at the region that fits all locations so that annotations
         // are within the viewport and render immediately. The .task below then
         // smoothly animates to the focused pin.
-        _cameraPosition = State(initialValue: .region(initialRegion))
+        _cameraPosition  = State(initialValue: .region(initialRegion))
+        _currentRegion   = State(initialValue: initialRegion)
+    }
+
+    /// Task id that changes whenever we need to (re-)fetch iNat observations.
+    /// Coordinates are rounded to ~1 km precision to avoid over-fetching on tiny pans.
+    private var inatFetchId: String {
+        let lat = String(format: "%.2f", currentRegion.center.latitude)
+        let lng = String(format: "%.2f", currentRegion.center.longitude)
+        return "\(showInatOverlay)-\(inatTaxonFilter.rawValue)-\(lat)-\(lng)"
     }
 
     var body: some View {
@@ -299,6 +469,17 @@ private struct ModernTripMapView: View {
                             SightingMapPin(isFocused: focusedSightingIds.contains(item.sighting.id))
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+                // iNaturalist overlay pins
+                if showInatOverlay {
+                    ForEach(inatObservations) { obs in
+                        Annotation(obs.displayName, coordinate: obs.coordinate, anchor: .center) {
+                            Button { selectedInatObs = obs } label: {
+                                InatMapPin()
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
@@ -395,6 +576,26 @@ private struct ModernTripMapView: View {
                 .allowsHitTesting(false)
             }
             #endif
+            .onMapCameraChange(frequency: .onEnd) { context in
+                currentRegion = context.region
+            }
+            .task(id: inatFetchId) {
+                guard showInatOverlay else {
+                    inatObservations = []
+                    return
+                }
+                // Brief debounce so rapid pans don't fire many requests.
+                try? await Task.sleep(for: .milliseconds(400))
+                guard !Task.isCancelled else { return }
+                if let obs = try? await INaturalistService.fetchObservations(
+                    in: currentRegion, taxonFilter: inatTaxonFilter
+                ) {
+                    inatObservations = obs
+                }
+            }
+            .sheet(item: $selectedInatObs) { obs in
+                InatObservationDetailView(observation: obs)
+            }
         }
     }
 }
