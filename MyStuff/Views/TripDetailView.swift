@@ -17,6 +17,8 @@ struct TripDetailView: View {
     @State private var selectedTypes: Set<LocationType> = Set(LocationType.allCases)
     @State private var showSightingsOnMap = true
     @State private var sightingPopup: TripVisit? = nil
+    @State private var sightingSortKey: SightingSortKey = .name
+    @State private var sightingSortAsc: Bool = true
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -341,12 +343,31 @@ struct TripDetailView: View {
 
     // MARK: - Sightings Section
 
+    private var sortedVisits: [TripVisit] {
+        visits.sorted {
+            let asc: Bool
+            switch sightingSortKey {
+            case .name:
+                let a = $0.sightings.first?.name ?? ""
+                let b = $1.sightings.first?.name ?? ""
+                asc = a.localizedCompare(b) == .orderedAscending
+            case .date:
+                asc = $0.date < $1.date
+            }
+            return sightingSortAsc ? asc : !asc
+        }
+    }
+
     private var visitsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("תצפיות")
-                .font(.title3.bold())
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+            HStack(alignment: .firstTextBaseline) {
+                Text("תצפיות")
+                    .font(.title3.bold())
+                Spacer()
+                SightingSortControl(sortKey: $sightingSortKey, ascending: $sightingSortAsc)
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
 
             if visits.isEmpty {
                 Text("Right-click on the map to log a sighting.")
@@ -354,7 +375,7 @@ struct TripDetailView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 8)
             } else {
-                ForEach(visits) { visit in
+                ForEach(sortedVisits) { visit in
                     TripVisitRowView(
                         visit: visit,
                         isFocused: focusedSightingId == visit.id,
@@ -688,6 +709,43 @@ private struct SightingPopupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 400)
+    }
+}
+
+// MARK: - Sighting Sort
+
+private enum SightingSortKey: String, CaseIterable {
+    case name = "שם"
+    case date = "תאריך"
+}
+
+private struct SightingSortControl: View {
+    @Binding var sortKey: SightingSortKey
+    @Binding var ascending: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(SightingSortKey.allCases, id: \.self) { key in
+                Button {
+                    if sortKey == key {
+                        ascending.toggle()
+                    } else {
+                        sortKey = key
+                        ascending = true
+                    }
+                } label: {
+                    HStack(spacing: 2) {
+                        Text(key.rawValue)
+                        if sortKey == key {
+                            Image(systemName: ascending ? "arrow.up" : "arrow.down")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(sortKey == key ? .primary : .secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }
 
