@@ -11,7 +11,6 @@ struct TripDetailView: View {
     @State private var editingVisit: TripVisit?
     @State private var focusedLocationId: String? = nil
     @State private var focusedSightingId: String? = nil
-    @State private var expandedSightingIds: Set<String> = []
     @State private var newLocationCoord: IdentifiableCoordinate? = nil
     @State private var newSightingCoord: IdentifiableCoordinate? = nil
     @State private var headerHovered = false
@@ -358,17 +357,7 @@ struct TripDetailView: View {
                 ForEach(visits) { visit in
                     TripVisitRowView(
                         visit: visit,
-                        isExpanded: expandedSightingIds.contains(visit.id),
                         isFocused: focusedSightingId == visit.id,
-                        onToggleExpand: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                if expandedSightingIds.contains(visit.id) {
-                                    expandedSightingIds.remove(visit.id)
-                                } else {
-                                    expandedSightingIds.insert(visit.id)
-                                }
-                            }
-                        },
                         onFocus: {
                             focusedLocationId = nil
                             if visit.latitude != nil { focusedSightingId = visit.id }
@@ -509,9 +498,7 @@ private struct TripLocationRowView: View {
 
 private struct TripVisitRowView: View {
     let visit: TripVisit
-    var isExpanded: Bool = false
     var isFocused: Bool = false
-    let onToggleExpand: () -> Void
     let onFocus: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -554,50 +541,38 @@ private struct TripVisitRowView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
-                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
 
             // Species list
-            if isExpanded {
-                ForEach(visit.sightings) { s in
-                    HStack(alignment: .top, spacing: 10) {
-                        if let url = URL(string: s.imageURL), !s.imageURL.isEmpty {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image.resizable().aspectRatio(contentMode: .fill)
-                                default:
-                                    Color.secondary.opacity(0.1)
-                                }
+            ForEach(visit.sightings) { s in
+                HStack(alignment: .top, spacing: 10) {
+                    if let url = URL(string: s.imageURL), !s.imageURL.isEmpty {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            default:
+                                Color.secondary.opacity(0.1)
                             }
-                            .frame(width: 56, height: 56)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(s.name)
-                                .font(.subheadline.bold())
-                            if !s.wikiDescription.isEmpty {
-                                Text(s.wikiDescription)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+                        .frame(width: 56, height: 56)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.name)
+                            .font(.subheadline.bold())
+                        if !s.wikiDescription.isEmpty {
+                            Text(s.wikiDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
-            } else {
-                let names = visit.sightings.map(\.name).filter { !$0.isEmpty }.joined(separator: ", ")
-                if !names.isEmpty {
-                    Text(names)
-                        .font(.subheadline.bold())
-                        .lineLimit(1)
-                }
             }
 
-            // Tags — only when expanded
-            if isExpanded && !visit.tags.isEmpty {
+            // Tags
+            if !visit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {
                         ForEach(visit.tags, id: \.self) { tag in
@@ -617,10 +592,7 @@ private struct TripVisitRowView: View {
         .background(isFocused ? Color.pink.opacity(0.06) : .clear)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { onEdit() }
-        .onTapGesture(count: 1) {
-            onToggleExpand()
-            onFocus()
-        }
+        .onTapGesture(count: 1) { onFocus() }
         .contextMenu {
             Button("Edit Sighting") { onEdit() }
             Button("Delete", role: .destructive) { confirmDelete = true }
