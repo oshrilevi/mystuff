@@ -68,8 +68,7 @@ struct TripDetailView: View {
                         }
                     }
                 }
-                .environment(\.layoutDirection, .rightToLeft)
-                .multilineTextAlignment(.leading)
+                .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(isPresented: $showAddVisit) {
                 TripVisitFormSheet(visit: nil, locations: orderedLocations) { locationId, date, summary, tags in
@@ -87,6 +86,7 @@ struct TripDetailView: View {
                     updated.longitude = lon
                     Task { await tripsVM.updateTripLocation(updated) }
                 }
+                .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $newLocationCoord) { item in
                 TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon in
@@ -101,6 +101,7 @@ struct TripDetailView: View {
                         }
                     }
                 }
+                .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $editingVisit) { visit in
                 TripVisitFormSheet(visit: visit, locations: orderedLocations) { locationId, date, summary, tags in
