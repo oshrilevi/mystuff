@@ -753,15 +753,12 @@ private struct SightingPopupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
-            HStack(alignment: .top) {
-                HStack(spacing: 6) {
-                    Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
-                    if !visit.timeOfDay.isEmpty {
-                        TimeOfDayIcon(rawValue: visit.timeOfDay)
-                    }
+            HStack {
+                Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
+                if !visit.timeOfDay.isEmpty {
+                    TimeOfDayIcon(rawValue: visit.timeOfDay)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+                Spacer()
                 Button { onDismiss() } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
@@ -815,8 +812,6 @@ private struct SightingPopupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 400)
-        .contentShape(RoundedRectangle(cornerRadius: 14))
-        .onTapGesture {}
     }
 }
 
@@ -933,7 +928,7 @@ private struct SpeciesGroupRowView: View {
                         Text(group.wikiDescription)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(isFocused ? nil : 2)
+                            .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -1019,7 +1014,7 @@ private struct SpeciesAggregatedPopupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
-            HStack(alignment: .top) {
+            HStack {
                 HStack(alignment: .top, spacing: 10) {
                     if let url = URL(string: group.imageURL), !group.imageURL.isEmpty {
                         AsyncImage(url: url) { phase in
@@ -1037,15 +1032,11 @@ private struct SpeciesAggregatedPopupCard: View {
                         }
                         if !group.wikiDescription.isEmpty {
                             Text(group.wikiDescription)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+                Spacer()
                 Button { onDismiss() } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
@@ -1115,10 +1106,6 @@ private struct SpeciesAggregatedPopupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 420)
-        // Absorb all taps so they don't propagate through to the Map below.
-        // Child gestures (buttons, links, the description button) still win.
-        .contentShape(RoundedRectangle(cornerRadius: 14))
-        .onTapGesture {}
     }
 }
 
