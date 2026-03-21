@@ -1047,7 +1047,7 @@ private struct SpeciesAggregatedPopupCard: View {
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
             LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
                 alignment: .leading,
                 spacing: 4
             ) {
