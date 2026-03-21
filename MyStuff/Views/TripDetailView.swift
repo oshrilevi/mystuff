@@ -812,6 +812,8 @@ private struct SightingPopupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 400)
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture {}
     }
 }
 
@@ -1032,12 +1034,18 @@ private struct SpeciesAggregatedPopupCard: View {
                             Text(group.name).font(.headline.bold())
                         }
                         if !group.wikiDescription.isEmpty {
-                            Text(group.wikiDescription)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(descExpanded ? nil : 2)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { descExpanded = true } }
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) { descExpanded = true }
+                            } label: {
+                                Text(group.wikiDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(descExpanded ? nil : 2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(descExpanded)
                         }
                     }
                 }
@@ -1111,6 +1119,10 @@ private struct SpeciesAggregatedPopupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 420)
+        // Absorb all taps so they don't propagate through to the Map below.
+        // Child gestures (buttons, links, the description button) still win.
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture {}
     }
 }
 
