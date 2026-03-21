@@ -329,11 +329,13 @@ struct TripsView: View {
     // MARK: - Pane data
 
     private var filteredTripsForPane: [Trip] {
-        guard !tripsFilter.isEmpty else { return tripsVM.filteredTrips }
-        let q = tripsFilter.lowercased()
-        return tripsVM.filteredTrips.filter {
-            $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
-        }
+        let base = tripsFilter.isEmpty ? tripsVM.filteredTrips : {
+            let q = tripsFilter.lowercased()
+            return tripsVM.filteredTrips.filter {
+                $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
+            }
+        }()
+        return base.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
     }
 
     private var filteredLocationsForPane: [(location: TripLocation, tripName: String)] {
