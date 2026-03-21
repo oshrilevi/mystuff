@@ -44,7 +44,7 @@ struct TripsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if tripsVM.trips.isEmpty {
                     ContentUnavailableView(
-                        "No Shooting Locations Yet",
+                        "No Field Journal Entries Yet",
                         systemImage: "map",
                         description: Text("Tap + to add your first location.")
                     )
@@ -56,7 +56,7 @@ struct TripsView: View {
                     #endif
                 }
             }
-            .navigationTitle("Shooting Locations")
+            .navigationTitle("Field Journal")
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
@@ -989,7 +989,7 @@ struct TripFormSheet: View {
                 }
             }
             .formStyle(.grouped)
-            .navigationTitle(trip == nil ? "New Shooting Location" : "Edit Shooting Location")
+            .navigationTitle(trip == nil ? "New Journal Entry" : "Edit Journal Entry")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

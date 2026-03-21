@@ -116,7 +116,7 @@ struct MainTabView: View {
                 NavigationLink(value: MainSidebarSelection.items) { Label("My Stuff", systemImage: "square.grid.2x2") }
                 NavigationLink(value: MainSidebarSelection.combos) { Label("Combos", systemImage: "square.stack.3d.up") }
                 NavigationLink(value: MainSidebarSelection.lists) { Label("My Lists", systemImage: "checklist") }
-                NavigationLink(value: MainSidebarSelection.trips) { Label("Shooting Locations", systemImage: "map") }
+                NavigationLink(value: MainSidebarSelection.trips) { Label("Field Journal", systemImage: "binoculars") }
                 Section("Media") {
                     NavigationLink(value: MainSidebarSelection.youtube) {
                         Label {
