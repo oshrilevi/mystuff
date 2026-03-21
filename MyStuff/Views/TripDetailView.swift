@@ -989,6 +989,9 @@ private struct SpeciesAggregatedPopupCard: View {
     let matchingVisits: [TripVisit]
     let onDismiss: () -> Void
 
+    @State private var obsExpanded = false
+    private static let collapsedLimit = 4
+
     private static let parseFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
     }()
@@ -1048,7 +1051,10 @@ private struct SpeciesAggregatedPopupCard: View {
                 alignment: .leading,
                 spacing: 4
             ) {
-                ForEach(Array(group.observations.enumerated()), id: \.offset) { _, obs in
+                let visible = obsExpanded
+                    ? Array(group.observations.enumerated())
+                    : Array(group.observations.prefix(Self.collapsedLimit).enumerated())
+                ForEach(visible, id: \.offset) { _, obs in
                     HStack(spacing: 4) {
                         Image(systemName: "calendar").font(.caption2).foregroundStyle(.tertiary)
                         Text(fmt(obs.date)).font(.caption).foregroundStyle(.secondary)
@@ -1057,6 +1063,22 @@ private struct SpeciesAggregatedPopupCard: View {
                         }
                     }
                 }
+            }
+            if group.observations.count > Self.collapsedLimit {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { obsExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: obsExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption2)
+                        Text(obsExpanded
+                             ? "הצג פחות"
+                             : "הצג עוד \(group.observations.count - Self.collapsedLimit)")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
             }
 
             // Photos
