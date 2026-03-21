@@ -1043,13 +1043,16 @@ private struct SpeciesAggregatedPopupCard: View {
             Text("תצפיות")
                 .font(.caption.bold())
                 .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 4) {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                alignment: .leading,
+                spacing: 4
+            ) {
                 ForEach(Array(group.observations.enumerated()), id: \.offset) { _, obs in
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Image(systemName: "calendar").font(.caption2).foregroundStyle(.tertiary)
                         Text(fmt(obs.date)).font(.caption).foregroundStyle(.secondary)
                         if !obs.timeOfDay.isEmpty {
-                            Text("·").foregroundStyle(.tertiary)
                             TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
                         }
                     }
