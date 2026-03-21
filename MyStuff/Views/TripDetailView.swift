@@ -998,7 +998,6 @@ private struct SpeciesAggregatedPopupCard: View {
     let onDismiss: () -> Void
 
     @State private var obsExpanded = false
-    @State private var descExpanded = false
     private static let collapsedLimit = 3
 
     private static let parseFmt: DateFormatter = {
@@ -1037,18 +1036,11 @@ private struct SpeciesAggregatedPopupCard: View {
                             Text(group.name).font(.headline.bold())
                         }
                         if !group.wikiDescription.isEmpty {
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) { descExpanded = true }
-                            } label: {
-                                Text(group.wikiDescription)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(descExpanded ? nil : 2)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(descExpanded)
+                            Text(group.wikiDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 }
