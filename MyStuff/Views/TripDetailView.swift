@@ -654,9 +654,7 @@ private struct TripVisitRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if !visit.timeOfDay.isEmpty {
-                    Label(TimeOfDay(rawValue: visit.timeOfDay)?.hebrewLabel ?? visit.timeOfDay, systemImage: "clock")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    TimeOfDayIcon(rawValue: visit.timeOfDay)
                 }
                 Spacer()
                 if !visit.photoIds.isEmpty {
@@ -760,7 +758,7 @@ private struct SightingPopupCard: View {
             HStack {
                 Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
                 if !visit.timeOfDay.isEmpty {
-                    Label(TimeOfDay(rawValue: visit.timeOfDay)?.hebrewLabel ?? visit.timeOfDay, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
+                    TimeOfDayIcon(rawValue: visit.timeOfDay)
                 }
                 Spacer()
                 Button { onDismiss() } label: {
@@ -953,14 +951,7 @@ private struct SpeciesGroupRowView: View {
                                 .foregroundStyle(.secondary)
                         }
                         if !obs.timeOfDay.isEmpty {
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock")
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                Text(TimeOfDay(rawValue: obs.timeOfDay)?.hebrewLabel ?? obs.timeOfDay)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
                         }
                     }
                 }
@@ -1061,9 +1052,7 @@ private struct SpeciesAggregatedPopupCard: View {
                         Text(fmt(obs.date)).font(.caption).foregroundStyle(.secondary)
                         if !obs.timeOfDay.isEmpty {
                             Text("·").foregroundStyle(.tertiary)
-                            Image(systemName: "clock").font(.caption2).foregroundStyle(.tertiary)
-                            Text(TimeOfDay(rawValue: obs.timeOfDay)?.hebrewLabel ?? obs.timeOfDay)
-                                .font(.caption).foregroundStyle(.secondary)
+                            TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
                         }
                     }
                 }
@@ -1091,6 +1080,24 @@ private struct SpeciesAggregatedPopupCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 420)
+    }
+}
+
+// MARK: - Time-of-day icon
+
+/// Shows the SF Symbol that matches the time-of-day slot.
+/// Hovering reveals the Hebrew label as a tooltip.
+private struct TimeOfDayIcon: View {
+    let rawValue: String
+    var fontSize: Font = .caption
+
+    private var tod: TimeOfDay? { TimeOfDay(rawValue: rawValue) }
+
+    var body: some View {
+        Image(systemName: tod?.systemImage ?? "clock")
+            .font(fontSize)
+            .foregroundStyle(.secondary)
+            .help(tod?.hebrewLabel ?? rawValue)
     }
 }
 

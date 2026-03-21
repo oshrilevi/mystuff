@@ -53,6 +53,17 @@ enum TimeOfDay: String, CaseIterable, Identifiable {
         case .night:     return "לילה"
         }
     }
+
+    var systemImage: String {
+        switch self {
+        case .dawn:      return "sun.horizon"
+        case .morning:   return "sun.min.fill"
+        case .midday:    return "sun.max.fill"
+        case .afternoon: return "sun.haze.fill"
+        case .dusk:      return "sun.horizon.fill"
+        case .night:     return "moon.stars.fill"
+        }
+    }
 }
 
 // MARK: - TripVisit
