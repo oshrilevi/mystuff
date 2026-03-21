@@ -753,12 +753,15 @@ private struct SightingPopupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
-            HStack {
-                Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
-                if !visit.timeOfDay.isEmpty {
-                    TimeOfDayIcon(rawValue: visit.timeOfDay)
+            HStack(alignment: .top) {
+                HStack(spacing: 6) {
+                    Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
+                    if !visit.timeOfDay.isEmpty {
+                        TimeOfDayIcon(rawValue: visit.timeOfDay)
+                    }
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 Button { onDismiss() } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
@@ -1017,7 +1020,7 @@ private struct SpeciesAggregatedPopupCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header
-            HStack {
+            HStack(alignment: .top) {
                 HStack(alignment: .top, spacing: 10) {
                     if let url = URL(string: group.imageURL), !group.imageURL.isEmpty {
                         AsyncImage(url: url) { phase in
@@ -1049,7 +1052,8 @@ private struct SpeciesAggregatedPopupCard: View {
                         }
                     }
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 Button { onDismiss() } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                 }
