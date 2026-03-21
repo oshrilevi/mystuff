@@ -269,18 +269,10 @@ private struct ModernTripMapView: View {
         self.onSightingTapped = onSightingTapped
         self.onMapLongPress = onMapLongPress
         self.onSightingLongPress = onSightingLongPress
-        // When there are no locations to animate to, start directly at the initial
-        // region (e.g. the trip's own fallback coordinate).
-        // Otherwise start far-zoomed-out so MapKit is guaranteed to trigger a full
-        // annotation-layer render when the camera first moves to the focused pin.
-        if coordinatedLocations.isEmpty {
-            _cameraPosition = State(initialValue: .region(initialRegion))
-        } else {
-            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-                span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 180)
-            )))
-        }
+        // Start the camera at the region that fits all locations so that annotations
+        // are within the viewport and render immediately. The .task below then
+        // smoothly animates to the focused pin.
+        _cameraPosition = State(initialValue: .region(initialRegion))
     }
 
     var body: some View {

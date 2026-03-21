@@ -4,6 +4,8 @@ import MapKit
 struct TripDetailView: View {
     @EnvironmentObject var session: Session
     var trip: Trip
+    var initialFocusedLocationId: String? = nil
+    var initialSelectedSpeciesName: String? = nil
 
     @State private var editingTrip = false
     @State private var showAddLocation = false
@@ -62,8 +64,14 @@ struct TripDetailView: View {
             .navigationBarTitleDisplayMode(.large)
             #endif
             .onAppear {
-                if focusedLocationId == nil {
+                if let loc = initialFocusedLocationId {
+                    focusedLocationId = loc
+                } else if focusedLocationId == nil {
                     focusedLocationId = orderedLocations.first(where: { $0.latitude != nil })?.id
+                }
+                if let species = initialSelectedSpeciesName {
+                    selectedSpeciesName = species
+                    sightingViewMode = .bySpecies
                 }
             }
             .onChange(of: orderedLocations) { _, newLocations in

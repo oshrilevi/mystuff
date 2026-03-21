@@ -1,13 +1,34 @@
 import SwiftUI
 import MapKit
 
+// MARK: - Navigation item
+
+private struct TripNavItem: Identifiable, Hashable {
+    let id = UUID()
+    let trip: Trip
+    let focusedLocationId: String?
+    let selectedSpeciesName: String?
+
+    init(trip: Trip, focusedLocationId: String? = nil, selectedSpeciesName: String? = nil) {
+        self.trip = trip
+        self.focusedLocationId = focusedLocationId
+        self.selectedSpeciesName = selectedSpeciesName
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
+// MARK: - Main view
+
 struct TripsView: View {
     @EnvironmentObject var session: Session
     @State private var showAddTrip = false
-    @State private var selectedTrip: Trip?
     @State private var editingTrip: Trip?
     @State private var tripPendingDelete: Trip?
     @State private var deletingTripId: String?
+    @State private var selectedNavItem: TripNavItem?
+    @State private var speciesTripPickerName: String? = nil
     @AppStorage("lastSelectedTripId") private var lastSelectedTripId: String = ""
 
     private var tripsVM: TripsViewModel { session.trips }
@@ -25,7 +46,11 @@ struct TripsView: View {
                         description: Text("Tap + to add your first location.")
                     )
                 } else {
+                    #if os(macOS)
+                    threePaneLayout
+                    #else
                     tripGrid
+                    #endif
                 }
             }
             .navigationTitle("Shooting Locations")
@@ -90,24 +115,51 @@ struct TripsView: View {
             } message: {
                 Text("This cannot be undone.")
             }
-            .navigationDestination(item: $selectedTrip) { trip in
-                TripDetailView(trip: trip)
-                    .environment(\.layoutDirection, .rightToLeft)
-                    .multilineTextAlignment(.leading)
+            .confirmationDialog(
+                speciesTripPickerName.map { "בחר אתר עבור \($0)" } ?? "",
+                isPresented: Binding(
+                    get: { speciesTripPickerName != nil },
+                    set: { if !$0 { speciesTripPickerName = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let name = speciesTripPickerName {
+                    let matchingTrips = tripsVM.filteredTrips.filter { trip in
+                        tripsVM.visits(for: trip).contains(where: { $0.sightings.contains(where: { $0.name == name }) })
+                    }
+                    ForEach(matchingTrips) { trip in
+                        Button(trip.name) {
+                            selectedNavItem = TripNavItem(trip: trip, selectedSpeciesName: name)
+                            speciesTripPickerName = nil
+                        }
+                    }
+                }
             }
-            .onChange(of: selectedTrip) { _, trip in
-                lastSelectedTripId = trip?.id ?? ""
+            .navigationDestination(item: $selectedNavItem) { item in
+                TripDetailView(
+                    trip: item.trip,
+                    initialFocusedLocationId: item.focusedLocationId,
+                    initialSelectedSpeciesName: item.selectedSpeciesName
+                )
+                .environment(\.layoutDirection, .rightToLeft)
+                .multilineTextAlignment(.leading)
+            }
+            .onChange(of: selectedNavItem) { _, item in
+                lastSelectedTripId = item?.trip.id ?? ""
             }
             .task {
                 await tripsVM.load()
-                // Restore the last selected trip once data is available
-                if selectedTrip == nil, !lastSelectedTripId.isEmpty {
-                    selectedTrip = tripsVM.trips.first { $0.id == lastSelectedTripId }
+                if selectedNavItem == nil, !lastSelectedTripId.isEmpty {
+                    if let trip = tripsVM.trips.first(where: { $0.id == lastSelectedTripId }) {
+                        selectedNavItem = TripNavItem(trip: trip)
+                    }
                 }
             }
             .refreshable { await tripsVM.load() }
         }
     }
+
+    // MARK: - iOS Grid
 
     private static let gridColumns = [
         GridItem(.flexible(), spacing: 16),
@@ -141,14 +193,371 @@ struct TripsView: View {
                             onDelete: { tripPendingDelete = trip }
                         )
                         .contentShape(RoundedRectangle(cornerRadius: 12))
-                        .onTapGesture { if deletingTripId != trip.id { selectedTrip = trip } }
+                        .onTapGesture {
+                            if deletingTripId != trip.id {
+                                selectedNavItem = TripNavItem(trip: trip)
+                            }
+                        }
                     }
                 }
                 .padding(16)
             }
         }
     }
+
+    // MARK: - macOS Three-Pane Layout
+
+    #if os(macOS)
+    private var threePaneLayout: some View {
+        HSplitView {
+            allSpeciesPane
+                .frame(minWidth: 200, idealWidth: 280)
+            allLocationsPane
+                .frame(minWidth: 180, idealWidth: 250, maxWidth: 360)
+            tripsListPane
+                .frame(minWidth: 180, idealWidth: 230, maxWidth: 320)
+        }
+        .environment(\.layoutDirection, .rightToLeft)
+    }
+
+    // Right pane (RTL): shooting locations (trips)
+    private var tripsListPane: some View {
+        VStack(spacing: 0) {
+            paneHeader("אתרי צילום", count: tripsVM.filteredTrips.count)
+            if tripsVM.filteredTrips.isEmpty {
+                emptyPane(label: "אין תוצאות")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(tripsVM.filteredTrips) { trip in
+                            TripListRow(
+                                trip: trip,
+                                locationCount: tripsVM.locations(for: trip).count,
+                                visitCount: tripsVM.visits(for: trip).count,
+                                isSelected: selectedNavItem?.trip.id == trip.id,
+                                isDeleting: deletingTripId == trip.id,
+                                onEdit: { editingTrip = trip },
+                                onDelete: { tripPendingDelete = trip }
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if deletingTripId != trip.id {
+                                    selectedNavItem = TripNavItem(trip: trip)
+                                }
+                            }
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    // Center pane: all TripLocations across filtered trips
+    private var allLocationsPane: some View {
+        VStack(spacing: 0) {
+            paneHeader("אתרים", count: allFilteredLocations.count)
+            if allFilteredLocations.isEmpty {
+                emptyPane(label: "אין אתרים")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(allFilteredLocations, id: \.location.id) { item in
+                            GlobalLocationRow(location: item.location, tripName: item.tripName)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if let trip = tripsVM.trips.first(where: { $0.locationIds.contains(item.location.id) }) {
+                                        selectedNavItem = TripNavItem(trip: trip, focusedLocationId: item.location.id)
+                                    }
+                                }
+                            Divider().padding(.trailing, 52)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    // Left pane (RTL): aggregated species observations across all filtered trips
+    private var allSpeciesPane: some View {
+        VStack(spacing: 0) {
+            paneHeader("תצפיות", count: allSpeciesGroups.count)
+            if allSpeciesGroups.isEmpty {
+                emptyPane(label: "אין תצפיות")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(allSpeciesGroups, id: \.name) { species in
+                            GlobalSpeciesRow(
+                                name: species.name,
+                                imageURL: species.imageURL,
+                                wikiURL: species.wikiURL,
+                                wikiDescription: species.desc,
+                                totalCount: species.count,
+                                tripCount: species.matchingTripIds.count
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if species.matchingTripIds.count > 1 {
+                                    speciesTripPickerName = species.name
+                                } else if let tripId = species.matchingTripIds.first,
+                                          let trip = tripsVM.trips.first(where: { $0.id == tripId }) {
+                                    selectedNavItem = TripNavItem(trip: trip, selectedSpeciesName: species.name)
+                                }
+                            }
+                            .contextMenu {
+                                ForEach(species.matchingTripIds, id: \.self) { tripId in
+                                    if let trip = tripsVM.trips.first(where: { $0.id == tripId }) {
+                                        Button(trip.name) {
+                                            selectedNavItem = TripNavItem(trip: trip, selectedSpeciesName: species.name)
+                                        }
+                                    }
+                                }
+                            }
+                            Divider().padding(.trailing, 52)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    // MARK: - Pane data
+
+    private var allFilteredLocations: [(location: TripLocation, tripName: String)] {
+        var seen = Set<String>()
+        var result: [(TripLocation, String)] = []
+        for trip in tripsVM.filteredTrips {
+            for locId in trip.locationIds {
+                guard let loc = tripsVM.tripLocations.first(where: { $0.id == locId }),
+                      !seen.contains(locId) else { continue }
+                seen.insert(locId)
+                result.append((loc, trip.name))
+            }
+        }
+        return result.sorted { $0.0.name.localizedCompare($1.0.name) == .orderedAscending }
+    }
+
+    private struct SpeciesAgg {
+        let name: String
+        let imageURL: String
+        let wikiURL: String
+        let desc: String
+        let count: Int
+        let matchingTripIds: [String]
+    }
+
+    private var allSpeciesGroups: [SpeciesAgg] {
+        var dict: [String: (imageURL: String, wikiURL: String, desc: String, count: Int, tripIds: [String])] = [:]
+        for trip in tripsVM.filteredTrips {
+            for visit in tripsVM.visits(for: trip) {
+                for s in visit.sightings where !s.name.isEmpty {
+                    if dict[s.name] == nil {
+                        dict[s.name] = (s.imageURL, s.wikiURL, s.wikiDescription, 1, [trip.id])
+                    } else {
+                        dict[s.name]!.count += 1
+                        if !dict[s.name]!.tripIds.contains(trip.id) {
+                            dict[s.name]!.tripIds.append(trip.id)
+                        }
+                    }
+                }
+            }
+        }
+        return dict.map { SpeciesAgg(name: $0.key, imageURL: $0.value.imageURL, wikiURL: $0.value.wikiURL, desc: $0.value.desc, count: $0.value.count, matchingTripIds: $0.value.tripIds) }
+            .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+    }
+
+    // MARK: - Pane helpers
+
+    @ViewBuilder
+    private func paneHeader(_ title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(.subheadline.bold())
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text("\(count)")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.bar)
+        Divider()
+    }
+
+    private func emptyPane(label: String) -> some View {
+        Text(label)
+            .foregroundStyle(.tertiary)
+            .font(.subheadline)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding()
+    }
+    #endif
 }
+
+// MARK: - macOS pane row views
+
+#if os(macOS)
+private struct TripListRow: View {
+    let trip: Trip
+    let locationCount: Int
+    let visitCount: Int
+    let isSelected: Bool
+    let isDeleting: Bool
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(trip.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !trip.description.isEmpty {
+                    Text(trip.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                HStack(spacing: 8) {
+                    if locationCount > 0 {
+                        Label("\(locationCount)", systemImage: "mappin")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if visitCount > 0 {
+                        Label("\(visitCount)", systemImage: "eye")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if isDeleting {
+                ProgressView().scaleEffect(0.7)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(isSelected ? Color.accentColor.opacity(0.08) : .clear)
+        .opacity(isDeleting ? 0.5 : 1)
+        .environment(\.layoutDirection, .rightToLeft)
+        .multilineTextAlignment(.leading)
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button { onEdit() } label: { Label("ערוך", systemImage: "pencil") }
+            Divider()
+            Button(role: .destructive) { onDelete() } label: { Label("מחק", systemImage: "trash") }
+        }
+    }
+}
+
+private struct GlobalLocationRow: View {
+    let location: TripLocation
+    let tripName: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(location.type.color.opacity(0.15))
+                    .frame(width: 32, height: 32)
+                Image(systemName: location.type.systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(location.type.color)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(location.name)
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(tripName)
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                    .lineLimit(1)
+                if !location.description.isEmpty {
+                    Text(location.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+private struct GlobalSpeciesRow: View {
+    let name: String
+    let imageURL: String
+    let wikiURL: String
+    let wikiDescription: String
+    let totalCount: Int
+    var tripCount: Int = 1
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            if let url = URL(string: imageURL), !imageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    if case .success(let img) = phase {
+                        img.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        Color.secondary.opacity(0.1)
+                    }
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.secondary.opacity(0.1))
+                    .frame(width: 40, height: 40)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(.subheadline.bold())
+                    Text("×\(totalCount)")
+                        .font(.caption2)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        .foregroundStyle(Color.accentColor)
+                    if tripCount > 1 {
+                        Image(systemName: "camera.on.rectangle")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .help("\(tripCount) אתרי צילום")
+                    }
+                }
+                if !wikiDescription.isEmpty {
+                    Text(wikiDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+    }
+}
+#endif
+
+// MARK: - Trip card (iOS grid)
 
 private struct TripCardView: View {
     let trip: Trip
@@ -348,6 +757,8 @@ private struct TripCardView: View {
         }
     }
 }
+
+// MARK: - Trip form
 
 struct TripFormSheet: View {
     let trip: Trip?
