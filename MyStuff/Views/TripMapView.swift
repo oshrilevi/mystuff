@@ -159,7 +159,6 @@ private struct MapStylePicker: View {
 private struct TripMapPin: View {
     let index: Int
     let isFocused: Bool
-    let onTap: () -> Void
 
     var body: some View {
         let pinColor: Color = isFocused ? .orange : .accentColor
@@ -173,7 +172,6 @@ private struct TripMapPin: View {
                 .font(.caption.bold())
                 .foregroundStyle(.white)
         }
-        .onTapGesture { onTap() }
     }
 }
 
@@ -207,27 +205,27 @@ private struct ModernTripMapView: View {
         self.mapStyle = mapStyle
         self.onLocationTapped = onLocationTapped
         self.onMapLongPress = onMapLongPress
-        if let focusedId = focusedLocationId,
-           let item = coordinatedLocations.first(where: { $0.location.id == focusedId }) {
-            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-                center: item.coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            )))
-        } else {
-            _cameraPosition = State(initialValue: .region(initialRegion))
-        }
+        // Start far-zoomed-out so the camera always makes a meaningful move to the
+        // focused pin on appear — MapKit only renders annotation views after the
+        // camera position state changes at least once post-appear.
+        _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+            span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 180)
+        )))
     }
 
     var body: some View {
         MapReader { proxy in
             Map(position: $cameraPosition) {
                 ForEach(coordinatedLocations, id: \.location.id) { item in
-                    Annotation(item.location.name, coordinate: item.coord) {
-                        TripMapPin(
-                            index: item.index,
-                            isFocused: item.location.id == focusedLocationId,
-                            onTap: { onLocationTapped?(item.location.id) }
-                        )
+                    Annotation(item.location.name, coordinate: item.coord, anchor: .center) {
+                        Button { onLocationTapped?(item.location.id) } label: {
+                            TripMapPin(
+                                index: item.index,
+                                isFocused: item.location.id == focusedLocationId
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -264,10 +262,16 @@ private struct ModernTripMapView: View {
                     }
             )
             #endif
-            .onChange(of: focusedLocationId) { _, newId in
-                guard let newId,
-                      let item = coordinatedLocations.first(where: { $0.location.id == newId }) else { return }
-                withAnimation(.easeInOut(duration: 0.5)) {
+            // After MapKit finishes its first layout pass, animate to the focused pin.
+            // The transition from the world-view initial position guarantees MapKit
+            // triggers a full annotation-layer render.
+            .task(id: focusedLocationId) {
+                guard let id = focusedLocationId,
+                      let item = coordinatedLocations.first(where: { $0.location.id == id })
+                else { return }
+                try? await Task.sleep(for: .milliseconds(50))
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeInOut(duration: 0.4)) {
                     cameraPosition = .region(MKCoordinateRegion(
                         center: item.coord,
                         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
