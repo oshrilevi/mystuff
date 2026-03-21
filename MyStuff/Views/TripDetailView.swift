@@ -7,13 +7,15 @@ struct TripDetailView: View {
 
     @State private var editingTrip = false
     @State private var showAddLocation = false
-    @State private var showAddVisit = false
     @State private var editingLocation: TripLocation?
     @State private var editingVisit: TripVisit?
     @State private var focusedLocationId: String? = nil
+    @State private var focusedSightingId: String? = nil
     @State private var newLocationCoord: IdentifiableCoordinate? = nil
+    @State private var newSightingCoord: IdentifiableCoordinate? = nil
     @State private var headerHovered = false
     @State private var selectedTypes: Set<LocationType> = Set(LocationType.allCases)
+    @State private var showSightingsOnMap = true
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -82,11 +84,6 @@ struct TripDetailView: View {
                 }
                 .environment(\.layoutDirection, .leftToRight)
             }
-            .sheet(isPresented: $showAddVisit) {
-                TripVisitFormSheet(visit: nil, locations: orderedLocations) { locationId, date, summary, tags in
-                    Task { await tripsVM.addVisit(tripId: currentTrip.id, locationId: locationId, date: date, summary: summary, tags: tags) }
-                }
-            }
             .sheet(item: $editingLocation) { loc in
                 TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type in
                     var updated = loc
@@ -117,13 +114,20 @@ struct TripDetailView: View {
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $editingVisit) { visit in
-                TripVisitFormSheet(visit: visit, locations: orderedLocations) { locationId, date, summary, tags in
+                TripVisitFormSheet(visit: visit) { sightings, lat, lon, date, timeOfDay, tags in
                     var updated = visit
-                    updated.locationId = locationId
+                    updated.sightings = sightings
+                    updated.latitude = lat
+                    updated.longitude = lon
                     updated.date = date
-                    updated.summary = summary
+                    updated.timeOfDay = timeOfDay
                     updated.tags = tags
                     Task { await tripsVM.updateVisit(updated) }
+                }
+            }
+            .sheet(item: $newSightingCoord) { item in
+                TripVisitFormSheet(visit: nil, initialCoordinate: item.coordinate) { sightings, lat, lon, date, timeOfDay, tags in
+                    Task { await tripsVM.addVisit(tripId: currentTrip.id, sightings: sightings, latitude: lat, longitude: lon, date: date, timeOfDay: timeOfDay, tags: tags) }
                 }
             }
     }
@@ -139,9 +143,12 @@ struct TripDetailView: View {
             Divider()
             TripMapView(
                 locations: filteredLocations,
+                sightings: showSightingsOnMap ? visits : [],
                 focusedLocationId: focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id,
+                focusedSightingId: focusedSightingId,
                 onLocationTapped: { id in focusedLocationId = id },
-                onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) }
+                onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
+                onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
             )
         }
         #else
@@ -149,9 +156,11 @@ struct TripDetailView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TripMapView(
                     locations: filteredLocations,
+                    sightings: showSightingsOnMap ? visits : [],
                     focusedLocationId: focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id,
                     onLocationTapped: { id in focusedLocationId = id },
-                    onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) }
+                    onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
+                    onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
                 )
                 .frame(height: 280)
                 leftPaneContent
@@ -222,10 +231,24 @@ struct TripDetailView: View {
                     ) {
                         if selectedTypes.contains(t) { selectedTypes.remove(t) } else { selectedTypes.insert(t) }
                     }
-                    if idx < LocationType.sorted.count - 1 {
-                        Divider().frame(height: 36)
-                    }
+                    Divider().frame(height: 36)
                 }
+                // Sightings visibility toggle
+                Button {
+                    showSightingsOnMap.toggle()
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: showSightingsOnMap ? "eye.fill" : "eye.slash")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("\(visits.count)")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .frame(width: 40, height: 36)
+                    .foregroundStyle(showSightingsOnMap ? .white : .primary)
+                    .background(showSightingsOnMap ? Color.pink : Color.secondary.opacity(0.12))
+                }
+                .buttonStyle(.plain)
+                .help(showSightingsOnMap ? "Hide sightings" : "Show sightings")
             }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator, lineWidth: 0.5))
@@ -283,22 +306,13 @@ struct TripDetailView: View {
 
     private var visitsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Sightings")
-                    .font(.title3.bold())
-                Spacer()
-                Button { showAddVisit = true } label: {
-                    Label("Add", systemImage: "plus")
-                        .labelStyle(.iconOnly)
-                }
-                .help("Log a sighting")
-                .disabled(orderedLocations.isEmpty)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
+            Text("Sightings")
+                .font(.title3.bold())
+                .padding(.horizontal)
+                .padding(.bottom, 8)
 
             if visits.isEmpty {
-                Text("No sightings logged yet.")
+                Text("Right-click on the map to log a sighting.")
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                     .padding(.vertical, 8)
@@ -306,7 +320,10 @@ struct TripDetailView: View {
                 ForEach(visits) { visit in
                     TripVisitRowView(
                         visit: visit,
-                        location: tripsVM.tripLocations.first { $0.id == visit.locationId },
+                        isFocused: focusedSightingId == visit.id,
+                        onFocus: {
+                            if visit.latitude != nil { focusedSightingId = visit.id }
+                        },
                         onEdit: { editingVisit = visit },
                         onDelete: { Task { await tripsVM.deleteVisit(id: visit.id) } }
                     )
@@ -374,6 +391,8 @@ private struct TripLocationRowView: View {
     let onEdit: () -> Void
     let onRemove: () -> Void
 
+    @State private var confirmRemove = false
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Pin badge — tap focuses on map
@@ -423,7 +442,13 @@ private struct TripLocationRowView: View {
         .background(isFocused ? Color.accentColor.opacity(0.06) : .clear)
         .contextMenu {
             Button("Edit Location") { onEdit() }
+            Button("Remove", role: .destructive) { confirmRemove = true }
+        }
+        .alert("Remove \"\(location.name)\"?", isPresented: $confirmRemove) {
             Button("Remove", role: .destructive) { onRemove() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This location will be removed from the trip.")
         }
         Divider()
             .padding(.leading, 52)
@@ -434,9 +459,13 @@ private struct TripLocationRowView: View {
 
 private struct TripVisitRowView: View {
     let visit: TripVisit
-    let location: TripLocation?
+    var isFocused: Bool = false
+    let onFocus: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+
+    @State private var isExpanded = false
+    @State private var confirmDelete = false
 
     private static let displayFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -445,45 +474,60 @@ private struct TripVisitRowView: View {
         return f
     }()
 
-    private static let parseFormatter: DateFormatter = {
+    private static let parseDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         return f
     }()
 
     private var formattedDate: String {
-        guard let d = Self.parseFormatter.date(from: visit.date) else { return visit.date }
+        guard let d = Self.parseDateFormatter.date(from: visit.date) else { return visit.date }
         return Self.displayFormatter.string(from: d)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(formattedDate)
-                        .font(.subheadline.bold())
-                    if let loc = location {
-                        Label(loc.name, systemImage: "mappin")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+            // Date + time of day — always visible
+            HStack(spacing: 6) {
+                Label(formattedDate, systemImage: "calendar")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !visit.timeOfDay.isEmpty {
+                    Label(visit.timeOfDay, systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Menu {
-                    Button("Edit") { onEdit() }
-                    Button("Delete", role: .destructive) { onDelete() }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .padding(8)
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            // Species list
+            if isExpanded {
+                ForEach(visit.sightings) { s in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.name)
+                            .font(.subheadline.bold())
+                        if !s.wikiDescription.isEmpty {
+                            Text(s.wikiDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
+            } else {
+                let names = visit.sightings.map(\.name).filter { !$0.isEmpty }.joined(separator: ", ")
+                if !names.isEmpty {
+                    Text(names)
+                        .font(.subheadline.bold())
+                        .lineLimit(1)
+                }
             }
-            if !visit.summary.isEmpty {
-                Text(visit.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-            }
-            if !visit.tags.isEmpty {
+
+            // Tags — only when expanded
+            if isExpanded && !visit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 4) {
                         ForEach(visit.tags, id: \.self) { tag in
@@ -500,6 +544,27 @@ private struct TripVisitRowView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+        .background(isFocused ? Color.pink.opacity(0.06) : .clear)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { onEdit() }
+        .onTapGesture(count: 1) {
+            withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            onFocus()
+        }
+        .onChange(of: isFocused) { _, focused in
+            if focused { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = true } }
+        }
+        .contextMenu {
+            Button("Edit Sighting") { onEdit() }
+            Button("Delete", role: .destructive) { confirmDelete = true }
+        }
+        .alert("Delete this sighting?", isPresented: $confirmDelete) {
+            Button("Delete", role: .destructive) { onDelete() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            let names = visit.sightings.map(\.name).filter { !$0.isEmpty }.joined(separator: ", ")
+            Text(names.isEmpty ? "This sighting will be permanently deleted." : "\"\(names)\" will be permanently deleted.")
+        }
         Divider()
             .padding(.leading)
     }

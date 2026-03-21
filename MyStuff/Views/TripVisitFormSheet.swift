@@ -1,60 +1,76 @@
 import SwiftUI
+import MapKit // CLLocationCoordinate2D
 
 struct TripVisitFormSheet: View {
     let visit: TripVisit?
-    let locations: [TripLocation]
-    let onSave: (String, String, String, [String]) -> Void
+    let initialCoordinate: CLLocationCoordinate2D?
+    let onSave: ([VisitSighting], Double?, Double?, String, String, [String]) -> Void
 
-    @State private var selectedLocationId: String
+    @State private var sightings: [VisitSighting]
     @State private var date: Date
-    @State private var summary: String
+    @State private var timeOfDay: TimeOfDay
     @State private var tags: [String]
+    @State private var selectedCoordinate: CLLocationCoordinate2D?
+
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
     private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
     }()
 
-    init(visit: TripVisit?, locations: [TripLocation], onSave: @escaping (String, String, String, [String]) -> Void) {
+    init(visit: TripVisit?, initialCoordinate: CLLocationCoordinate2D? = nil,
+         onSave: @escaping ([VisitSighting], Double?, Double?, String, String, [String]) -> Void) {
         self.visit = visit
-        self.locations = locations
+        self.initialCoordinate = initialCoordinate
         self.onSave = onSave
-        _selectedLocationId = State(initialValue: visit?.locationId ?? locations.first?.id ?? "")
+
+        _sightings = State(initialValue: visit?.sightings.isEmpty == false ? visit!.sightings : [VisitSighting(name: "")])
+        _tags      = State(initialValue: visit?.tags ?? [])
+        _timeOfDay = State(initialValue: TimeOfDay(rawValue: visit?.timeOfDay ?? "") ?? .morning)
+
         _date = State(initialValue: {
-            if let dateStr = visit?.date, let d = Self.dateFormatter.date(from: dateStr) { return d }
+            if let s = visit?.date, let d = Self.dateFormatter.date(from: s) { return d }
             return Date()
         }())
-        _summary = State(initialValue: visit?.summary ?? "")
-        _tags = State(initialValue: visit?.tags ?? [])
+
+        if let lat = visit?.latitude, let lon = visit?.longitude {
+            _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        } else if let coord = initialCoordinate {
+            _selectedCoordinate = State(initialValue: coord)
+        }
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Location") {
-                    if locations.isEmpty {
-                        Text("No locations in this trip. Add a location first.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Picker("Location", selection: $selectedLocationId) {
-                            ForEach(locations) { loc in
-                                Text(loc.name).tag(loc.id)
-                            }
+                // MARK: Observations
+                Section {
+                    ForEach($sightings) { $sighting in
+                        SightingRowEditor(sighting: $sighting) {
+                            sightings.removeAll { $0.id == sighting.id }
                         }
-                        .pickerStyle(.menu)
+                    }
+                    Button {
+                        sightings.append(VisitSighting(name: ""))
+                    } label: {
+                        Label("Add Observation", systemImage: "plus.circle")
+                    }
+                } header: {
+                    Text("Observations")
+                }
+
+                // MARK: Date & Time of Day
+                Section("Date & Time of Day") {
+                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                    Picker("Time of Day", selection: $timeOfDay) {
+                        ForEach(TimeOfDay.allCases) { tod in
+                            Text(tod.rawValue).tag(tod)
+                        }
                     }
                 }
-                Section("Date") {
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                        .labelsHidden()
-                }
-                Section("Summary") {
-                    TextField("What did you see or do?", text: $summary, axis: .vertical)
-                        .lineLimit(3...8)
-                }
+
+                // MARK: Tags
                 Section("Tags") {
                     TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
@@ -71,13 +87,75 @@ struct TripVisitFormSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         let dateStr = Self.dateFormatter.string(from: date)
-                        onSave(selectedLocationId, dateStr, summary, tags)
+                        let validSightings = sightings.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+                        onSave(
+                            validSightings,
+                            selectedCoordinate?.latitude,
+                            selectedCoordinate?.longitude,
+                            dateStr,
+                            timeOfDay.rawValue,
+                            tags
+                        )
                         dismiss()
                     }
-                    .disabled(selectedLocationId.isEmpty || locations.isEmpty)
+                    .disabled(sightings.allSatisfy { $0.name.trimmingCharacters(in: .whitespaces).isEmpty })
                 }
             }
         }
         .presentationDetents([.large])
+    }
+
+}
+
+// MARK: - Sighting Row Editor
+
+private struct SightingRowEditor: View {
+    @Binding var sighting: VisitSighting
+    let onRemove: () -> Void
+
+    @State private var isFetchingWiki = false
+    @State private var wikiTask: Task<Void, Never>?
+    @State private var debounceTask: Task<Void, Never>?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                TextField("Species or subject name", text: $sighting.name)
+                    .onChange(of: sighting.name) { _, newName in scheduleWikiFetch(name: newName) }
+                if isFetchingWiki {
+                    ProgressView().scaleEffect(0.7)
+                }
+                Button(action: onRemove) {
+                    Image(systemName: "minus.circle.fill")
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
+            }
+            if !sighting.wikiDescription.isEmpty {
+                Text(sighting.wikiDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func scheduleWikiFetch(name: String) {
+        debounceTask?.cancel()
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        debounceTask = Task {
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled else { return }
+            wikiTask?.cancel()
+            isFetchingWiki = true
+            sighting.wikiDescription = ""
+            wikiTask = Task {
+                let result = await WikipediaService.fetchSummary(name: name)
+                guard !Task.isCancelled else { return }
+                isFetchingWiki = false
+                sighting.wikiDescription = result?.extract ?? ""
+            }
+        }
     }
 }

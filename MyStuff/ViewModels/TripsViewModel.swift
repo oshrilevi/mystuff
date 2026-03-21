@@ -43,11 +43,6 @@ final class TripsViewModel: ObservableObject {
             .sorted { $0.date > $1.date }
     }
 
-    func visits(for trip: Trip, at location: TripLocation) -> [TripVisit] {
-        tripVisits
-            .filter { $0.tripId == trip.id && $0.locationId == location.id }
-            .sorted { $0.date > $1.date }
-    }
 
     // MARK: - Load
 
@@ -198,7 +193,6 @@ final class TripsViewModel: ObservableObject {
             t.locationIds = t.locationIds.filter { !ids.contains($0) }
             return t
         }
-        let remainingVisits = tripVisits.filter { !ids.contains($0.locationId) }
         do {
             try await ensureSheetsExist(spreadsheetId: sid)
             try await sheets.clearSheet(spreadsheetId: sid, sheetName: "TripLocations")
@@ -211,14 +205,8 @@ final class TripsViewModel: ObservableObject {
             if !updatedTrips.isEmpty {
                 try await sheets.appendRows(spreadsheetId: sid, sheetName: "Trips", values: updatedTrips.map { tripToRow($0) })
             }
-            try await sheets.clearSheet(spreadsheetId: sid, sheetName: "TripVisits")
-            try await sheets.appendRows(spreadsheetId: sid, sheetName: "TripVisits", values: [TripVisit.columnOrder])
-            if !remainingVisits.isEmpty {
-                try await sheets.appendRows(spreadsheetId: sid, sheetName: "TripVisits", values: remainingVisits.map { tripVisitToRow($0) })
-            }
             tripLocations = remainingLocations
             trips = updatedTrips
-            tripVisits = remainingVisits
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -226,15 +214,17 @@ final class TripsViewModel: ObservableObject {
 
     // MARK: - TripVisit CRUD
 
-    func addVisit(tripId: String, locationId: String, date: String, summary: String, tags: [String] = []) async {
+    func addVisit(tripId: String, sightings: [VisitSighting] = [], latitude: Double? = nil, longitude: Double? = nil, date: String, timeOfDay: String = "", tags: [String] = []) async {
         guard let sid = spreadsheetId else { return }
         let now = ISO8601DateFormatter().string(from: Date())
         let visit = TripVisit(
             id: UUID().uuidString,
             tripId: tripId,
-            locationId: locationId,
+            sightings: sightings,
+            latitude: latitude,
+            longitude: longitude,
             date: date,
-            summary: summary,
+            timeOfDay: timeOfDay,
             tags: tags,
             createdAt: now,
             updatedAt: now
@@ -384,12 +374,15 @@ final class TripsViewModel: ObservableObject {
     }
 
     private func tripVisitToRow(_ visit: TripVisit) -> [String] {
-        [
+        let sightingsJSON = (try? JSONEncoder().encode(visit.sightings)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        return [
             visit.id,
             visit.tripId,
-            visit.locationId,
+            sightingsJSON,
+            visit.latitude.map { "\($0)" } ?? "",
+            visit.longitude.map { "\($0)" } ?? "",
             visit.date,
-            visit.summary,
+            visit.timeOfDay,
             visit.tags.joined(separator: ","),
             visit.createdAt,
             visit.updatedAt
@@ -398,21 +391,49 @@ final class TripsViewModel: ObservableObject {
 
     private func parseTripVisitRows(_ rows: [[String]]) -> [TripVisit] {
         rows.compactMap { row in
-            guard row.count >= 4 else { return nil }
-            let summary = row.count > 4 ? row[4] : ""
-            let tags = row.count > 5 ? parseTags(row[5]) : []
-            let createdAt = row.count > 6 ? row[6] : ""
-            let updatedAt = row.count > 7 ? row[7] : ""
-            return TripVisit(
-                id: row[0],
-                tripId: row[1],
-                locationId: row[2],
-                date: row[3],
-                summary: summary,
-                tags: tags,
-                createdAt: createdAt,
-                updatedAt: updatedAt
-            )
+            guard row.count >= 2 else { return nil }
+            let col2 = row.count > 2 ? row[2] : ""
+
+            // v1 (≤8 cols): id, tripId, locationId, date, summary, tags, createdAt, updatedAt
+            if row.count <= 8 {
+                let name = row.count > 4 ? row[4] : ""
+                let tags = row.count > 5 ? parseTags(row[5]) : []
+                let date = row.count > 3 ? row[3] : ""
+                let createdAt = row.count > 6 ? row[6] : ""
+                let updatedAt = row.count > 7 ? row[7] : ""
+                let s = name.isEmpty ? [] : [VisitSighting(name: name)]
+                return TripVisit(id: row[0], tripId: row[1], sightings: s,
+                                 latitude: nil, longitude: nil, date: date, timeOfDay: "",
+                                 tags: tags, createdAt: createdAt, updatedAt: updatedAt)
+            }
+
+            // v3 (10 cols, col2 is JSON): id, tripId, sightings(JSON), lat, lon, date, timeOfDay, tags, createdAt, updatedAt
+            if col2.hasPrefix("["), let data = col2.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode([VisitSighting].self, from: data) {
+                let latitude   = row.count > 3 ? Double(row[3]) : nil
+                let longitude  = row.count > 4 ? Double(row[4]) : nil
+                let date       = row.count > 5 ? row[5] : ""
+                let timeOfDay  = row.count > 6 ? row[6] : ""
+                let tags       = row.count > 7 ? parseTags(row[7]) : []
+                let createdAt  = row.count > 8 ? row[8] : ""
+                let updatedAt  = row.count > 9 ? row[9] : ""
+                return TripVisit(id: row[0], tripId: row[1], sightings: decoded,
+                                 latitude: latitude, longitude: longitude, date: date, timeOfDay: timeOfDay,
+                                 tags: tags, createdAt: createdAt, updatedAt: updatedAt)
+            }
+
+            // v2 (11 cols): id, tripId, name, description, lat, lon, date, time, tags, createdAt, updatedAt
+            let name      = col2
+            let latitude  = row.count > 4 ? Double(row[4]) : nil
+            let longitude = row.count > 5 ? Double(row[5]) : nil
+            let date      = row.count > 6 ? row[6] : ""
+            let tags      = row.count > 8 ? parseTags(row[8]) : []
+            let createdAt = row.count > 9 ? row[9] : ""
+            let updatedAt = row.count > 10 ? row[10] : ""
+            let s = name.isEmpty ? [] : [VisitSighting(name: name)]
+            return TripVisit(id: row[0], tripId: row[1], sightings: s,
+                             latitude: latitude, longitude: longitude, date: date, timeOfDay: "",
+                             tags: tags, createdAt: createdAt, updatedAt: updatedAt)
         }
     }
 

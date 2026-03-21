@@ -53,11 +53,21 @@ enum TripMapStyle: String, CaseIterable, Identifiable {
 
 struct TripMapView: View {
     let locations: [TripLocation]
+    var sightings: [TripVisit] = []
     var focusedLocationId: String? = nil
+    var focusedSightingId: String? = nil
     var onLocationTapped: ((String) -> Void)? = nil
     var onMapLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
+    var onSightingLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
 
     @AppStorage("tripMapStyle") private var mapStyle: TripMapStyle = .standard
+
+    private var coordinatedSightings: [(sighting: TripVisit, coord: CLLocationCoordinate2D)] {
+        sightings.compactMap { s in
+            guard let lat = s.latitude, let lon = s.longitude else { return nil }
+            return (s, CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        }
+    }
 
     private var coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)] {
         locations.enumerated().compactMap { idx, loc in
@@ -94,15 +104,16 @@ struct TripMapView: View {
             if #available(iOS 17.0, macOS 14.0, *) {
                 ModernTripMapView(
                     coordinatedLocations: coordinatedLocations,
+                    coordinatedSightings: coordinatedSightings,
                     initialRegion: boundingRegion,
                     focusedLocationId: focusedLocationId,
+                    focusedSightingId: focusedSightingId,
                     mapStyle: mapStyle,
                     onLocationTapped: onLocationTapped,
-                    onMapLongPress: onMapLongPress
+                    onMapLongPress: onMapLongPress,
+                    onSightingLongPress: onSightingLongPress
                 )
-                // Force full recreation when the set of locations changes so MapKit
-                // correctly renders all annotations from the start.
-                .id(coordinatedLocations.map(\.location.id).joined(separator: ","))
+                .id(coordinatedLocations.map { $0.location.id }.joined(separator: ","))
             } else {
                 TripMapLegacyView(
                     region: boundingRegion,
@@ -176,16 +187,35 @@ private struct TripMapPin: View {
     }
 }
 
+// MARK: - Sighting Pin
+
+private struct SightingMapPin: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.pink.opacity(0.9))
+                .frame(width: 26, height: 26)
+                .shadow(color: Color.pink.opacity(0.4), radius: 3)
+            Image(systemName: "eye.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+}
+
 // MARK: - Modern Map (iOS 17+ / macOS 14+)
 
 @available(iOS 17.0, macOS 14.0, *)
 private struct ModernTripMapView: View {
     let coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)]
+    let coordinatedSightings: [(sighting: TripVisit, coord: CLLocationCoordinate2D)]
     let initialRegion: MKCoordinateRegion
     let focusedLocationId: String?
+    let focusedSightingId: String?
     let mapStyle: TripMapStyle
     let onLocationTapped: ((String) -> Void)?
     let onMapLongPress: ((CLLocationCoordinate2D) -> Void)?
+    let onSightingLongPress: ((CLLocationCoordinate2D) -> Void)?
 
     @State private var cameraPosition: MapCameraPosition
     #if os(macOS)
@@ -194,18 +224,24 @@ private struct ModernTripMapView: View {
 
     init(
         coordinatedLocations: [(index: Int, location: TripLocation, coord: CLLocationCoordinate2D)],
+        coordinatedSightings: [(sighting: TripVisit, coord: CLLocationCoordinate2D)],
         initialRegion: MKCoordinateRegion,
         focusedLocationId: String?,
+        focusedSightingId: String?,
         mapStyle: TripMapStyle,
         onLocationTapped: ((String) -> Void)?,
-        onMapLongPress: ((CLLocationCoordinate2D) -> Void)?
+        onMapLongPress: ((CLLocationCoordinate2D) -> Void)?,
+        onSightingLongPress: ((CLLocationCoordinate2D) -> Void)?
     ) {
         self.coordinatedLocations = coordinatedLocations
+        self.coordinatedSightings = coordinatedSightings
         self.initialRegion = initialRegion
         self.focusedLocationId = focusedLocationId
+        self.focusedSightingId = focusedSightingId
         self.mapStyle = mapStyle
         self.onLocationTapped = onLocationTapped
         self.onMapLongPress = onMapLongPress
+        self.onSightingLongPress = onSightingLongPress
         // Start far-zoomed-out so the camera always makes a meaningful move to the
         // focused pin on appear — MapKit only renders annotation views after the
         // camera position state changes at least once post-appear.
@@ -229,6 +265,23 @@ private struct ModernTripMapView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                // Sighting pins
+                ForEach(coordinatedSightings, id: \.sighting.id) { item in
+                    let label = item.sighting.sightings.map(\.name).filter { !$0.isEmpty }.joined(separator: ", ")
+                    Annotation(label.isEmpty ? "Sighting" : label, coordinate: item.coord, anchor: .center) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.4)) {
+                                cameraPosition = .region(MKCoordinateRegion(
+                                    center: item.coord,
+                                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                                ))
+                            }
+                        } label: {
+                            SightingMapPin()
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
             .mapStyle(mapStyle.mapStyle)
             #if os(macOS)
@@ -244,9 +297,12 @@ private struct ModernTripMapView: View {
             .contextMenu {
                 if onMapLongPress != nil {
                     Button("New Location Here") {
-                        if let coord = hoveredCoord {
-                            onMapLongPress?(coord)
-                        }
+                        if let coord = hoveredCoord { onMapLongPress?(coord) }
+                    }
+                }
+                if onSightingLongPress != nil {
+                    Button("New Sighting Here") {
+                        if let coord = hoveredCoord { onSightingLongPress?(coord) }
                     }
                 }
             }
@@ -279,6 +335,29 @@ private struct ModernTripMapView: View {
                     ))
                 }
             }
+            .onChange(of: focusedSightingId) { _, newId in
+                guard let id = newId,
+                      let item = coordinatedSightings.first(where: { $0.sighting.id == id })
+                else { return }
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    cameraPosition = .region(MKCoordinateRegion(
+                        center: item.coord,
+                        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                    ))
+                }
+            }
+            #if os(macOS)
+            .overlay(alignment: .center) {
+                Button("") {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        cameraPosition = .region(initialRegion)
+                    }
+                }
+                .keyboardShortcut(.escape, modifiers: [])
+                .opacity(0)
+                .allowsHitTesting(false)
+            }
+            #endif
         }
     }
 }
