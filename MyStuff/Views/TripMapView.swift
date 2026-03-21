@@ -405,6 +405,7 @@ private struct ModernTripMapView: View {
     @State private var selectedInatObs: iNaturalistObservation? = nil
     #if os(macOS)
     @State private var hoveredCoord: CLLocationCoordinate2D?
+    @State private var scrollMonitor: Any? = nil
     #endif
 
     init(
@@ -599,6 +600,32 @@ private struct ModernTripMapView: View {
             .sheet(item: $selectedInatObs) { obs in
                 InatObservationDetailView(observation: obs)
             }
+            #if os(macOS)
+            .onAppear {
+                scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+                    guard event.modifierFlags.contains(.command) else { return event }
+                    let delta = event.scrollingDeltaY
+                    guard abs(delta) > 0 else { return event }
+                    let factor = delta > 0 ? 0.85 : (1.0 / 0.85)
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        cameraPosition = .region(MKCoordinateRegion(
+                            center: currentRegion.center,
+                            span: MKCoordinateSpan(
+                                latitudeDelta: min(max(currentRegion.span.latitudeDelta * factor, 0.001), 180),
+                                longitudeDelta: min(max(currentRegion.span.longitudeDelta * factor, 0.001), 360)
+                            )
+                        ))
+                    }
+                    return nil
+                }
+            }
+            .onDisappear {
+                if let monitor = scrollMonitor {
+                    NSEvent.removeMonitor(monitor)
+                    scrollMonitor = nil
+                }
+            }
+            #endif
         }
     }
 }
