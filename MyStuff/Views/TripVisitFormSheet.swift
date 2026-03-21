@@ -69,7 +69,7 @@ struct TripVisitFormSheet: View {
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                     Picker("Time of Day", selection: $timeOfDay) {
                         ForEach(TimeOfDay.allCases) { tod in
-                            Text(tod.rawValue).tag(tod)
+                            Text(tod.hebrewLabel).tag(tod)
                         }
                     }
                 }
@@ -89,19 +89,12 @@ struct TripVisitFormSheet: View {
                             HStack(spacing: 8) {
                                 ForEach(photoIds, id: \.self) { id in
                                     ZStack(alignment: .topTrailing) {
-                                        AsyncImage(url: PhotoStorageService.url(for: id)) { phase in
-                                            if case .success(let img) = phase {
-                                                img.resizable().aspectRatio(contentMode: .fill)
-                                            } else {
-                                                Color.secondary.opacity(0.1)
-                                            }
-                                        }
+                                                        PHAssetThumbnail(identifier: id, size: 72)
                                         .frame(width: 72, height: 72)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
 
                                         Button {
                                             photoIds.removeAll { $0 == id }
-                                            PhotoStorageService.delete(filename: id)
                                         } label: {
                                             Image(systemName: "xmark.circle.fill")
                                                 .foregroundStyle(.white, .black.opacity(0.6))
@@ -201,6 +194,17 @@ private struct SightingRowEditor: View {
                     HStack {
                         TextField("Species or subject name", text: $sighting.name)
                             .onChange(of: sighting.name) { _, newName in scheduleWikiFetch(name: newName) }
+                            .onAppear {
+                                #if os(macOS)
+                                // Keep focus but move cursor to end, clearing the auto-selection
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                    if let editor = NSApp.keyWindow?.fieldEditor(false, for: nil) as? NSTextView {
+                                        let end = editor.string.count
+                                        editor.setSelectedRange(NSRange(location: end, length: 0))
+                                    }
+                                }
+                                #endif
+                            }
                         if isFetchingWiki { ProgressView().scaleEffect(0.7) }
                         Button(action: onRemove) {
                             Image(systemName: "minus.circle.fill").foregroundStyle(.red)
@@ -237,6 +241,7 @@ private struct SightingRowEditor: View {
                 guard !Task.isCancelled else { return }
                 isFetchingWiki = false
                 sighting.wikiDescription = wiki?.extract ?? ""
+                sighting.wikiURL = wiki?.pageURL?.absoluteString ?? ""
                 // Prefer iNaturalist photo (better for species); fall back to Wikipedia thumbnail
                 let photoURL = inat ?? wiki?.thumbnailURL
                 sighting.imageURL = photoURL?.absoluteString ?? ""

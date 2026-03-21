@@ -175,21 +175,30 @@ struct TripDetailView: View {
         #else
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                TripMapView(
-                    locations: filteredLocations,
-                    sightings: showSightingsOnMap ? visits : [],
-                    fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
-                    focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
-                    focusedSightingId: focusedSightingId,
-                    onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
-                    onSightingTapped: { id in
-                        focusedSightingId = id
-                        focusedLocationId = nil
-                        withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
-                    },
-                    onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
-                    onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
-                )
+                ZStack(alignment: .bottom) {
+                    TripMapView(
+                        locations: filteredLocations,
+                        sightings: showSightingsOnMap ? visits : [],
+                        fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
+                        focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
+                        focusedSightingId: focusedSightingId,
+                        onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
+                        onSightingTapped: { id in
+                            focusedSightingId = id
+                            focusedLocationId = nil
+                            withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
+                        },
+                        onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
+                        onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
+                    )
+                    if let visit = sightingPopup {
+                        SightingPopupCard(visit: visit) {
+                            withAnimation { sightingPopup = nil }
+                        }
+                        .padding(12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
                 .frame(height: 280)
                 leftPaneContent
                     .padding(.bottom, 24)
@@ -289,7 +298,7 @@ struct TripDetailView: View {
     private var locationsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Locations")
+                Text("אתרים")
                     .font(.title3.bold())
                 Spacer()
                 Button { showAddLocation = true } label: {
@@ -335,7 +344,7 @@ struct TripDetailView: View {
 
     private var visitsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Sightings")
+            Text("תצפיות")
                 .font(.title3.bold())
                 .padding(.horizontal)
                 .padding(.bottom, 8)
@@ -360,7 +369,11 @@ struct TripDetailView: View {
                                 }
                             }
                         },
-                        onFocus: { if visit.latitude != nil { focusedSightingId = visit.id; focusedLocationId = nil } },
+                        onFocus: {
+                            focusedLocationId = nil
+                            if visit.latitude != nil { focusedSightingId = visit.id }
+                            withAnimation { sightingPopup = visit }
+                        },
                         onEdit: { editingVisit = visit },
                         onDelete: { Task { await tripsVM.deleteVisit(id: visit.id) } }
                     )
@@ -531,7 +544,7 @@ private struct TripVisitRowView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if !visit.timeOfDay.isEmpty {
-                    Label(visit.timeOfDay, systemImage: "clock")
+                    Label(TimeOfDay(rawValue: visit.timeOfDay)?.hebrewLabel ?? visit.timeOfDay, systemImage: "clock")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -642,7 +655,7 @@ private struct SightingPopupCard: View {
             HStack {
                 Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
                 if !visit.timeOfDay.isEmpty {
-                    Label(visit.timeOfDay, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
+                    Label(TimeOfDay(rawValue: visit.timeOfDay)?.hebrewLabel ?? visit.timeOfDay, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button { onDismiss() } label: {
@@ -663,7 +676,12 @@ private struct SightingPopupCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(s.name).font(.subheadline.bold())
+                        if let url = URL(string: s.wikiURL), !s.wikiURL.isEmpty {
+                            Link(s.name, destination: url)
+                                .font(.subheadline.bold())
+                        } else {
+                            Text(s.name).font(.subheadline.bold())
+                        }
                         if !s.wikiDescription.isEmpty {
                             Text(s.wikiDescription).font(.caption).foregroundStyle(.secondary).lineLimit(3)
                         }
@@ -675,18 +693,10 @@ private struct SightingPopupCard: View {
             if !visit.photoIds.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(visit.photoIds, id: \.self) { filename in
-                            if let url = PhotoStorageService.url(for: filename) {
-                                AsyncImage(url: url) { phase in
-                                    if case .success(let img) = phase {
-                                        img.resizable().aspectRatio(contentMode: .fill)
-                                    } else {
-                                        Color.secondary.opacity(0.1)
-                                    }
-                                }
+                        ForEach(visit.photoIds, id: \.self) { identifier in
+                            PHAssetThumbnail(identifier: identifier, size: 80)
                                 .frame(width: 80, height: 80)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                            }
                         }
                     }
                 }

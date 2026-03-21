@@ -82,6 +82,7 @@
 		B00100000000000000000057 /* TripsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000005B /* TripsView.swift */; };
 		B00100000000000000000058 /* TripDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000005C /* TripDetailView.swift */; };
 		B00100000000000000000059 /* TripMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000005D /* TripMapView.swift */; };
+		B00100000000000000000061 /* PHAssetThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000065 /* PHAssetThumbnail.swift */; };
 		B0010000000000000000005A /* TripLocationFormSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000005E /* TripLocationFormSheet.swift */; };
 		B0010000000000000000005B /* TripLocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010000000000000000005F /* TripLocationPickerView.swift */; };
 		B0010000000000000000005C /* TripVisitFormSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000060 /* TripVisitFormSheet.swift */; };
@@ -154,6 +155,7 @@
 		F0010000000000000000005B /* TripsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripsView.swift; sourceTree = "<group>"; };
 		F0010000000000000000005C /* TripDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailView.swift; sourceTree = "<group>"; };
 		F0010000000000000000005D /* TripMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripMapView.swift; sourceTree = "<group>"; };
+		F00100000000000000000065 /* PHAssetThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PHAssetThumbnail.swift; sourceTree = "<group>"; };
 		F0010000000000000000005E /* TripLocationFormSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripLocationFormSheet.swift; sourceTree = "<group>"; };
 		F0010000000000000000005F /* TripLocationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripLocationPickerView.swift; sourceTree = "<group>"; };
 		F00100000000000000000060 /* TripVisitFormSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripVisitFormSheet.swift; sourceTree = "<group>"; };
@@ -291,6 +293,7 @@
 				F0010000000000000000005B /* TripsView.swift */,
 				F0010000000000000000005C /* TripDetailView.swift */,
 				F0010000000000000000005D /* TripMapView.swift */,
+				F00100000000000000000065 /* PHAssetThumbnail.swift */,
 				F0010000000000000000005E /* TripLocationFormSheet.swift */,
 				F0010000000000000000005F /* TripLocationPickerView.swift */,
 				F00100000000000000000060 /* TripVisitFormSheet.swift */,
@@ -472,6 +475,7 @@
 				B00100000000000000000057 /* TripsView.swift in Sources */,
 				B00100000000000000000058 /* TripDetailView.swift in Sources */,
 				B00100000000000000000059 /* TripMapView.swift in Sources */,
+				B00100000000000000000061 /* PHAssetThumbnail.swift in Sources */,
 				B0010000000000000000005A /* TripLocationFormSheet.swift in Sources */,
 				B0010000000000000000005B /* TripLocationPickerView.swift in Sources */,
 				B0010000000000000000005C /* TripVisitFormSheet.swift in Sources */,

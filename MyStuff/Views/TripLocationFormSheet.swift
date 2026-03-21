@@ -186,19 +186,12 @@ struct TripLocationFormSheet: View {
                             HStack(spacing: 8) {
                                 ForEach(photoIds, id: \.self) { id in
                                     ZStack(alignment: .topTrailing) {
-                                        AsyncImage(url: PhotoStorageService.url(for: id)) { phase in
-                                            if case .success(let img) = phase {
-                                                img.resizable().aspectRatio(contentMode: .fill)
-                                            } else {
-                                                Color.secondary.opacity(0.1)
-                                            }
-                                        }
+                                                        PHAssetThumbnail(identifier: id, size: 72)
                                         .frame(width: 72, height: 72)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
 
                                         Button {
                                             photoIds.removeAll { $0 == id }
-                                            PhotoStorageService.delete(filename: id)
                                         } label: {
                                             Image(systemName: "xmark.circle.fill")
                                                 .foregroundStyle(.white, .black.opacity(0.6))
