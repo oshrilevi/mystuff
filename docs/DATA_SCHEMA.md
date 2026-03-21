@@ -157,6 +157,67 @@ Created on first run via `SheetsService.createSpreadsheet`. Six sheets:
 - `ComboItem.columnOrder` in code: `["id", "comboId", "itemId", "order"]`.
 - For existing spreadsheets created before ComboItems existed, the app will add the "ComboItems" sheet on first load of the Combos feature and append the header (migration in `CombosViewModel.load()`).
 
+### Sheet: **Trips**
+
+| Column index | Name        | Type   | Notes                                          |
+|--------------|-------------|--------|------------------------------------------------|
+| A (0)        | id          | String | UUID                                           |
+| B (1)        | name        | String | Trip name                                      |
+| C (2)        | description | String | Free text                                      |
+| D (3)        | tags        | String | Comma-separated tags                           |
+| E (4)        | locationIds | String | Comma-separated FK references to TripLocations |
+| F (5)        | order       | Int    | Sort order (row-based)                         |
+| G (6)        | createdAt   | String | ISO8601                                        |
+| H (7)        | updatedAt   | String | ISO8601                                        |
+| I (8)        | wikiURL     | String | Wikipedia URL (optional)                       |
+| J (9)        | latitude    | Double | Optional map pin latitude                      |
+| K (10)       | longitude   | Double | Optional map pin longitude                     |
+
+- Row 1 is the header row. Data starts at row 2.
+- `Trip.columnOrder` in code: `["id", "name", "description", "tags", "locationIds", "order", "createdAt", "updatedAt", "wikiURL", "latitude", "longitude"]`.
+- `lat`/`lon` were appended for backward compatibility with older sheets.
+- A Trip references multiple `TripLocation` IDs (spots visited); visits on the trip are in the TripVisits sheet.
+
+### Sheet: **TripLocations**
+
+| Column index | Name        | Type   | Notes                                                          |
+|--------------|-------------|--------|----------------------------------------------------------------|
+| A (0)        | id          | String | UUID                                                           |
+| B (1)        | name        | String | Location name                                                  |
+| C (2)        | description | String | Free text                                                      |
+| D (3)        | tags        | String | Comma-separated tags                                           |
+| E (4)        | latitude    | Double | Optional GPS latitude                                          |
+| F (5)        | longitude   | Double | Optional GPS longitude                                         |
+| G (6)        | createdAt   | String | ISO8601                                                        |
+| H (7)        | updatedAt   | String | ISO8601                                                        |
+| I (8)        | wikiURL     | String | Wikipedia URL (optional)                                       |
+| J (9)        | type        | String | `LocationType` rawValue: `Fish Ponds`, `Nature Reserve`, `Photo Spot`, `Scenic Viewpoint`, `Trail`, `Water Reservoir` |
+| K (10)       | photos      | String | Comma-separated Drive file IDs                                 |
+
+- Row 1 is the header row. Data starts at row 2.
+- `TripLocation.columnOrder` in code: `["id", "name", "description", "tags", "latitude", "longitude", "createdAt", "updatedAt", "wikiURL", "type", "photos"]`.
+- `type` and `photos` were appended for backward compatibility.
+
+### Sheet: **TripVisits**
+
+| Column index | Name      | Type   | Notes                                                                          |
+|--------------|-----------|--------|--------------------------------------------------------------------------------|
+| A (0)        | id        | String | UUID                                                                           |
+| B (1)        | tripId    | String | FK to Trips id                                                                 |
+| C (2)        | sightings | String | JSON-encoded `[VisitSighting]` (each has id, name, wikiDescription, imageURL, wikiURL) |
+| D (3)        | latitude  | Double | Optional GPS latitude of this observation                                      |
+| E (4)        | longitude | Double | Optional GPS longitude                                                         |
+| F (5)        | date      | String | YYYY-MM-DD                                                                     |
+| G (6)        | timeOfDay | String | `TimeOfDay` rawValue: `Dawn`, `Morning`, `Midday`, `Afternoon`, `Dusk`, `Night` |
+| H (7)        | tags      | String | Comma-separated tags                                                           |
+| I (8)        | createdAt | String | ISO8601                                                                        |
+| J (9)        | updatedAt | String | ISO8601                                                                        |
+| K (10)       | photos    | String | Comma-separated Drive file IDs                                                 |
+
+- Row 1 is the header row. Data starts at row 2.
+- `TripVisit.columnOrder` in code: `["id", "tripId", "sightings", "latitude", "longitude", "date", "timeOfDay", "tags", "createdAt", "updatedAt", "photos"]`.
+- Schema history: v1 had `locationId`/`summary`, v2 had `name`/`description`, v3 replaced both with JSON `sightings`. `TripsViewModel` handles all three formats in parsing.
+
 ## Google Drive
 
 - **Folders:** Two folders per user, both created in bootstrap via `DriveService.createFolder`:
