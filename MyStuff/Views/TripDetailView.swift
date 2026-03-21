@@ -19,6 +19,7 @@ struct TripDetailView: View {
     @State private var selectedTypes: Set<LocationType> = Set(LocationType.allCases)
     @State private var showSightingsOnMap = true
     @State private var sightingPopup: TripVisit? = nil
+    @State private var locationPopup: TripLocation? = nil
     @State private var sightingSortKey: SightingSortKey = .name
     @State private var sightingSortAsc: Bool = true
     @AppStorage("sightingViewMode") private var sightingViewMode: SightingViewMode = .bySpecies
@@ -173,27 +174,34 @@ struct TripDetailView: View {
             leftPane
                 .frame(width: 320)
             Divider()
-            ZStack(alignment: .bottom) {
-                TripMapView(
-                    locations: filteredLocations,
-                    sightings: showSightingsOnMap ? visits : [],
-                    fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
-                    focusedLocationId: focusedSightingIds.isEmpty ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : nil,
-                    focusedSightingIds: focusedSightingIds,
-                    onLocationTapped: { id in
-                        focusedLocationId = id
-                        focusedSightingId = nil
-                        withAnimation { selectedSpeciesName = nil; sightingPopup = nil }
-                    },
-                    onSightingTapped: { id in
-                        focusedSightingId = id
-                        focusedLocationId = nil
+            TripMapView(
+                locations: filteredLocations,
+                sightings: showSightingsOnMap ? visits : [],
+                fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
+                focusedLocationId: focusedSightingIds.isEmpty ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : nil,
+                focusedSightingIds: focusedSightingIds,
+                onLocationTapped: { id in
+                    focusedLocationId = id
+                    focusedSightingId = nil
+                    withAnimation {
                         selectedSpeciesName = nil
-                        withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
-                    },
-                    onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
-                    onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
-                )
+                        sightingPopup = nil
+                        locationPopup = filteredLocations.first(where: { $0.id == id })
+                    }
+                },
+                onSightingTapped: { id in
+                    focusedSightingId = id
+                    focusedLocationId = nil
+                    selectedSpeciesName = nil
+                    withAnimation {
+                        locationPopup = nil
+                        sightingPopup = visits.first(where: { $0.id == id })
+                    }
+                },
+                onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
+                onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
+            )
+            .overlay(alignment: .bottom) {
                 if let species = selectedSpeciesName,
                    let group = sortedSpeciesGroups.first(where: { $0.name == species }) {
                     SpeciesAggregatedPopupCard(
@@ -205,6 +213,12 @@ struct TripDetailView: View {
                 } else if let visit = sightingPopup {
                     SightingPopupCard(visit: visit) {
                         withAnimation { sightingPopup = nil }
+                    }
+                    .padding(12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let loc = locationPopup {
+                    LocationPopupCard(location: loc) {
+                        withAnimation { locationPopup = nil }
                     }
                     .padding(12)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -377,6 +391,11 @@ struct TripDetailView: View {
                             if loc.latitude != nil {
                                 focusedLocationId = loc.id
                                 focusedSightingId = nil
+                            }
+                            withAnimation {
+                                sightingPopup = nil
+                                selectedSpeciesName = nil
+                                locationPopup = loc
                             }
                         },
                         onEdit: { editingLocation = loc },
@@ -596,7 +615,7 @@ private struct TripLocationRowView: View {
                     Text(location.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(isFocused ? nil : 3)
+                        .lineLimit(3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -738,6 +757,72 @@ private struct TripVisitRowView: View {
         }
         Divider()
             .padding(.leading)
+    }
+}
+
+// MARK: - Location Popup Card
+
+private struct LocationPopupCard: View {
+    let location: TripLocation
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header: type badge + name + close
+            HStack(alignment: .top) {
+                HStack(spacing: 6) {
+                    Image(systemName: location.type.systemImage)
+                        .font(.caption.bold())
+                        .foregroundStyle(location.type.color)
+                    Text(location.type.hebrewLabel)
+                        .font(.caption.bold())
+                        .foregroundStyle(location.type.color)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(location.type.color.opacity(0.12), in: Capsule())
+                Spacer()
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text(location.name)
+                .font(.headline)
+
+            if !location.description.isEmpty {
+                Text(location.description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(5)
+            }
+
+            if !location.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(location.tags, id: \.self) { tag in
+                            Text(tag)
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.secondary.opacity(0.12), in: Capsule())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            if !location.wikiURL.isEmpty, let url = URL(string: location.wikiURL) {
+                Link("Wikipedia", destination: url)
+                    .font(.caption)
+            }
+        }
+        .padding(14)
+        .background(.thickMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .frame(maxWidth: 400)
     }
 }
 
