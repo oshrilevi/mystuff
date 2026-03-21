@@ -173,33 +173,48 @@ private struct TripMapPin: View {
 
     var body: some View {
         let pinColor = locationType.color
-        let shadowColor = isFocused ? pinColor.opacity(0.6) : Color.clear
         ZStack {
+            // Outer ring — visible only when focused
+            if isFocused {
+                Circle()
+                    .strokeBorder(.white, lineWidth: 3)
+                    .frame(width: 38, height: 38)
+                    .shadow(color: pinColor.opacity(0.5), radius: 6)
+            }
             Circle()
-                .fill(isFocused ? pinColor : pinColor.opacity(0.85))
+                .fill(pinColor.opacity(isFocused ? 1.0 : 0.85))
                 .frame(width: 32, height: 32)
-                .shadow(color: shadowColor, radius: 5)
             Image(systemName: locationType.systemImage)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white)
         }
-        .scaleEffect(isFocused ? 1.15 : 1.0)
+        .scaleEffect(isFocused ? 1.2 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 
 // MARK: - Sighting Pin
 
 private struct SightingMapPin: View {
+    var isFocused: Bool = false
+
     var body: some View {
         ZStack {
+            if isFocused {
+                Circle()
+                    .strokeBorder(.white, lineWidth: 2.5)
+                    .frame(width: 32, height: 32)
+                    .shadow(color: Color.pink.opacity(0.5), radius: 5)
+            }
             Circle()
-                .fill(Color.pink.opacity(0.9))
+                .fill(Color.pink.opacity(isFocused ? 1.0 : 0.9))
                 .frame(width: 26, height: 26)
-                .shadow(color: Color.pink.opacity(0.4), radius: 3)
             Image(systemName: "eye.fill")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.white)
         }
+        .scaleEffect(isFocused ? 1.2 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 
@@ -277,7 +292,7 @@ private struct ModernTripMapView: View {
                                 ))
                             }
                         } label: {
-                            SightingMapPin()
+                            SightingMapPin(isFocused: item.sighting.id == focusedSightingId)
                         }
                         .buttonStyle(.plain)
                     }

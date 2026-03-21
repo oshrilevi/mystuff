@@ -40,7 +40,7 @@ final class TripsViewModel: ObservableObject {
     func visits(for trip: Trip) -> [TripVisit] {
         tripVisits
             .filter { $0.tripId == trip.id }
-            .sorted { $0.date > $1.date }
+            .sorted { ($0.date, $0.createdAt) > ($1.date, $1.createdAt) }
     }
 
 

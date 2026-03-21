@@ -11,6 +11,7 @@ struct TripDetailView: View {
     @State private var editingVisit: TripVisit?
     @State private var focusedLocationId: String? = nil
     @State private var focusedSightingId: String? = nil
+    @State private var expandedSightingIds: Set<String> = []
     @State private var newLocationCoord: IdentifiableCoordinate? = nil
     @State private var newSightingCoord: IdentifiableCoordinate? = nil
     @State private var headerHovered = false
@@ -320,10 +321,18 @@ struct TripDetailView: View {
                 ForEach(visits) { visit in
                     TripVisitRowView(
                         visit: visit,
+                        isExpanded: expandedSightingIds.contains(visit.id),
                         isFocused: focusedSightingId == visit.id,
-                        onFocus: {
-                            if visit.latitude != nil { focusedSightingId = visit.id }
+                        onToggleExpand: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if expandedSightingIds.contains(visit.id) {
+                                    expandedSightingIds.remove(visit.id)
+                                } else {
+                                    expandedSightingIds.insert(visit.id)
+                                }
+                            }
                         },
+                        onFocus: { if visit.latitude != nil { focusedSightingId = visit.id } },
                         onEdit: { editingVisit = visit },
                         onDelete: { Task { await tripsVM.deleteVisit(id: visit.id) } }
                     )
@@ -459,12 +468,13 @@ private struct TripLocationRowView: View {
 
 private struct TripVisitRowView: View {
     let visit: TripVisit
+    var isExpanded: Bool = false
     var isFocused: Bool = false
+    let onToggleExpand: () -> Void
     let onFocus: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
-    @State private var isExpanded = false
     @State private var confirmDelete = false
 
     private static let displayFormatter: DateFormatter = {
@@ -562,11 +572,8 @@ private struct TripVisitRowView: View {
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { onEdit() }
         .onTapGesture(count: 1) {
-            withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+            onToggleExpand()
             onFocus()
-        }
-        .onChange(of: isFocused) { _, focused in
-            if focused { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = true } }
         }
         .contextMenu {
             Button("Edit Sighting") { onEdit() }
