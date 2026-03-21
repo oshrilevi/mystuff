@@ -691,6 +691,10 @@ private struct SightingPopupCard: View {
 
             // Linked photos
             if !visit.photoIds.isEmpty {
+                Divider()
+                Text("תמונות")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(visit.photoIds, id: \.self) { identifier in
