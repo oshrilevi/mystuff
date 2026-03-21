@@ -19,6 +19,7 @@ struct TripDetailView: View {
     @State private var sightingPopup: TripVisit? = nil
     @State private var sightingSortKey: SightingSortKey = .name
     @State private var sightingSortAsc: Bool = true
+    @State private var sightingViewMode: SightingViewMode = .byDate
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -358,11 +359,52 @@ struct TripDetailView: View {
         }
     }
 
+    private var sortedSpeciesGroups: [SpeciesGroup] {
+        // Build a dict keyed by species name
+        var dict: [String: (desc: String, imageURL: String, wikiURL: String,
+                            obs: [(date: String, timeOfDay: String)])] = [:]
+        for visit in visits {
+            for s in visit.sightings {
+                let key = s.name
+                let ob = (date: visit.date, timeOfDay: visit.timeOfDay)
+                if dict[key] == nil {
+                    dict[key] = (desc: s.wikiDescription, imageURL: s.imageURL,
+                                 wikiURL: s.wikiURL, obs: [ob])
+                } else {
+                    dict[key]!.obs.append(ob)
+                }
+            }
+        }
+        let groups = dict.map { (name, val) in
+            SpeciesGroup(
+                id: name,
+                name: name,
+                wikiDescription: val.desc,
+                imageURL: val.imageURL,
+                wikiURL: val.wikiURL,
+                observations: val.obs.sorted { $0.date > $1.date }
+            )
+        }
+        return groups.sorted { a, b in
+            let asc: Bool
+            switch sightingSortKey {
+            case .name:
+                asc = a.name.localizedCompare(b.name) == .orderedAscending
+            case .date:
+                asc = (a.observations.first?.date ?? "") < (b.observations.first?.date ?? "")
+            }
+            return sightingSortAsc ? asc : !asc
+        }
+    }
+
     private var visitsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center, spacing: 0) {
                 Text("תצפיות")
                     .font(.title3.bold())
+                Spacer()
+                // View mode toggle — centered between title and sort
+                SightingViewModeControl(mode: $sightingViewMode)
                 Spacer()
                 SightingSortControl(sortKey: $sightingSortKey, ascending: $sightingSortAsc)
             }
@@ -374,7 +416,7 @@ struct TripDetailView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                     .padding(.vertical, 8)
-            } else {
+            } else if sightingViewMode == .byDate {
                 ForEach(sortedVisits) { visit in
                     TripVisitRowView(
                         visit: visit,
@@ -387,6 +429,10 @@ struct TripDetailView: View {
                         onEdit: { editingVisit = visit },
                         onDelete: { Task { await tripsVM.deleteVisit(id: visit.id) } }
                     )
+                }
+            } else {
+                ForEach(sortedSpeciesGroups) { group in
+                    SpeciesGroupRowView(group: group)
                 }
             }
         }
@@ -713,6 +759,139 @@ private struct SightingPopupCard: View {
 }
 
 // MARK: - Sighting Sort
+
+// MARK: - Sighting view mode
+
+private enum SightingViewMode {
+    case byDate, bySpecies
+}
+
+private struct SightingViewModeControl: View {
+    @Binding var mode: SightingViewMode
+
+    var body: some View {
+        HStack(spacing: 1) {
+            modeButton(icon: "calendar", target: .byDate, tooltip: "לפי תאריך")
+            modeButton(icon: "bird", target: .bySpecies, tooltip: "לפי מין")
+        }
+        .padding(2)
+        .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 7))
+    }
+
+    private func modeButton(icon: String, target: SightingViewMode, tooltip: String) -> some View {
+        let active = mode == target
+        return Button { mode = target } label: {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .medium))
+                .frame(width: 24, height: 22)
+                .background(active ? Color.accentColor.opacity(0.2) : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 5))
+                .foregroundStyle(active ? Color.accentColor : Color.secondary)
+        }
+        .buttonStyle(.plain)
+        .help(tooltip)
+    }
+}
+
+// MARK: - Species group model
+
+private struct SpeciesGroup: Identifiable {
+    let id: String
+    let name: String
+    let wikiDescription: String
+    let imageURL: String
+    let wikiURL: String
+    let observations: [(date: String, timeOfDay: String)]
+}
+
+// MARK: - Species group row
+
+private struct SpeciesGroupRowView: View {
+    let group: SpeciesGroup
+
+    private static let parseFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
+    }()
+    private static let displayFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .none; return f
+    }()
+
+    private func fmt(_ s: String) -> String {
+        guard let d = Self.parseFmt.date(from: s) else { return s }
+        return Self.displayFmt.string(from: d)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Species header row
+            HStack(alignment: .top, spacing: 10) {
+                if let url = URL(string: group.imageURL), !group.imageURL.isEmpty {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img): img.resizable().aspectRatio(contentMode: .fill)
+                        default: Color.secondary.opacity(0.1)
+                        }
+                    }
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(group.name).font(.subheadline.bold())
+                        Text("×\(group.observations.count)")
+                            .font(.caption2)
+                            .padding(.horizontal, 5).padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.12), in: Capsule())
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    if !group.wikiDescription.isEmpty {
+                        Text(group.wikiDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !group.wikiURL.isEmpty, let url = URL(string: group.wikiURL) {
+                        Link(destination: url) {
+                            Label("Wikipedia", systemImage: "arrow.up.right.square")
+                                .font(.caption2)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            // Observation dates
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(Array(group.observations.enumerated()), id: \.offset) { _, obs in
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(fmt(obs.date))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if !obs.timeOfDay.isEmpty {
+                            Text("·")
+                                .foregroundStyle(.tertiary)
+                            Image(systemName: "clock")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            Text(TimeOfDay(rawValue: obs.timeOfDay)?.hebrewLabel ?? obs.timeOfDay)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        Divider().padding(.leading)
+    }
+}
+
+// MARK: - Sort key
 
 private enum SightingSortKey: String, CaseIterable {
     case name = "שם"
