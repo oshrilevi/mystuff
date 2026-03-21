@@ -84,6 +84,7 @@ enum INaturalistService {
             URLQueryItem(name: "nelat",         value: "\(neLat)"),
             URLQueryItem(name: "nelng",         value: "\(neLng)"),
             URLQueryItem(name: "quality_grade", value: "research"),
+            URLQueryItem(name: "locale",        value: "he"),
             URLQueryItem(name: "per_page",      value: "100"),
             URLQueryItem(name: "order_by",      value: "observed_on"),
             URLQueryItem(name: "order",         value: "desc"),
