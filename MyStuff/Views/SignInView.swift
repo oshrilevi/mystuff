@@ -6,7 +6,7 @@ struct SignInView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            Text("MyStuff")
+            Text("Oshri's World")
                 .font(.largeTitle)
                 .fontWeight(.bold)
 

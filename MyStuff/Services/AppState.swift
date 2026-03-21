@@ -29,7 +29,7 @@ final class AppState: ObservableObject {
         do {
             if spreadsheetId == nil {
                 bootstrapStep = "Creating spreadsheet…"
-                let title = "MyStuff – \(userEmail)"
+                let title = "Oshri's World – \(userEmail)"
                 let (id, _) = try await sheets.createSpreadsheet(title: title)
                 spreadsheetId = id
                 defaults.set(id, forKey: spreadsheetKey)

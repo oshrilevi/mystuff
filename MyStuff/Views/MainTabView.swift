@@ -67,7 +67,7 @@ struct MainTabView: View {
         #if os(iOS)
         TabView(selection: $selection) {
             ItemsTabView(viewMode: $itemViewMode)
-                .tabItem { Label("My Stuff", systemImage: "square.grid.2x2") }
+                .tabItem { Label("Oshri's World", systemImage: "square.grid.2x2") }
                 .tag(MainSidebarSelection.items)
             CategoriesView()
                 .tabItem { Label("Categories", systemImage: "folder") }
@@ -524,7 +524,7 @@ private struct SettingsMenuButton: View {
     private func showBackupCompletedToast(destination: URL) {
         #if os(macOS)
         let notification = NSUserNotification()
-        notification.title = "MyStuff Backup Complete"
+        notification.title = "Oshri's World Backup Complete"
         notification.informativeText = "Saved to Downloads/\(destination.lastPathComponent)"
         NSUserNotificationCenter.default.deliver(notification)
         #endif

@@ -28,7 +28,7 @@ struct ListDetailView: View {
 
     private var shareText: String {
         var lines: [String] = []
-        lines.append("MyStuff – List: \(list.name)")
+        lines.append("Oshri's World – List: \(list.name)")
         let trimmedNotes = list.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedNotes.isEmpty {
             lines.append("")
