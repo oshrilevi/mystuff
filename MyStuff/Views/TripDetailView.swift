@@ -480,6 +480,9 @@ struct TripDetailView: View {
                     SpeciesGroupRowView(
                         group: group,
                         isFocused: selectedSpeciesName == group.name,
+                        hasPhotos: visits
+                            .filter { $0.sightings.contains { $0.name == group.name } }
+                            .contains { !$0.photoIds.isEmpty },
                         onSelect: {
                             focusedLocationId = nil
                             focusedSightingId = nil
@@ -864,6 +867,7 @@ private struct SpeciesGroup: Identifiable {
 private struct SpeciesGroupRowView: View {
     let group: SpeciesGroup
     var isFocused: Bool = false
+    var hasPhotos: Bool = false
     var onSelect: (() -> Void)? = nil
 
     @State private var obsExpanded = false
@@ -915,6 +919,11 @@ private struct SpeciesGroupRowView: View {
                             .padding(.horizontal, 5).padding(.vertical, 2)
                             .background(Color.accentColor.opacity(0.12), in: Capsule())
                             .foregroundStyle(Color.accentColor)
+                        if hasPhotos {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     if !group.wikiDescription.isEmpty {
                         Text(group.wikiDescription)
@@ -936,15 +945,16 @@ private struct SpeciesGroupRowView: View {
                 ForEach(visibleObs, id: \.offset) { item in
                     let obs = item.element
                     HStack(spacing: 4) {
-                        Image(systemName: "calendar")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        if obs.timeOfDay.isEmpty {
+                            Image(systemName: "calendar")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
+                        }
                         Text(fmt(obs.date))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        if !obs.timeOfDay.isEmpty {
-                            TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
-                        }
                     }
                 }
             }
