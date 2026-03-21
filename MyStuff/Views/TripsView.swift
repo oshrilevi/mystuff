@@ -29,6 +29,9 @@ struct TripsView: View {
     @State private var deletingTripId: String?
     @State private var selectedNavItem: TripNavItem?
     @State private var speciesTripPickerName: String? = nil
+    @State private var tripsFilter: String = ""
+    @State private var locationsFilter: String = ""
+    @State private var speciesFilter: String = ""
     @AppStorage("lastSelectedTripId") private var lastSelectedTripId: String = ""
 
     private var tripsVM: TripsViewModel { session.trips }
@@ -54,10 +57,6 @@ struct TripsView: View {
                 }
             }
             .navigationTitle("Shooting Locations")
-            .searchable(
-                text: Binding(get: { tripsVM.searchText }, set: { tripsVM.searchText = $0 }),
-                prompt: "Search locations"
-            )
             .toolbar {
                 #if os(iOS)
                 ToolbarItem(placement: .topBarTrailing) {
@@ -223,13 +222,14 @@ struct TripsView: View {
     // Right pane (RTL): shooting locations (trips)
     private var tripsListPane: some View {
         VStack(spacing: 0) {
-            paneHeader("אתרי צילום", count: tripsVM.filteredTrips.count)
-            if tripsVM.filteredTrips.isEmpty {
+            paneHeader("אתרי צילום", count: filteredTripsForPane.count)
+            paneFilterField($tripsFilter, placeholder: "חיפוש לפי שם או תיאור")
+            if filteredTripsForPane.isEmpty {
                 emptyPane(label: "אין תוצאות")
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(tripsVM.filteredTrips) { trip in
+                        ForEach(filteredTripsForPane) { trip in
                             TripListRow(
                                 trip: trip,
                                 locationCount: tripsVM.locations(for: trip).count,
@@ -257,13 +257,14 @@ struct TripsView: View {
     // Center pane: all TripLocations across filtered trips
     private var allLocationsPane: some View {
         VStack(spacing: 0) {
-            paneHeader("אתרים", count: allFilteredLocations.count)
-            if allFilteredLocations.isEmpty {
+            paneHeader("מיקומים", count: filteredLocationsForPane.count)
+            paneFilterField($locationsFilter, placeholder: "חיפוש לפי שם או תיאור")
+            if filteredLocationsForPane.isEmpty {
                 emptyPane(label: "אין אתרים")
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(allFilteredLocations, id: \.location.id) { item in
+                        ForEach(filteredLocationsForPane, id: \.location.id) { item in
                             GlobalLocationRow(location: item.location, tripName: item.tripName)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -283,13 +284,14 @@ struct TripsView: View {
     // Left pane (RTL): aggregated species observations across all filtered trips
     private var allSpeciesPane: some View {
         VStack(spacing: 0) {
-            paneHeader("תצפיות", count: allSpeciesGroups.count)
-            if allSpeciesGroups.isEmpty {
+            paneHeader("תצפיות", count: filteredSpeciesForPane.count)
+            paneFilterField($speciesFilter, placeholder: "חיפוש לפי שם מין או תיאור", autoFocus: true)
+            if filteredSpeciesForPane.isEmpty {
                 emptyPane(label: "אין תצפיות")
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(allSpeciesGroups, id: \.name) { species in
+                        ForEach(filteredSpeciesForPane, id: \.name) { species in
                             GlobalSpeciesRow(
                                 name: species.name,
                                 imageURL: species.imageURL,
@@ -326,6 +328,30 @@ struct TripsView: View {
     }
 
     // MARK: - Pane data
+
+    private var filteredTripsForPane: [Trip] {
+        guard !tripsFilter.isEmpty else { return tripsVM.filteredTrips }
+        let q = tripsFilter.lowercased()
+        return tripsVM.filteredTrips.filter {
+            $0.name.lowercased().contains(q) || $0.description.lowercased().contains(q)
+        }
+    }
+
+    private var filteredLocationsForPane: [(location: TripLocation, tripName: String)] {
+        guard !locationsFilter.isEmpty else { return allFilteredLocations }
+        let q = locationsFilter.lowercased()
+        return allFilteredLocations.filter {
+            $0.location.name.lowercased().contains(q) || $0.location.description.lowercased().contains(q)
+        }
+    }
+
+    private var filteredSpeciesForPane: [SpeciesAgg] {
+        guard !speciesFilter.isEmpty else { return allSpeciesGroups }
+        let q = speciesFilter.lowercased()
+        return allSpeciesGroups.filter {
+            $0.name.lowercased().contains(q) || $0.desc.lowercased().contains(q)
+        }
+    }
 
     private var allFilteredLocations: [(location: TripLocation, tripName: String)] {
         var seen = Set<String>()
@@ -389,6 +415,31 @@ struct TripsView: View {
         Divider()
     }
 
+    @ViewBuilder
+    private func paneFilterField(_ text: Binding<String>, placeholder: String, autoFocus: Bool = false) -> some View {
+        HStack(spacing: 6) {
+            if !text.wrappedValue.isEmpty {
+                Button { text.wrappedValue = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+            RTLFilterTextField(text: text, placeholder: placeholder, autoFocus: autoFocus)
+                .frame(height: 20)
+            Image(systemName: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        Divider()
+    }
+
     private func emptyPane(label: String) -> some View {
         Text(label)
             .foregroundStyle(.tertiary)
@@ -402,6 +453,49 @@ struct TripsView: View {
 // MARK: - macOS pane row views
 
 #if os(macOS)
+private struct RTLFilterTextField: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    var autoFocus: Bool = false
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField()
+        field.isBordered = false
+        field.backgroundColor = .clear
+        field.focusRingType = .none
+        field.placeholderString = placeholder
+        field.baseWritingDirection = .rightToLeft
+        field.alignment = .right
+        field.font = .systemFont(ofSize: NSFont.systemFontSize(for: .small))
+        field.delegate = context.coordinator
+        return field
+    }
+
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text { nsView.stringValue = text }
+        nsView.placeholderString = placeholder
+        if autoFocus && !context.coordinator.didFocus {
+            context.coordinator.didFocus = true
+            DispatchQueue.main.async {
+                nsView.window?.makeFirstResponder(nsView)
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        @Binding var text: String
+        var didFocus = false
+        init(text: Binding<String>) { _text = text }
+
+        func controlTextDidChange(_ obj: Notification) {
+            guard let field = obj.object as? NSTextField else { return }
+            text = field.stringValue
+        }
+    }
+}
+
 private struct TripListRow: View {
     let trip: Trip
     let locationCount: Int
@@ -440,10 +534,6 @@ private struct TripListRow: View {
             }
             if isDeleting {
                 ProgressView().scaleEffect(0.7)
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.tertiary)
             }
         }
         .padding(.horizontal, 12)
