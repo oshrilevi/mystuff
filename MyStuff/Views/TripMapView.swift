@@ -202,15 +202,15 @@ private struct InatOverlayButton: View {
                 .pickerStyle(.inline)
             }
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 Image(systemName: "binoculars.fill")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                 Text("Wildlife")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
             }
             .foregroundStyle(showOverlay ? .white : .primary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
             .background(showOverlay ? Color.teal : Color.clear)
         }
         #if os(macOS)
