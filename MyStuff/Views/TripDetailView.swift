@@ -788,8 +788,13 @@ private struct LocationPopupCard: View {
                 .buttonStyle(.plain)
             }
 
-            Text(location.name)
-                .font(.headline)
+            if !location.wikiURL.isEmpty, let url = URL(string: location.wikiURL) {
+                Link(location.name, destination: url)
+                    .font(.headline)
+            } else {
+                Text(location.name)
+                    .font(.headline)
+            }
 
             if !location.description.isEmpty {
                 Text(location.description)
@@ -811,11 +816,6 @@ private struct LocationPopupCard: View {
                         }
                     }
                 }
-            }
-
-            if !location.wikiURL.isEmpty, let url = URL(string: location.wikiURL) {
-                Link("Wikipedia", destination: url)
-                    .font(.caption)
             }
         }
         .padding(14)
