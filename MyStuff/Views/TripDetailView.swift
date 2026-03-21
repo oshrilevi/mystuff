@@ -928,7 +928,7 @@ private struct SpeciesGroupRowView: View {
                         Text(group.wikiDescription)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                            .lineLimit(isFocused ? nil : 2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -993,6 +993,7 @@ private struct SpeciesAggregatedPopupCard: View {
     let onDismiss: () -> Void
 
     @State private var obsExpanded = false
+    @State private var descExpanded = false
     private static let collapsedLimit = 3
 
     private static let parseFmt: DateFormatter = {
@@ -1032,7 +1033,11 @@ private struct SpeciesAggregatedPopupCard: View {
                         }
                         if !group.wikiDescription.isEmpty {
                             Text(group.wikiDescription)
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(descExpanded ? nil : 2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { descExpanded = true } }
                         }
                     }
                 }
