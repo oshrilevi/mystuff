@@ -19,7 +19,7 @@ struct TripDetailView: View {
     @State private var sightingPopup: TripVisit? = nil
     @State private var sightingSortKey: SightingSortKey = .name
     @State private var sightingSortAsc: Bool = true
-    @State private var sightingViewMode: SightingViewMode = .byDate
+    @AppStorage("sightingViewMode") private var sightingViewMode: SightingViewMode = .bySpecies
     @State private var selectedSpeciesName: String? = nil
 
     private var tripsVM: TripsViewModel { session.trips }
@@ -823,7 +823,7 @@ private struct SightingPopupCard: View {
 
 // MARK: - Sighting view mode
 
-private enum SightingViewMode {
+private enum SightingViewMode: String {
     case byDate, bySpecies
 }
 
@@ -872,6 +872,10 @@ private struct SpeciesGroupRowView: View {
     var isFocused: Bool = false
     var onSelect: (() -> Void)? = nil
 
+    @State private var obsExpanded = false
+
+    private static let collapsedLimit = 4
+
     private static let parseFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
     }()
@@ -883,6 +887,13 @@ private struct SpeciesGroupRowView: View {
         guard let d = Self.parseFmt.date(from: s) else { return s }
         return Self.displayFmt.string(from: d)
     }
+
+    private var visibleObs: [(offset: Int, element: (date: String, timeOfDay: String))] {
+        let all = Array(group.observations.enumerated())
+        return obsExpanded ? all : Array(all.prefix(Self.collapsedLimit))
+    }
+
+    private var hasMore: Bool { group.observations.count > Self.collapsedLimit }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -924,28 +935,53 @@ private struct SpeciesGroupRowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            // Observation dates
-            VStack(alignment: .leading, spacing: 3) {
-                ForEach(Array(group.observations.enumerated()), id: \.offset) { _, obs in
-                    HStack(spacing: 6) {
-                        Image(systemName: "calendar")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(fmt(obs.date))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if !obs.timeOfDay.isEmpty {
-                            Text("·")
-                                .foregroundStyle(.tertiary)
-                            Image(systemName: "clock")
+            // Observation dates — 2-column grid
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+                alignment: .leading,
+                spacing: 4
+            ) {
+                ForEach(visibleObs, id: \.offset) { item in
+                    let obs = item.element
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "calendar")
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
-                            Text(TimeOfDay(rawValue: obs.timeOfDay)?.hebrewLabel ?? obs.timeOfDay)
+                            Text(fmt(obs.date))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        if !obs.timeOfDay.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock")
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                Text(TimeOfDay(rawValue: obs.timeOfDay)?.hebrewLabel ?? obs.timeOfDay)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
+            }
+
+            // Expand / collapse
+            if hasMore {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { obsExpanded.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: obsExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption2)
+                        Text(obsExpanded
+                             ? "הצג פחות"
+                             : "הצג עוד \(group.observations.count - Self.collapsedLimit)")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal)
