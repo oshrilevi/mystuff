@@ -157,21 +157,22 @@ private struct MapStylePicker: View {
 // MARK: - Pin View (extracted to avoid compiler type-check timeout)
 
 private struct TripMapPin: View {
-    let index: Int
+    let locationType: LocationType
     let isFocused: Bool
 
     var body: some View {
-        let pinColor: Color = isFocused ? .orange : .accentColor
-        let shadowColor: Color = isFocused ? Color.orange.opacity(0.6) : .clear
+        let pinColor = locationType.color
+        let shadowColor = isFocused ? pinColor.opacity(0.6) : Color.clear
         ZStack {
             Circle()
-                .fill(pinColor)
-                .frame(width: 28, height: 28)
+                .fill(isFocused ? pinColor : pinColor.opacity(0.85))
+                .frame(width: 32, height: 32)
                 .shadow(color: shadowColor, radius: 5)
-            Text("\(index + 1)")
-                .font(.caption.bold())
+            Image(systemName: locationType.systemImage)
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white)
         }
+        .scaleEffect(isFocused ? 1.15 : 1.0)
     }
 }
 
@@ -221,7 +222,7 @@ private struct ModernTripMapView: View {
                     Annotation(item.location.name, coordinate: item.coord, anchor: .center) {
                         Button { onLocationTapped?(item.location.id) } label: {
                             TripMapPin(
-                                index: item.index,
+                                locationType: item.location.type,
                                 isFocused: item.location.id == focusedLocationId
                             )
                         }

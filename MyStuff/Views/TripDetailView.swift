@@ -13,6 +13,7 @@ struct TripDetailView: View {
     @State private var focusedLocationId: String? = nil
     @State private var newLocationCoord: IdentifiableCoordinate? = nil
     @State private var headerHovered = false
+    @State private var selectedTypes: Set<LocationType> = Set(LocationType.allCases)
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -22,6 +23,10 @@ struct TripDetailView: View {
 
     private var orderedLocations: [TripLocation] {
         tripsVM.locations(for: currentTrip)
+    }
+
+    private var filteredLocations: [TripLocation] {
+        orderedLocations.filter { selectedTypes.contains($0.type) }
     }
 
     private var visits: [TripVisit] {
@@ -45,6 +50,13 @@ struct TripDetailView: View {
                     focusedLocationId = newLocations.first(where: { $0.latitude != nil })?.id
                 }
             }
+            .onChange(of: selectedTypes) { _, _ in
+                // If the focused location's type was just filtered out, move to the next visible one
+                let visibleIds = Set(filteredLocations.map { $0.id })
+                if let current = focusedLocationId, !visibleIds.contains(current) {
+                    focusedLocationId = filteredLocations.first(where: { $0.latitude != nil })?.id
+                }
+            }
             .sheet(isPresented: $editingTrip) {
                 TripFormSheet(trip: currentTrip) { name, description, wikiURL, tags in
                     var updated = currentTrip
@@ -56,9 +68,9 @@ struct TripDetailView: View {
                 }
             }
             .sheet(isPresented: $showAddLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon in
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             var updated = currentTrip
                             if !updated.locationIds.contains(created.id) {
@@ -76,7 +88,7 @@ struct TripDetailView: View {
                 }
             }
             .sheet(item: $editingLocation) { loc in
-                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon in
+                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type in
                     var updated = loc
                     updated.name = name
                     updated.description = description
@@ -84,14 +96,15 @@ struct TripDetailView: View {
                     updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
+                    updated.type = type
                     Task { await tripsVM.updateTripLocation(updated) }
                 }
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $newLocationCoord) { item in
-                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon in
+                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon, type in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             var updated = currentTrip
                             if !updated.locationIds.contains(created.id) {
@@ -125,8 +138,8 @@ struct TripDetailView: View {
                 .frame(width: 320)
             Divider()
             TripMapView(
-                locations: orderedLocations,
-                focusedLocationId: focusedLocationId ?? orderedLocations.first(where: { $0.latitude != nil })?.id,
+                locations: filteredLocations,
+                focusedLocationId: focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id,
                 onLocationTapped: { id in focusedLocationId = id },
                 onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) }
             )
@@ -135,8 +148,8 @@ struct TripDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 TripMapView(
-                    locations: orderedLocations,
-                    focusedLocationId: focusedLocationId ?? orderedLocations.first(where: { $0.latitude != nil })?.id,
+                    locations: filteredLocations,
+                    focusedLocationId: focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id,
                     onLocationTapped: { id in focusedLocationId = id },
                     onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) }
                 )
@@ -190,9 +203,34 @@ struct TripDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
             }
+            typeFilterBar
             locationsSection
             visitsSection
         }
+    }
+
+    // MARK: - Type Filter Bar
+
+    private var typeFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                ForEach(Array(LocationType.sorted.enumerated()), id: \.element) { idx, t in
+                    TypeFilterButton(
+                        locationType: t,
+                        count: orderedLocations.filter { $0.type == t }.count,
+                        isOn: selectedTypes.contains(t)
+                    ) {
+                        if selectedTypes.contains(t) { selectedTypes.remove(t) } else { selectedTypes.insert(t) }
+                    }
+                    if idx < LocationType.sorted.count - 1 {
+                        Divider().frame(height: 36)
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.separator, lineWidth: 0.5))
+        }
+        .padding(.horizontal)
     }
 
     // MARK: - Locations Section
@@ -293,6 +331,39 @@ struct TripDetailView: View {
     }
 }
 
+// MARK: - Type Filter Button
+
+private struct TypeFilterButton: View {
+    let locationType: LocationType
+    let count: Int
+    let isOn: Bool
+    let onTap: () -> Void
+
+    private var tooltipLabel: String {
+        let base = locationType.rawValue
+        let plural = count != 1 ? (base.hasSuffix("s") ? base : base + "s") : base
+        return "\(count) \(plural)"
+    }
+
+    var body: some View {
+        let fg: Color = isOn ? .white : (count == 0 ? Color.secondary.opacity(0.4) : .primary)
+        Button(action: onTap) {
+            VStack(spacing: 2) {
+                Image(systemName: locationType.systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+                Text("\(count)")
+                    .font(.system(size: 10, weight: .medium))
+            }
+            .frame(width: 40, height: 36)
+            .foregroundStyle(fg)
+            .background(isOn ? locationType.color : Color.secondary.opacity(0.12))
+        }
+        .buttonStyle(.plain)
+        .disabled(count == 0)
+        .help(tooltipLabel)
+    }
+}
+
 // MARK: - Location Row
 
 private struct TripLocationRowView: View {
@@ -319,9 +390,21 @@ private struct TripLocationRowView: View {
 
             // Content — single tap focuses, double tap edits
             VStack(alignment: .leading, spacing: 4) {
-                Text(location.name)
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 6) {
+                    Text(location.name)
+                        .font(.headline)
+                    HStack(spacing: 3) {
+                        Image(systemName: location.type.systemImage)
+                            .font(.system(size: 9, weight: .semibold))
+                        Text(location.type.rawValue)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .foregroundStyle(location.type.color)
+                    .background(location.type.color.opacity(0.12), in: Capsule())
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 if !location.description.isEmpty {
                     Text(location.description)
                         .font(.subheadline)

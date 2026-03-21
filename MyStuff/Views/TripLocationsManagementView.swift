@@ -74,12 +74,12 @@ struct TripLocationsManagementView: View {
                 #endif
             }
             .sheet(isPresented: $showAddLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon in
-                    Task { await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon) }
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type in
+                    Task { await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type) }
                 }
             }
             .sheet(item: $editingLocation) { loc in
-                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon in
+                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type in
                     var updated = loc
                     updated.name = name
                     updated.description = description
@@ -87,6 +87,7 @@ struct TripLocationsManagementView: View {
                     updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
+                    updated.type = type
                     Task { await tripsVM.updateTripLocation(updated) }
                 }
             }

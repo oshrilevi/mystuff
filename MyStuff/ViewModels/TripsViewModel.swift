@@ -143,7 +143,7 @@ final class TripsViewModel: ObservableObject {
 
     // MARK: - TripLocation CRUD
 
-    func addTripLocation(name: String, description: String = "", wikiURL: String = "", tags: [String] = [], latitude: Double? = nil, longitude: Double? = nil) async {
+    func addTripLocation(name: String, description: String = "", wikiURL: String = "", tags: [String] = [], latitude: Double? = nil, longitude: Double? = nil, type: LocationType = .natureReserve) async {
         guard let sid = spreadsheetId else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -157,7 +157,8 @@ final class TripsViewModel: ObservableObject {
             longitude: longitude,
             wikiURL: wikiURL,
             createdAt: now,
-            updatedAt: now
+            updatedAt: now,
+            type: type
         )
         do {
             try await ensureSheetsExist(spreadsheetId: sid)
@@ -351,7 +352,8 @@ final class TripsViewModel: ObservableObject {
             loc.longitude.map { "\($0)" } ?? "",
             loc.createdAt,
             loc.updatedAt,
-            loc.wikiURL
+            loc.wikiURL,
+            loc.type.rawValue
         ]
     }
 
@@ -365,6 +367,7 @@ final class TripsViewModel: ObservableObject {
             let createdAt = row.count > 6 ? row[6] : ""
             let updatedAt = row.count > 7 ? row[7] : ""
             let wikiURL = row.count > 8 ? row[8] : ""
+            let type = row.count > 9 ? LocationType(rawValue: row[9]) ?? .natureReserve : .natureReserve
             return TripLocation(
                 id: row[0],
                 name: row[1],
@@ -374,7 +377,8 @@ final class TripsViewModel: ObservableObject {
                 longitude: longitude,
                 wikiURL: wikiURL,
                 createdAt: createdAt,
-                updatedAt: updatedAt
+                updatedAt: updatedAt,
+                type: type
             )
         }
     }

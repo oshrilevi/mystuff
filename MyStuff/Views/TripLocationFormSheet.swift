@@ -12,9 +12,10 @@ private enum DescriptionSource: String, CaseIterable {
 
 struct TripLocationFormSheet: View {
     let location: TripLocation?
-    let onSave: (String, String, String, [String], Double?, Double?) -> Void
+    let onSave: (String, String, String, [String], Double?, Double?, LocationType) -> Void
 
     @State private var name: String
+    @State private var type: LocationType
     @State private var tags: [String]
     @State private var searchText = ""
     @State private var searchResults: [MKMapItem] = []
@@ -36,10 +37,11 @@ struct TripLocationFormSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     init(location: TripLocation?, initialCoordinate: CLLocationCoordinate2D? = nil,
-         onSave: @escaping (String, String, String, [String], Double?, Double?) -> Void) {
+         onSave: @escaping (String, String, String, [String], Double?, Double?, LocationType) -> Void) {
         self.location = location
         self.onSave = onSave
         _name = State(initialValue: location?.name ?? "")
+        _type = State(initialValue: location?.type ?? .natureReserve)
         _tags = State(initialValue: location?.tags ?? [])
         _wikiURL = State(initialValue: location?.wikiURL ?? "")
 
@@ -94,6 +96,16 @@ struct TripLocationFormSheet: View {
                                 scheduleNameWikiFetch(name: newValue)
                             }
                         }
+                }
+
+                // MARK: Type
+                Section("Type") {
+                    Picker("Type", selection: $type) {
+                        ForEach(LocationType.sorted, id: \.self) { t in
+                            Label(t.rawValue, systemImage: t.systemImage).tag(t)
+                        }
+                    }
+                    .pickerStyle(.menu)
                 }
 
                 // MARK: About
@@ -177,7 +189,8 @@ struct TripLocationFormSheet: View {
                             wikiURL,
                             tags,
                             selectedCoordinate?.latitude,
-                            selectedCoordinate?.longitude
+                            selectedCoordinate?.longitude,
+                            type
                         )
                         dismiss()
                     }
