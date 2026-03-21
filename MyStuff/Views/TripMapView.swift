@@ -54,9 +54,11 @@ enum TripMapStyle: String, CaseIterable, Identifiable {
 struct TripMapView: View {
     let locations: [TripLocation]
     var sightings: [TripVisit] = []
+    var fallbackCoordinate: CLLocationCoordinate2D? = nil
     var focusedLocationId: String? = nil
     var focusedSightingId: String? = nil
     var onLocationTapped: ((String) -> Void)? = nil
+    var onSightingTapped: ((String) -> Void)? = nil
     var onMapLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
     var onSightingLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
 
@@ -79,6 +81,12 @@ struct TripMapView: View {
     private var boundingRegion: MKCoordinateRegion {
         let coords = coordinatedLocations.map { $0.coord }
         guard !coords.isEmpty else {
+            if let fallback = fallbackCoordinate {
+                return MKCoordinateRegion(
+                    center: fallback,
+                    span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
+                )
+            }
             return MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 30, longitude: 15),
                 span: MKCoordinateSpan(latitudeDelta: 60, longitudeDelta: 60)
@@ -110,6 +118,7 @@ struct TripMapView: View {
                     focusedSightingId: focusedSightingId,
                     mapStyle: mapStyle,
                     onLocationTapped: onLocationTapped,
+                    onSightingTapped: onSightingTapped,
                     onMapLongPress: onMapLongPress,
                     onSightingLongPress: onSightingLongPress
                 )
@@ -229,6 +238,7 @@ private struct ModernTripMapView: View {
     let focusedSightingId: String?
     let mapStyle: TripMapStyle
     let onLocationTapped: ((String) -> Void)?
+    let onSightingTapped: ((String) -> Void)?
     let onMapLongPress: ((CLLocationCoordinate2D) -> Void)?
     let onSightingLongPress: ((CLLocationCoordinate2D) -> Void)?
 
@@ -245,6 +255,7 @@ private struct ModernTripMapView: View {
         focusedSightingId: String?,
         mapStyle: TripMapStyle,
         onLocationTapped: ((String) -> Void)?,
+        onSightingTapped: ((String) -> Void)?,
         onMapLongPress: ((CLLocationCoordinate2D) -> Void)?,
         onSightingLongPress: ((CLLocationCoordinate2D) -> Void)?
     ) {
@@ -255,15 +266,21 @@ private struct ModernTripMapView: View {
         self.focusedSightingId = focusedSightingId
         self.mapStyle = mapStyle
         self.onLocationTapped = onLocationTapped
+        self.onSightingTapped = onSightingTapped
         self.onMapLongPress = onMapLongPress
         self.onSightingLongPress = onSightingLongPress
-        // Start far-zoomed-out so the camera always makes a meaningful move to the
-        // focused pin on appear — MapKit only renders annotation views after the
-        // camera position state changes at least once post-appear.
-        _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-            span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 180)
-        )))
+        // When there are no locations to animate to, start directly at the initial
+        // region (e.g. the trip's own fallback coordinate).
+        // Otherwise start far-zoomed-out so MapKit is guaranteed to trigger a full
+        // annotation-layer render when the camera first moves to the focused pin.
+        if coordinatedLocations.isEmpty {
+            _cameraPosition = State(initialValue: .region(initialRegion))
+        } else {
+            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                span: MKCoordinateSpan(latitudeDelta: 180, longitudeDelta: 180)
+            )))
+        }
     }
 
     var body: some View {
@@ -285,12 +302,7 @@ private struct ModernTripMapView: View {
                     let label = item.sighting.sightings.map(\.name).filter { !$0.isEmpty }.joined(separator: ", ")
                     Annotation(label.isEmpty ? "Sighting" : label, coordinate: item.coord, anchor: .center) {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.4)) {
-                                cameraPosition = .region(MKCoordinateRegion(
-                                    center: item.coord,
-                                    span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                                ))
-                            }
+                            onSightingTapped?(item.sighting.id)
                         } label: {
                             SightingMapPin(isFocused: item.sighting.id == focusedSightingId)
                         }
@@ -350,10 +362,12 @@ private struct ModernTripMapView: View {
                     ))
                 }
             }
-            .onChange(of: focusedSightingId) { _, newId in
-                guard let id = newId,
+            .task(id: focusedSightingId) {
+                guard let id = focusedSightingId,
                       let item = coordinatedSightings.first(where: { $0.sighting.id == id })
                 else { return }
+                try? await Task.sleep(for: .milliseconds(50))
+                guard !Task.isCancelled else { return }
                 withAnimation(.easeInOut(duration: 0.4)) {
                     cameraPosition = .region(MKCoordinateRegion(
                         center: item.coord,

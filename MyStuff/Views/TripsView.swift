@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 struct TripsView: View {
     @EnvironmentObject var session: Session
@@ -51,17 +52,19 @@ struct TripsView: View {
                 #endif
             }
             .sheet(isPresented: $showAddTrip) {
-                TripFormSheet(trip: nil) { name, description, wikiURL, tags in
-                    Task { await tripsVM.addTrip(name: name, description: description, wikiURL: wikiURL, tags: tags) }
+                TripFormSheet(trip: nil) { name, description, wikiURL, tags, lat, lon in
+                    Task { await tripsVM.addTrip(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon) }
                 }
             }
             .sheet(item: $editingTrip) { trip in
-                TripFormSheet(trip: trip) { name, description, wikiURL, tags in
+                TripFormSheet(trip: trip) { name, description, wikiURL, tags, lat, lon in
                     var updated = trip
                     updated.name = name
                     updated.description = description
                     updated.wikiURL = wikiURL
                     updated.tags = tags
+                    updated.latitude = lat
+                    updated.longitude = lon
                     Task { await tripsVM.updateTrip(updated) }
                 }
             }
@@ -122,7 +125,7 @@ struct TripsView: View {
                         TripCardView(
                             trip: trip,
                             locations: tripsVM.locations(for: trip),
-                            visitCount: tripsVM.visits(for: trip).count,
+                            visits: tripsVM.visits(for: trip),
                             isDeleting: deletingTripId == trip.id,
                             onEdit: { editingTrip = trip },
                             onDelete: { tripPendingDelete = trip }
@@ -140,12 +143,31 @@ struct TripsView: View {
 private struct TripCardView: View {
     let trip: Trip
     let locations: [TripLocation]
-    let visitCount: Int
+    let visits: [TripVisit]
     let isDeleting: Bool
     let onEdit: () -> Void
     let onDelete: () -> Void
 
-    @State private var locationsExpanded = false
+    @State private var detailsExpanded = false
+
+    private var visitCount: Int { visits.count }
+    private var hasExpandable: Bool { !locations.isEmpty || !visits.isEmpty }
+
+    // All unique sighting names across all visits
+    private var allSightingNames: [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for visit in visits {
+            for sighting in visit.sightings {
+                let key = sighting.name.lowercased()
+                if !key.isEmpty && !seen.contains(key) {
+                    seen.insert(key)
+                    result.append(sighting.name)
+                }
+            }
+        }
+        return result
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -169,20 +191,31 @@ private struct TripCardView: View {
 
             Divider()
 
-            // Expandable locations section
-            if !locations.isEmpty {
+            // Expandable section (locations + observations)
+            if hasExpandable {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { locationsExpanded.toggle() }
+                    withAnimation(.easeInOut(duration: 0.2)) { detailsExpanded.toggle() }
                 } label: {
                     HStack(spacing: 6) {
-                        Image(systemName: "mappin")
-                            .font(.caption)
-                        Text("\(locations.count) location\(locations.count == 1 ? "" : "s")")
-                            .font(.caption)
+                        if !locations.isEmpty {
+                            Image(systemName: "mappin")
+                                .font(.caption)
+                            Text("\(locations.count) location\(locations.count == 1 ? "" : "s")")
+                                .font(.caption)
+                        }
+                        if !visits.isEmpty {
+                            if !locations.isEmpty {
+                                Text("·").font(.caption).foregroundStyle(.tertiary)
+                            }
+                            Image(systemName: "camera")
+                                .font(.caption)
+                            Text("\(visitCount) sighting\(visitCount == 1 ? "" : "s")")
+                                .font(.caption)
+                        }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption2.bold())
-                            .rotationEffect(.degrees(locationsExpanded ? 90 : 0))
+                            .rotationEffect(.degrees(detailsExpanded ? 90 : 0))
                     }
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 12)
@@ -191,28 +224,75 @@ private struct TripCardView: View {
                 }
                 .buttonStyle(.plain)
 
-                if locationsExpanded {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(locations.enumerated()), id: \.element.id) { idx, loc in
-                            HStack(spacing: 8) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.accentColor.opacity(0.15))
-                                        .frame(width: 18, height: 18)
-                                    Text("\(idx + 1)")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundStyle(Color.accentColor)
+                if detailsExpanded {
+                    HStack(alignment: .top, spacing: 0) {
+                        // Left column: locations
+                        if !locations.isEmpty {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("Locations")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .textCase(.uppercase)
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 6)
+                                    .padding(.bottom, 4)
+                                ForEach(Array(locations.enumerated()), id: \.element.id) { idx, loc in
+                                    HStack(spacing: 6) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.accentColor.opacity(0.15))
+                                                .frame(width: 16, height: 16)
+                                            Text("\(idx + 1)")
+                                                .font(.system(size: 8, weight: .bold))
+                                                .foregroundStyle(Color.accentColor)
+                                        }
+                                        Text(loc.name)
+                                            .font(.caption)
+                                            .foregroundStyle(.primary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    if idx < locations.count - 1 {
+                                        Divider().padding(.leading, 34)
+                                    }
                                 }
-                                Text(loc.name)
-                                    .font(.caption)
-                                    .foregroundStyle(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            if idx < locations.count - 1 {
-                                Divider().padding(.trailing, 38)
+                            .frame(maxWidth: .infinity)
+                        }
+
+                        if !locations.isEmpty && !allSightingNames.isEmpty {
+                            Divider()
+                        }
+
+                        // Right column: observations
+                        if !allSightingNames.isEmpty {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("Observed")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(.secondary)
+                                    .textCase(.uppercase)
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 6)
+                                    .padding(.bottom, 4)
+                                ForEach(Array(allSightingNames.enumerated()), id: \.offset) { idx, sightingName in
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color.green.opacity(0.5))
+                                            .frame(width: 5, height: 5)
+                                        Text(sightingName)
+                                            .font(.caption)
+                                            .foregroundStyle(.primary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 4)
+                                    if idx < allSightingNames.count - 1 {
+                                        Divider().padding(.leading, 23)
+                                    }
+                                }
                             }
+                            .frame(maxWidth: .infinity)
                         }
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -224,21 +304,14 @@ private struct TripCardView: View {
             // Spacer pushes footer to bottom so all cards align
             Spacer(minLength: 0)
 
-            // Footer: sightings count (no action button — use right-click)
-            if visitCount > 0 || isDeleting {
+            // Footer: deleting indicator
+            if isDeleting {
                 Divider()
-                HStack(spacing: 12) {
-                    if visitCount > 0 {
-                        Label("\(visitCount)", systemImage: "camera")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                HStack {
                     Spacer()
-                    if isDeleting {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                            .padding(.trailing, 4)
-                    }
+                    ProgressView()
+                        .scaleEffect(0.7)
+                        .padding(.trailing, 4)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
@@ -268,7 +341,7 @@ private struct TripCardView: View {
 
 struct TripFormSheet: View {
     let trip: Trip?
-    let onSave: (String, String, String, [String]) -> Void
+    let onSave: (String, String, String, [String], Double?, Double?) -> Void
 
     @EnvironmentObject var session: Session
     @State private var name: String
@@ -278,9 +351,16 @@ struct TripFormSheet: View {
     @State private var isFetchingWiki = false
     @State private var wikiTask: Task<Void, Never>?
     @State private var nameDebounceTask: Task<Void, Never>?
+
+    // Map / place search
+    @State private var searchText = ""
+    @State private var searchResults: [MKMapItem] = []
+    @State private var searchTask: Task<Void, Never>?
+    @State private var selectedCoordinate: CLLocationCoordinate2D?
+
     @Environment(\.dismiss) private var dismiss
 
-    init(trip: Trip?, onSave: @escaping (String, String, String, [String]) -> Void) {
+    init(trip: Trip?, onSave: @escaping (String, String, String, [String], Double?, Double?) -> Void) {
         self.trip = trip
         self.onSave = onSave
         _name = State(initialValue: trip?.name ?? "")
@@ -288,6 +368,9 @@ struct TripFormSheet: View {
         _wikiURL = State(initialValue: trip?.wikiURL ?? "")
         if let desc = trip?.description, !desc.isEmpty {
             _wikiSummary = State(initialValue: WikiSummary(title: trip?.name ?? "", extract: desc, pageURL: nil, thumbnailURL: nil))
+        }
+        if let lat = trip?.latitude, let lon = trip?.longitude {
+            _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
     }
 
@@ -297,12 +380,63 @@ struct TripFormSheet: View {
                 Section("Name") {
                     TextField("Shooting location name", text: $name)
                         .onChange(of: name) { _, newValue in
+                            if selectedCoordinate == nil {
+                                searchText = newValue
+                                scheduleSearch(query: newValue)
+                            }
                             scheduleNameWikiFetch(name: newValue)
                         }
                 }
                 Section("Tags") {
                     TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
+
+                // MARK: Search for a place
+                Section("Search for a place") {
+                    TextField("Place name or address", text: $searchText)
+                        .onChange(of: searchText) { _, newValue in
+                            scheduleSearch(query: newValue)
+                        }
+                    if !searchResults.isEmpty {
+                        ForEach(searchResults, id: \.self) { item in
+                            Button {
+                                selectMapItem(item)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name ?? "Unknown")
+                                        .foregroundStyle(.primary)
+                                    if let subtitle = item.placemark.title, subtitle != item.name {
+                                        Text(subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // MARK: Selected location preview
+                if let coord = selectedCoordinate {
+                    Section("Selected Location") {
+                        mapPreview(coordinate: coord)
+                        HStack {
+                            Text("Lat: \(String(format: "%.5f", coord.latitude))")
+                            Spacer()
+                            Text("Lon: \(String(format: "%.5f", coord.longitude))")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        Button("Clear location", role: .destructive) {
+                            selectedCoordinate = nil
+                            searchText = ""
+                            searchResults = []
+                        }
+                        .font(.caption)
+                    }
+                }
+
                 Section {
                     HStack {
                         TextField("Wikipedia URL", text: $wikiURL)
@@ -354,7 +488,14 @@ struct TripFormSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(name.trimmingCharacters(in: .whitespaces), wikiSummary?.extract ?? "", wikiURL, tags)
+                        onSave(
+                            name.trimmingCharacters(in: .whitespaces),
+                            wikiSummary?.extract ?? "",
+                            wikiURL,
+                            tags,
+                            selectedCoordinate?.latitude,
+                            selectedCoordinate?.longitude
+                        )
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -365,7 +506,58 @@ struct TripFormSheet: View {
         .presentationDetents([.large])
     }
 
+    // MARK: - Map preview
+
+    @ViewBuilder
+    private func mapPreview(coordinate: CLLocationCoordinate2D) -> some View {
+        let region = MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        )
+        Map(coordinateRegion: .constant(region), annotationItems: [TripFormAnnotation(coordinate: coordinate)]) { item in
+            MapMarker(coordinate: item.coordinate, tint: .red)
+        }
+        .frame(height: 160)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Search
+
+    private func scheduleSearch(query: String) {
+        searchTask?.cancel()
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            searchResults = []
+            return
+        }
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            let request = MKLocalSearch.Request()
+            request.naturalLanguageQuery = query
+            let search = MKLocalSearch(request: request)
+            if let response = try? await search.start() {
+                searchResults = Array(response.mapItems.prefix(5))
+            }
+        }
+    }
+
+    private func selectMapItem(_ item: MKMapItem) {
+        selectedCoordinate = item.placemark.coordinate
+        if let itemName = item.name, name.trimmingCharacters(in: .whitespaces).isEmpty {
+            name = itemName
+        }
+        searchResults = []
+        searchText = item.name ?? ""
+        if wikiSummary == nil {
+            scheduleWikiFetch(name: item.name ?? name)
+        }
+    }
+
+    // MARK: - Wikipedia fetching
+
     private func scheduleNameWikiFetch(name: String) {
+        guard wikiSummary == nil else { return }
         nameDebounceTask?.cancel()
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         nameDebounceTask = Task {
@@ -406,4 +598,9 @@ struct TripFormSheet: View {
             }
         }
     }
+}
+
+private struct TripFormAnnotation: Identifiable {
+    let id = UUID()
+    let coordinate: CLLocationCoordinate2D
 }

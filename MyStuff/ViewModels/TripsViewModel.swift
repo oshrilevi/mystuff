@@ -66,7 +66,7 @@ final class TripsViewModel: ObservableObject {
 
     // MARK: - Trips CRUD
 
-    func addTrip(name: String, description: String = "", wikiURL: String = "", tags: [String] = [], locationIds: [String] = []) async {
+    func addTrip(name: String, description: String = "", wikiURL: String = "", tags: [String] = [], locationIds: [String] = [], latitude: Double? = nil, longitude: Double? = nil) async {
         guard let sid = spreadsheetId else { return }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -81,7 +81,9 @@ final class TripsViewModel: ObservableObject {
             order: nextOrder,
             createdAt: now,
             updatedAt: now,
-            wikiURL: wikiURL
+            wikiURL: wikiURL,
+            latitude: latitude,
+            longitude: longitude
         )
         do {
             try await ensureSheetsExist(spreadsheetId: sid)
@@ -304,7 +306,9 @@ final class TripsViewModel: ObservableObject {
             "\(trip.order)",
             trip.createdAt,
             trip.updatedAt,
-            trip.wikiURL
+            trip.wikiURL,
+            trip.latitude.map { "\($0)" } ?? "",
+            trip.longitude.map { "\($0)" } ?? ""
         ]
     }
 
@@ -318,6 +322,8 @@ final class TripsViewModel: ObservableObject {
             let createdAt = row.count > 6 ? row[6] : ""
             let updatedAt = row.count > 7 ? row[7] : ""
             let wikiURL = row.count > 8 ? row[8] : ""
+            let latitude = row.count > 9 ? Double(row[9]) : nil
+            let longitude = row.count > 10 ? Double(row[10]) : nil
             return Trip(
                 id: row[0],
                 name: row[1],
@@ -327,7 +333,9 @@ final class TripsViewModel: ObservableObject {
                 order: order,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
-                wikiURL: wikiURL
+                wikiURL: wikiURL,
+                latitude: latitude,
+                longitude: longitude
             )
         }
     }

@@ -61,12 +61,14 @@ struct TripDetailView: View {
                 }
             }
             .sheet(isPresented: $editingTrip) {
-                TripFormSheet(trip: currentTrip) { name, description, wikiURL, tags in
+                TripFormSheet(trip: currentTrip) { name, description, wikiURL, tags, lat, lon in
                     var updated = currentTrip
                     updated.name = name
                     updated.description = description
                     updated.wikiURL = wikiURL
                     updated.tags = tags
+                    updated.latitude = lat
+                    updated.longitude = lon
                     Task { await tripsVM.updateTrip(updated) }
                 }
             }
@@ -145,9 +147,11 @@ struct TripDetailView: View {
             TripMapView(
                 locations: filteredLocations,
                 sightings: showSightingsOnMap ? visits : [],
-                focusedLocationId: focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id,
+                fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
+                focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
                 focusedSightingId: focusedSightingId,
-                onLocationTapped: { id in focusedLocationId = id },
+                onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
+                onSightingTapped: { id in focusedSightingId = id; focusedLocationId = nil },
                 onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
                 onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
             )
@@ -158,8 +162,11 @@ struct TripDetailView: View {
                 TripMapView(
                     locations: filteredLocations,
                     sightings: showSightingsOnMap ? visits : [],
-                    focusedLocationId: focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id,
-                    onLocationTapped: { id in focusedLocationId = id },
+                    fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
+                    focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
+                    focusedSightingId: focusedSightingId,
+                    onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
+                    onSightingTapped: { id in focusedSightingId = id; focusedLocationId = nil },
                     onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
                     onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
                 )
@@ -288,6 +295,7 @@ struct TripDetailView: View {
                         onFocus: {
                             if loc.latitude != nil {
                                 focusedLocationId = loc.id
+                                focusedSightingId = nil
                             }
                         },
                         onEdit: { editingLocation = loc },
@@ -332,7 +340,7 @@ struct TripDetailView: View {
                                 }
                             }
                         },
-                        onFocus: { if visit.latitude != nil { focusedSightingId = visit.id } },
+                        onFocus: { if visit.latitude != nil { focusedSightingId = visit.id; focusedLocationId = nil } },
                         onEdit: { editingVisit = visit },
                         onDelete: { Task { await tripsVM.deleteVisit(id: visit.id) } }
                     )
