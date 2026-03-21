@@ -588,7 +588,7 @@ private struct TripLocationRowView: View {
                     Text(location.description)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(3)
+                        .lineLimit(isFocused ? nil : 3)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -784,7 +784,7 @@ private struct SightingPopupCard: View {
                             Text(s.name).font(.subheadline.bold())
                         }
                         if !s.wikiDescription.isEmpty {
-                            Text(s.wikiDescription).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                            Text(s.wikiDescription).font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -928,7 +928,7 @@ private struct SpeciesGroupRowView: View {
                         Text(group.wikiDescription)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                            .lineLimit(isFocused ? nil : 2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
