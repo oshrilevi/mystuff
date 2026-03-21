@@ -990,7 +990,7 @@ private struct SpeciesAggregatedPopupCard: View {
     let onDismiss: () -> Void
 
     @State private var obsExpanded = false
-    private static let collapsedLimit = 4
+    private static let collapsedLimit = 3
 
     private static let parseFmt: DateFormatter = {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
