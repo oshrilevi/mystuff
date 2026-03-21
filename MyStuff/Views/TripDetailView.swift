@@ -518,11 +518,7 @@ private struct TypeFilterButton: View {
     let isOn: Bool
     let onTap: () -> Void
 
-    private var tooltipLabel: String {
-        let base = locationType.rawValue
-        let plural = count != 1 ? (base.hasSuffix("s") ? base : base + "s") : base
-        return "\(count) \(plural)"
-    }
+    private var tooltipLabel: String { "\(count) \(locationType.hebrewLabel)" }
 
     var body: some View {
         let fg: Color = isOn ? .white : (count == 0 ? Color.secondary.opacity(0.4) : .primary)
@@ -577,7 +573,7 @@ private struct TripLocationRowView: View {
                     HStack(spacing: 3) {
                         Image(systemName: location.type.systemImage)
                             .font(.system(size: 9, weight: .semibold))
-                        Text(location.type.rawValue)
+                        Text(location.type.hebrewLabel)
                             .font(.system(size: 10, weight: .medium))
                     }
                     .padding(.horizontal, 6)
@@ -909,7 +905,11 @@ private struct SpeciesGroupRowView: View {
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text(group.name).font(.subheadline.bold())
+                        if !group.wikiURL.isEmpty, let url = URL(string: group.wikiURL) {
+                            Link(group.name, destination: url).font(.subheadline.bold())
+                        } else {
+                            Text(group.name).font(.subheadline.bold())
+                        }
                         Text("×\(group.observations.count)")
                             .font(.caption2)
                             .padding(.horizontal, 5).padding(.vertical, 2)
@@ -922,12 +922,6 @@ private struct SpeciesGroupRowView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if !group.wikiURL.isEmpty, let url = URL(string: group.wikiURL) {
-                        Link(destination: url) {
-                            Label("Wikipedia", systemImage: "arrow.up.right.square")
-                                .font(.caption2)
-                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

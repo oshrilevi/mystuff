@@ -36,6 +36,8 @@ struct TripLocationFormSheet: View {
     @State private var wikiTask: Task<Void, Never>?
     @State private var nameDebounceTask: Task<Void, Never>?
 
+    @FocusState private var nameFocused: Bool
+
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
 
@@ -90,6 +92,19 @@ struct TripLocationFormSheet: View {
                 // MARK: Name
                 Section("Name") {
                     TextField("Location name", text: $name)
+                        .focused($nameFocused)
+                        .onAppear {
+                            nameFocused = true
+                            #if os(macOS)
+                            // Focus without selecting all text — move cursor to end
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                guard let editor = NSApp.keyWindow?.fieldEditor(false, for: nil)
+                                else { return }
+                                let len = editor.string.count
+                                editor.selectedRange = NSRange(location: len, length: 0)
+                            }
+                            #endif
+                        }
                         .onChange(of: name) { _, newValue in
                             if selectedCoordinate == nil {
                                 searchText = newValue
@@ -106,7 +121,7 @@ struct TripLocationFormSheet: View {
                 Section("Type") {
                     Picker("Type", selection: $type) {
                         ForEach(LocationType.sorted, id: \.self) { t in
-                            Label(t.rawValue, systemImage: t.systemImage).tag(t)
+                            Label(t.hebrewLabel, systemImage: t.systemImage).tag(t)
                         }
                     }
                     .pickerStyle(.menu)

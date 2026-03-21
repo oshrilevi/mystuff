@@ -11,8 +11,19 @@ enum LocationType: String, CaseIterable, Codable, Hashable {
     case trail           = "Trail"
     case waterReservoir  = "Water Reservoir"
 
-    /// Ascending display order matches raw value alphabetical order.
-    static var sorted: [LocationType] { allCases.sorted { $0.rawValue < $1.rawValue } }
+    /// Ascending display order matches Hebrew label alphabetical order.
+    static var sorted: [LocationType] { allCases.sorted { $0.hebrewLabel < $1.hebrewLabel } }
+
+    var hebrewLabel: String {
+        switch self {
+        case .fishPonds:       return "בריכות דגים"
+        case .natureReserve:   return "שמורת טבע"
+        case .photoSpot:       return "נקודת צילום"
+        case .scenicViewpoint: return "תצפית"
+        case .trail:           return "שביל"
+        case .waterReservoir:  return "מאגר מים"
+        }
+    }
 
     var color: Color {
         switch self {

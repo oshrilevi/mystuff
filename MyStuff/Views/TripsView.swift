@@ -8,6 +8,7 @@ struct TripsView: View {
     @State private var editingTrip: Trip?
     @State private var tripPendingDelete: Trip?
     @State private var deletingTripId: String?
+    @AppStorage("lastSelectedTripId") private var lastSelectedTripId: String = ""
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -94,7 +95,16 @@ struct TripsView: View {
                     .environment(\.layoutDirection, .rightToLeft)
                     .multilineTextAlignment(.leading)
             }
-            .task { await tripsVM.load() }
+            .onChange(of: selectedTrip) { _, trip in
+                lastSelectedTripId = trip?.id ?? ""
+            }
+            .task {
+                await tripsVM.load()
+                // Restore the last selected trip once data is available
+                if selectedTrip == nil, !lastSelectedTripId.isEmpty {
+                    selectedTrip = tripsVM.trips.first { $0.id == lastSelectedTripId }
+                }
+            }
             .refreshable { await tripsVM.load() }
         }
     }
