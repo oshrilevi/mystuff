@@ -15,8 +15,7 @@ struct TripLocationsManagementView: View {
         let q = searchText.lowercased()
         return all.filter {
             $0.name.lowercased().contains(q) ||
-            $0.description.lowercased().contains(q) ||
-            $0.tags.joined(separator: " ").lowercased().contains(q)
+            $0.description.lowercased().contains(q)
         }
     }
 
@@ -74,17 +73,16 @@ struct TripLocationsManagementView: View {
                 #endif
             }
             .sheet(isPresented: $showAddLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type, photoIds in
-                    Task { await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds) }
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, lat, lon, type, photoIds in
+                    Task { await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, latitude: lat, longitude: lon, type: type, photoIds: photoIds) }
                 }
             }
             .sheet(item: $editingLocation) { loc in
-                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type, photoIds in
+                TripLocationFormSheet(location: loc) { name, description, wikiURL, lat, lon, type, photoIds in
                     var updated = loc
                     updated.name = name
                     updated.description = description
                     updated.wikiURL = wikiURL
-                    updated.tags = tags
                     updated.latitude = lat
                     updated.longitude = lon
                     updated.type = type
@@ -105,11 +103,6 @@ struct TripLocationsManagementView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-            }
-            if !loc.tags.isEmpty {
-                Text(loc.tags.joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             if let lat = loc.latitude, let lon = loc.longitude {
                 Text(String(format: "%.4f, %.4f", lat, lon))

@@ -173,9 +173,7 @@ final class Session: ObservableObject {
     /// All unique tags used across trips, trip locations, and trip visits, sorted by frequency (most-used first).
     var allTags: [String] {
         var freq: [String: Int] = [:]
-        let allTagArrays: [[String]] = trips.trips.map(\.tags)
-            + trips.tripLocations.map(\.tags)
-            + trips.tripVisits.map(\.tags)
+        let allTagArrays: [[String]] = []
         for tagList in allTagArrays {
             for tag in tagList {
                 freq[tag.lowercased(), default: 0] += 1

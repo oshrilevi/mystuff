@@ -19,8 +19,7 @@ struct TripLocationPickerView: View {
         let q = searchText.lowercased()
         return all.filter {
             $0.name.lowercased().contains(q) ||
-            $0.description.lowercased().contains(q) ||
-            $0.tags.joined(separator: " ").lowercased().contains(q)
+            $0.description.lowercased().contains(q)
         }
     }
 
@@ -48,11 +47,6 @@ struct TripLocationPickerView: View {
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
-                                    }
-                                    if !loc.tags.isEmpty {
-                                        Text(loc.tags.joined(separator: ", "))
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
                                     }
                                     if let lat = loc.latitude, let lon = loc.longitude {
                                         Text(String(format: "%.4f, %.4f", lat, lon))
@@ -85,9 +79,9 @@ struct TripLocationPickerView: View {
                 }
             }
             .sheet(isPresented: $showCreateLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type, photoIds in
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, lat, lon, type, photoIds in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             onSelect(created)
                             dismiss()
