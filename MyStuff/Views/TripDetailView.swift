@@ -17,6 +17,7 @@ struct TripDetailView: View {
     @State private var headerHovered = false
     @State private var selectedTypes: Set<LocationType> = Set(LocationType.allCases)
     @State private var showSightingsOnMap = true
+    @State private var sightingPopup: TripVisit? = nil
 
     private var tripsVM: TripsViewModel { session.trips }
 
@@ -73,9 +74,9 @@ struct TripDetailView: View {
                 }
             }
             .sheet(isPresented: $showAddLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type in
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type, photoIds in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             var updated = currentTrip
                             if !updated.locationIds.contains(created.id) {
@@ -88,7 +89,7 @@ struct TripDetailView: View {
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $editingLocation) { loc in
-                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type in
+                TripLocationFormSheet(location: loc) { name, description, wikiURL, tags, lat, lon, type, photoIds in
                     var updated = loc
                     updated.name = name
                     updated.description = description
@@ -97,14 +98,15 @@ struct TripDetailView: View {
                     updated.latitude = lat
                     updated.longitude = lon
                     updated.type = type
+                    updated.photoIds = photoIds
                     Task { await tripsVM.updateTripLocation(updated) }
                 }
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $newLocationCoord) { item in
-                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon, type in
+                TripLocationFormSheet(location: nil, initialCoordinate: item.coordinate) { name, description, wikiURL, tags, lat, lon, type, photoIds in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             var updated = currentTrip
                             if !updated.locationIds.contains(created.id) {
@@ -117,7 +119,7 @@ struct TripDetailView: View {
                 .environment(\.layoutDirection, .leftToRight)
             }
             .sheet(item: $editingVisit) { visit in
-                TripVisitFormSheet(visit: visit) { sightings, lat, lon, date, timeOfDay, tags in
+                TripVisitFormSheet(visit: visit) { sightings, lat, lon, date, timeOfDay, tags, photoIds in
                     var updated = visit
                     updated.sightings = sightings
                     updated.latitude = lat
@@ -125,12 +127,13 @@ struct TripDetailView: View {
                     updated.date = date
                     updated.timeOfDay = timeOfDay
                     updated.tags = tags
+                    updated.photoIds = photoIds
                     Task { await tripsVM.updateVisit(updated) }
                 }
             }
             .sheet(item: $newSightingCoord) { item in
-                TripVisitFormSheet(visit: nil, initialCoordinate: item.coordinate) { sightings, lat, lon, date, timeOfDay, tags in
-                    Task { await tripsVM.addVisit(tripId: currentTrip.id, sightings: sightings, latitude: lat, longitude: lon, date: date, timeOfDay: timeOfDay, tags: tags) }
+                TripVisitFormSheet(visit: nil, initialCoordinate: item.coordinate) { sightings, lat, lon, date, timeOfDay, tags, photoIds in
+                    Task { await tripsVM.addVisit(tripId: currentTrip.id, sightings: sightings, latitude: lat, longitude: lon, date: date, timeOfDay: timeOfDay, tags: tags, photoIds: photoIds) }
                 }
             }
     }
@@ -144,17 +147,30 @@ struct TripDetailView: View {
             leftPane
                 .frame(width: 320)
             Divider()
-            TripMapView(
-                locations: filteredLocations,
-                sightings: showSightingsOnMap ? visits : [],
-                fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
-                focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
-                focusedSightingId: focusedSightingId,
-                onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
-                onSightingTapped: { id in focusedSightingId = id; focusedLocationId = nil },
-                onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
-                onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
-            )
+            ZStack(alignment: .bottom) {
+                TripMapView(
+                    locations: filteredLocations,
+                    sightings: showSightingsOnMap ? visits : [],
+                    fallbackCoordinate: currentTrip.latitude.flatMap { lat in currentTrip.longitude.map { lon in CLLocationCoordinate2D(latitude: lat, longitude: lon) } },
+                    focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
+                    focusedSightingId: focusedSightingId,
+                    onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
+                    onSightingTapped: { id in
+                        focusedSightingId = id
+                        focusedLocationId = nil
+                        withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
+                    },
+                    onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
+                    onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
+                )
+                if let visit = sightingPopup {
+                    SightingPopupCard(visit: visit) {
+                        withAnimation { sightingPopup = nil }
+                    }
+                    .padding(12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
         }
         #else
         ScrollView {
@@ -166,7 +182,11 @@ struct TripDetailView: View {
                     focusedLocationId: focusedSightingId == nil ? (focusedLocationId ?? filteredLocations.first(where: { $0.latitude != nil })?.id) : focusedLocationId,
                     focusedSightingId: focusedSightingId,
                     onLocationTapped: { id in focusedLocationId = id; focusedSightingId = nil },
-                    onSightingTapped: { id in focusedSightingId = id; focusedLocationId = nil },
+                    onSightingTapped: { id in
+                        focusedSightingId = id
+                        focusedLocationId = nil
+                        withAnimation { sightingPopup = visits.first(where: { $0.id == id }) }
+                    },
                     onMapLongPress: { coord in newLocationCoord = IdentifiableCoordinate(coordinate: coord) },
                     onSightingLongPress: { coord in newSightingCoord = IdentifiableCoordinate(coordinate: coord) }
                 )
@@ -596,6 +616,87 @@ private struct TripVisitRowView: View {
         }
         Divider()
             .padding(.leading)
+    }
+}
+
+// MARK: - Sighting Popup Card
+
+private struct SightingPopupCard: View {
+    let visit: TripVisit
+    let onDismiss: () -> Void
+
+    private static let parseDateFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
+    }()
+    private static let displayFormatter: DateFormatter = {
+        let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .none; return f
+    }()
+    private var formattedDate: String {
+        guard let d = Self.parseDateFormatter.date(from: visit.date) else { return visit.date }
+        return Self.displayFormatter.string(from: d)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header
+            HStack {
+                Label(formattedDate, systemImage: "calendar").font(.caption).foregroundStyle(.secondary)
+                if !visit.timeOfDay.isEmpty {
+                    Label(visit.timeOfDay, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // Observations
+            ForEach(visit.sightings) { s in
+                HStack(alignment: .top, spacing: 8) {
+                    if let url = URL(string: s.imageURL), !s.imageURL.isEmpty {
+                        AsyncImage(url: url) { phase in
+                            if case .success(let img) = phase { img.resizable().aspectRatio(contentMode: .fill) }
+                            else { Color.secondary.opacity(0.1) }
+                        }
+                        .frame(width: 44, height: 44)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(s.name).font(.subheadline.bold())
+                        if !s.wikiDescription.isEmpty {
+                            Text(s.wikiDescription).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                        }
+                    }
+                }
+            }
+
+            // Linked photos
+            if !visit.photoIds.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(visit.photoIds, id: \.self) { filename in
+                            if let url = PhotoStorageService.url(for: filename) {
+                                AsyncImage(url: url) { phase in
+                                    if case .success(let img) = phase {
+                                        img.resizable().aspectRatio(contentMode: .fill)
+                                    } else {
+                                        Color.secondary.opacity(0.1)
+                                    }
+                                }
+                                .frame(width: 80, height: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(.thickMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .frame(maxWidth: 400)
     }
 }
 

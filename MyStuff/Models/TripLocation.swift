@@ -50,9 +50,27 @@ struct TripLocation: Identifiable, Equatable, Hashable {
     var createdAt: String
     var updatedAt: String
     var type: LocationType
+    var photoIds: [String]
 
     // New columns always appended for backwards compatibility
-    static let columnOrder = ["id", "name", "description", "tags", "latitude", "longitude", "createdAt", "updatedAt", "wikiURL", "type"]
+    static let columnOrder = ["id", "name", "description", "tags", "latitude", "longitude", "createdAt", "updatedAt", "wikiURL", "type", "photos"]
+
+    init(id: String = UUID().uuidString, name: String, description: String = "", tags: [String] = [],
+         latitude: Double? = nil, longitude: Double? = nil, wikiURL: String = "",
+         createdAt: String = "", updatedAt: String = "", type: LocationType = .natureReserve,
+         photoIds: [String] = []) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.tags = tags
+        self.latitude = latitude
+        self.longitude = longitude
+        self.wikiURL = wikiURL
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.type = type
+        self.photoIds = photoIds
+    }
 
     var coordinate: (latitude: Double, longitude: Double)? {
         guard let lat = latitude, let lon = longitude else { return nil }

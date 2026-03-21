@@ -1,16 +1,19 @@
 import SwiftUI
 import MapKit // CLLocationCoordinate2D
+import PhotosUI
 
 struct TripVisitFormSheet: View {
     let visit: TripVisit?
     let initialCoordinate: CLLocationCoordinate2D?
-    let onSave: ([VisitSighting], Double?, Double?, String, String, [String]) -> Void
+    let onSave: ([VisitSighting], Double?, Double?, String, String, [String], [String]) -> Void
 
     @State private var sightings: [VisitSighting]
     @State private var date: Date
     @State private var timeOfDay: TimeOfDay
     @State private var tags: [String]
     @State private var selectedCoordinate: CLLocationCoordinate2D?
+    @State private var photoIds: [String]
+    @State private var pendingItems: [PhotosPickerItem] = []
 
     @EnvironmentObject var session: Session
     @Environment(\.dismiss) private var dismiss
@@ -20,7 +23,7 @@ struct TripVisitFormSheet: View {
     }()
 
     init(visit: TripVisit?, initialCoordinate: CLLocationCoordinate2D? = nil,
-         onSave: @escaping ([VisitSighting], Double?, Double?, String, String, [String]) -> Void) {
+         onSave: @escaping ([VisitSighting], Double?, Double?, String, String, [String], [String]) -> Void) {
         self.visit = visit
         self.initialCoordinate = initialCoordinate
         self.onSave = onSave
@@ -28,6 +31,7 @@ struct TripVisitFormSheet: View {
         _sightings = State(initialValue: visit?.sightings.isEmpty == false ? visit!.sightings : [VisitSighting(name: "")])
         _tags      = State(initialValue: visit?.tags ?? [])
         _timeOfDay = State(initialValue: TimeOfDay(rawValue: visit?.timeOfDay ?? "") ?? .morning)
+        _photoIds  = State(initialValue: visit?.photoIds ?? [])
 
         _date = State(initialValue: {
             if let s = visit?.date, let d = Self.dateFormatter.date(from: s) { return d }
@@ -74,6 +78,44 @@ struct TripVisitFormSheet: View {
                 Section("Tags") {
                     TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
+
+                // MARK: Photos
+                Section("Photos") {
+                    PhotosPicker(selection: $pendingItems, maxSelectionCount: 10, matching: .images) {
+                        Label("Add Photos", systemImage: "photo.badge.plus")
+                    }
+                    if !photoIds.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(photoIds, id: \.self) { id in
+                                    ZStack(alignment: .topTrailing) {
+                                        AsyncImage(url: PhotoStorageService.url(for: id)) { phase in
+                                            if case .success(let img) = phase {
+                                                img.resizable().aspectRatio(contentMode: .fill)
+                                            } else {
+                                                Color.secondary.opacity(0.1)
+                                            }
+                                        }
+                                        .frame(width: 72, height: 72)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                                        Button {
+                                            photoIds.removeAll { $0 == id }
+                                            PhotoStorageService.delete(filename: id)
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.white, .black.opacity(0.6))
+                                                .font(.system(size: 18))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .offset(x: 6, y: -6)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
             .navigationTitle(visit == nil ? "New Sighting" : "Edit Sighting")
@@ -86,19 +128,34 @@ struct TripVisitFormSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let dateStr = Self.dateFormatter.string(from: date)
-                        let validSightings = sightings.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
-                        onSave(
-                            validSightings,
-                            selectedCoordinate?.latitude,
-                            selectedCoordinate?.longitude,
-                            dateStr,
-                            timeOfDay.rawValue,
-                            tags
-                        )
-                        dismiss()
+                        Task {
+                            let dateStr = Self.dateFormatter.string(from: date)
+                            let validSightings = sightings.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+                            onSave(
+                                validSightings,
+                                selectedCoordinate?.latitude,
+                                selectedCoordinate?.longitude,
+                                dateStr,
+                                timeOfDay.rawValue,
+                                tags,
+                                photoIds
+                            )
+                            dismiss()
+                        }
                     }
                     .disabled(sightings.allSatisfy { $0.name.trimmingCharacters(in: .whitespaces).isEmpty })
+                }
+            }
+            .onChange(of: pendingItems) { _, newItems in
+                guard !newItems.isEmpty else { return }
+                let itemsToSave = newItems
+                pendingItems = []
+                Task {
+                    for item in itemsToSave {
+                        if let filename = await PhotoStorageService.save(item: item) {
+                            photoIds.append(filename)
+                        }
+                    }
                 }
             }
         }

@@ -54,9 +54,26 @@ struct TripVisit: Identifiable, Equatable, Hashable {
     var tags: [String]
     var createdAt: String
     var updatedAt: String
+    var photoIds: [String]
 
     // v1 (8 cols):  id, tripId, locationId, date, summary, tags, createdAt, updatedAt
     // v2 (11 cols): id, tripId, name, description, latitude, longitude, date, time, tags, createdAt, updatedAt
     // v3 (10 cols): id, tripId, sightings(JSON), latitude, longitude, date, timeOfDay, tags, createdAt, updatedAt
-    static let columnOrder = ["id", "tripId", "sightings", "latitude", "longitude", "date", "timeOfDay", "tags", "createdAt", "updatedAt"]
+    static let columnOrder = ["id", "tripId", "sightings", "latitude", "longitude", "date", "timeOfDay", "tags", "createdAt", "updatedAt", "photos"]
+
+    init(id: String = UUID().uuidString, tripId: String, sightings: [VisitSighting] = [],
+         latitude: Double? = nil, longitude: Double? = nil, date: String, timeOfDay: String = "",
+         tags: [String] = [], createdAt: String = "", updatedAt: String = "", photoIds: [String] = []) {
+        self.id = id
+        self.tripId = tripId
+        self.sightings = sightings
+        self.latitude = latitude
+        self.longitude = longitude
+        self.date = date
+        self.timeOfDay = timeOfDay
+        self.tags = tags
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.photoIds = photoIds
+    }
 }

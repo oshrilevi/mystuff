@@ -85,9 +85,9 @@ struct TripLocationPickerView: View {
                 }
             }
             .sheet(isPresented: $showCreateLocation) {
-                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type in
+                TripLocationFormSheet(location: nil) { name, description, wikiURL, tags, lat, lon, type, photoIds in
                     Task {
-                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type)
+                        await tripsVM.addTripLocation(name: name, description: description, wikiURL: wikiURL, tags: tags, latitude: lat, longitude: lon, type: type, photoIds: photoIds)
                         if let created = tripsVM.tripLocations.last(where: { $0.name == name }) {
                             onSelect(created)
                             dismiss()

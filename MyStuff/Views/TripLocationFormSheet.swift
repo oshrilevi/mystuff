@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import PhotosUI
 
 // MARK: - Description Source
 
@@ -12,7 +13,7 @@ private enum DescriptionSource: String, CaseIterable {
 
 struct TripLocationFormSheet: View {
     let location: TripLocation?
-    let onSave: (String, String, String, [String], Double?, Double?, LocationType) -> Void
+    let onSave: (String, String, String, [String], Double?, Double?, LocationType, [String]) -> Void
 
     @State private var name: String
     @State private var type: LocationType
@@ -21,6 +22,8 @@ struct TripLocationFormSheet: View {
     @State private var searchResults: [MKMapItem] = []
     @State private var searchTask: Task<Void, Never>?
     @State private var selectedCoordinate: CLLocationCoordinate2D?
+    @State private var photoIds: [String]
+    @State private var pendingItems: [PhotosPickerItem] = []
 
     // Description
     @State private var descriptionSource: DescriptionSource
@@ -37,13 +40,14 @@ struct TripLocationFormSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     init(location: TripLocation?, initialCoordinate: CLLocationCoordinate2D? = nil,
-         onSave: @escaping (String, String, String, [String], Double?, Double?, LocationType) -> Void) {
+         onSave: @escaping (String, String, String, [String], Double?, Double?, LocationType, [String]) -> Void) {
         self.location = location
         self.onSave = onSave
         _name = State(initialValue: location?.name ?? "")
         _type = State(initialValue: location?.type ?? .natureReserve)
         _tags = State(initialValue: location?.tags ?? [])
         _wikiURL = State(initialValue: location?.wikiURL ?? "")
+        _photoIds = State(initialValue: location?.photoIds ?? [])
 
         if let lat = location?.latitude, let lon = location?.longitude {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
@@ -171,6 +175,44 @@ struct TripLocationFormSheet: View {
                 Section("Tags") {
                     TagChipsEditor(tags: $tags, suggestions: session.allTags)
                 }
+
+                // MARK: Photos
+                Section("Photos") {
+                    PhotosPicker(selection: $pendingItems, maxSelectionCount: 10, matching: .images) {
+                        Label("Add Photos", systemImage: "photo.badge.plus")
+                    }
+                    if !photoIds.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(photoIds, id: \.self) { id in
+                                    ZStack(alignment: .topTrailing) {
+                                        AsyncImage(url: PhotoStorageService.url(for: id)) { phase in
+                                            if case .success(let img) = phase {
+                                                img.resizable().aspectRatio(contentMode: .fill)
+                                            } else {
+                                                Color.secondary.opacity(0.1)
+                                            }
+                                        }
+                                        .frame(width: 72, height: 72)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                                        Button {
+                                            photoIds.removeAll { $0 == id }
+                                            PhotoStorageService.delete(filename: id)
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundStyle(.white, .black.opacity(0.6))
+                                                .font(.system(size: 18))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .offset(x: 6, y: -6)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                }
             }
             .formStyle(.grouped)
             .navigationTitle(location == nil ? "New Location" : "Edit Location")
@@ -190,11 +232,24 @@ struct TripLocationFormSheet: View {
                             tags,
                             selectedCoordinate?.latitude,
                             selectedCoordinate?.longitude,
-                            type
+                            type,
+                            photoIds
                         )
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+            .onChange(of: pendingItems) { _, newItems in
+                guard !newItems.isEmpty else { return }
+                let itemsToSave = newItems
+                pendingItems = []
+                Task {
+                    for item in itemsToSave {
+                        if let filename = await PhotoStorageService.save(item: item) {
+                            photoIds.append(filename)
+                        }
+                    }
                 }
             }
         }
