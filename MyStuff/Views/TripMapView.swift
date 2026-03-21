@@ -354,6 +354,14 @@ private struct InatObservationDetailView: View {
                         LabeledContent("Observed", value: date)
                     }
 
+                    if let url = observation.wikiURL {
+                        Link(destination: url) {
+                            Label("Wikipedia", systemImage: "book.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.gray)
+                    }
                     if let url = observation.observationURL {
                         Link(destination: url) {
                             Label("View on iNaturalist", systemImage: "arrow.up.right.square")

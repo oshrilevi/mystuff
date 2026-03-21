@@ -13,6 +13,7 @@ struct iNaturalistObservation: Identifiable {
     let qualityGrade: String
     let observerLogin: String?
     let observationURL: URL?
+    let wikiURL: URL?
 
     var displayName: String {
         commonName ?? taxonName
@@ -121,7 +122,15 @@ enum INaturalistService {
                 photoURL:       photoURL,
                 qualityGrade:   raw.quality_grade ?? "needs_id",
                 observerLogin:  raw.user?.login,
-                observationURL: raw.uri.flatMap { URL(string: $0) }
+                observationURL: raw.uri.flatMap { URL(string: $0) },
+                wikiURL:        {
+                    let searchTerm = raw.taxon?.preferred_common_name ?? raw.taxon?.name ?? ""
+                    guard !searchTerm.isEmpty,
+                          var comps = URLComponents(string: "https://he.wikipedia.org/w/index.php")
+                    else { return nil }
+                    comps.queryItems = [URLQueryItem(name: "search", value: searchTerm)]
+                    return comps.url
+                }()
             )
         }
     }
