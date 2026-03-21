@@ -65,7 +65,7 @@ struct TripLocationFormSheet: View {
             // Seed the wiki summary so the existing description is shown
             if !existingDesc.isEmpty {
                 _wikiSummary = State(initialValue: WikiSummary(
-                    title: location?.name ?? "", extract: existingDesc, pageURL: nil))
+                    title: location?.name ?? "", extract: existingDesc, pageURL: nil, thumbnailURL: nil))
             } else {
                 _wikiSummary = State(initialValue: nil)
             }

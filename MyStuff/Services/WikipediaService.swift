@@ -5,6 +5,7 @@ struct WikiSummary {
     let title: String
     let extract: String
     let pageURL: URL?
+    let thumbnailURL: URL?
 }
 
 enum WikipediaService {
@@ -81,7 +82,10 @@ enum WikipediaService {
             .flatMap { $0["desktop"] as? [String: Any] }
             .flatMap { $0["page"] as? String }
             .flatMap { URL(string: $0) }
-        return WikiSummary(title: pageTitle, extract: extract, pageURL: pageURL)
+        let thumbnailURL = (json["thumbnail"] as? [String: Any])
+            .flatMap { $0["source"] as? String }
+            .flatMap { URL(string: $0) }
+        return WikiSummary(title: pageTitle, extract: extract, pageURL: pageURL, thumbnailURL: thumbnailURL)
     }
 }
 

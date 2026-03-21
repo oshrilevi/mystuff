@@ -506,14 +506,28 @@ private struct TripVisitRowView: View {
             // Species list
             if isExpanded {
                 ForEach(visit.sightings) { s in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(s.name)
-                            .font(.subheadline.bold())
-                        if !s.wikiDescription.isEmpty {
-                            Text(s.wikiDescription)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .top, spacing: 10) {
+                        if let url = URL(string: s.imageURL), !s.imageURL.isEmpty {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image.resizable().aspectRatio(contentMode: .fill)
+                                default:
+                                    Color.secondary.opacity(0.1)
+                                }
+                            }
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.name)
+                                .font(.subheadline.bold())
+                            if !s.wikiDescription.isEmpty {
+                                Text(s.wikiDescription)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
                 }

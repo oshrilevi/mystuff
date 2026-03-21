@@ -2,15 +2,29 @@ import Foundation
 
 // MARK: - VisitSighting
 
-struct VisitSighting: Identifiable, Codable, Equatable, Hashable {
+struct VisitSighting: Identifiable, Equatable, Hashable {
     let id: String
     var name: String
     var wikiDescription: String
+    var imageURL: String  // absolute URL string; empty if unknown
 
-    init(id: String = UUID().uuidString, name: String, wikiDescription: String = "") {
+    init(id: String = UUID().uuidString, name: String, wikiDescription: String = "", imageURL: String = "") {
         self.id = id
         self.name = name
         self.wikiDescription = wikiDescription
+        self.imageURL = imageURL
+    }
+}
+
+extension VisitSighting: Codable {
+    enum CodingKeys: String, CodingKey { case id, name, wikiDescription, imageURL }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id              = try c.decode(String.self, forKey: .id)
+        name            = try c.decode(String.self, forKey: .name)
+        wikiDescription = (try? c.decode(String.self, forKey: .wikiDescription)) ?? ""
+        imageURL        = (try? c.decode(String.self, forKey: .imageURL)) ?? ""
     }
 }
 

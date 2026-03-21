@@ -117,25 +117,46 @@ private struct SightingRowEditor: View {
     @State private var wikiTask: Task<Void, Never>?
     @State private var debounceTask: Task<Void, Never>?
 
+    private var imageURL: URL? { URL(string: sighting.imageURL) }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                TextField("Species or subject name", text: $sighting.name)
-                    .onChange(of: sighting.name) { _, newName in scheduleWikiFetch(name: newName) }
-                if isFetchingWiki {
-                    ProgressView().scaleEffect(0.7)
+                // Thumbnail
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    default:
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.1))
+                            .overlay {
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.tertiary)
+                                    .font(.caption)
+                            }
+                    }
                 }
-                Button(action: onRemove) {
-                    Image(systemName: "minus.circle.fill")
-                        .foregroundStyle(.red)
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        TextField("Species or subject name", text: $sighting.name)
+                            .onChange(of: sighting.name) { _, newName in scheduleWikiFetch(name: newName) }
+                        if isFetchingWiki { ProgressView().scaleEffect(0.7) }
+                        Button(action: onRemove) {
+                            Image(systemName: "minus.circle.fill").foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if !sighting.wikiDescription.isEmpty {
+                        Text(sighting.wikiDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                    }
                 }
-                .buttonStyle(.plain)
-            }
-            if !sighting.wikiDescription.isEmpty {
-                Text(sighting.wikiDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
             }
         }
         .padding(.vertical, 2)
@@ -150,11 +171,18 @@ private struct SightingRowEditor: View {
             wikiTask?.cancel()
             isFetchingWiki = true
             sighting.wikiDescription = ""
+            sighting.imageURL = ""
             wikiTask = Task {
-                let result = await WikipediaService.fetchSummary(name: name)
+                // Fetch wiki summary (description + thumbnail) and iNaturalist photo in parallel
+                async let wikiResult = WikipediaService.fetchSummary(name: name)
+                async let inatURL = INaturalistService.fetchPhotoURL(name: name)
+                let (wiki, inat) = await (wikiResult, inatURL)
                 guard !Task.isCancelled else { return }
                 isFetchingWiki = false
-                sighting.wikiDescription = result?.extract ?? ""
+                sighting.wikiDescription = wiki?.extract ?? ""
+                // Prefer iNaturalist photo (better for species); fall back to Wikipedia thumbnail
+                let photoURL = inat ?? wiki?.thumbnailURL
+                sighting.imageURL = photoURL?.absoluteString ?? ""
             }
         }
     }

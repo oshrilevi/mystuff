@@ -287,7 +287,7 @@ struct TripFormSheet: View {
         _tags = State(initialValue: trip?.tags ?? [])
         _wikiURL = State(initialValue: trip?.wikiURL ?? "")
         if let desc = trip?.description, !desc.isEmpty {
-            _wikiSummary = State(initialValue: WikiSummary(title: trip?.name ?? "", extract: desc, pageURL: nil))
+            _wikiSummary = State(initialValue: WikiSummary(title: trip?.name ?? "", extract: desc, pageURL: nil, thumbnailURL: nil))
         }
     }
 

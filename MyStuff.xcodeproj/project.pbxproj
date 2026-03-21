@@ -87,6 +87,7 @@
 		B0010000000000000000005C /* TripVisitFormSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000060 /* TripVisitFormSheet.swift */; };
 		B0010000000000000000005D /* TripLocationsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000061 /* TripLocationsManagementView.swift */; };
 		B0010000000000000000005E /* WikipediaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000062 /* WikipediaService.swift */; };
+		B0010000000000000000005F /* INaturalistService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100000000000000000063 /* INaturalistService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -157,6 +158,7 @@
 		F00100000000000000000060 /* TripVisitFormSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripVisitFormSheet.swift; sourceTree = "<group>"; };
 		F00100000000000000000061 /* TripLocationsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripLocationsManagementView.swift; sourceTree = "<group>"; };
 		F00100000000000000000062 /* WikipediaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikipediaService.swift; sourceTree = "<group>"; };
+		F00100000000000000000063 /* INaturalistService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = INaturalistService.swift; sourceTree = "<group>"; };
 		F00100000000000000000041 /* List.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = List.swift; sourceTree = "<group>"; };
 		F00100000000000000000042 /* ListItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListItem.swift; sourceTree = "<group>"; };
 		F00100000000000000000043 /* ListsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListsViewModel.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 				F00100000000000000000007 /* Session.swift */,
 				F00100000000000000000008 /* SheetsService.swift */,
 				F00100000000000000000062 /* WikipediaService.swift */,
+				F00100000000000000000063 /* INaturalistService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -471,6 +474,7 @@
 				B0010000000000000000005C /* TripVisitFormSheet.swift in Sources */,
 				B0010000000000000000005D /* TripLocationsManagementView.swift in Sources */,
 				B0010000000000000000005E /* WikipediaService.swift in Sources */,
+				B0010000000000000000005F /* INaturalistService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
