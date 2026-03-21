@@ -549,6 +549,11 @@ private struct TripVisitRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                if !visit.photoIds.isEmpty {
+                    Image(systemName: "photo.on.rectangle")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
