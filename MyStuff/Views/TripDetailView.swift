@@ -941,15 +941,13 @@ private struct SpeciesGroupRowView: View {
             ) {
                 ForEach(visibleObs, id: \.offset) { item in
                     let obs = item.element
-                    VStack(alignment: .leading, spacing: 1) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "calendar")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                            Text(fmt(obs.date))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(fmt(obs.date))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         if !obs.timeOfDay.isEmpty {
                             TimeOfDayIcon(rawValue: obs.timeOfDay, fontSize: .caption2)
                         }
